@@ -82,30 +82,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     checkSession();
-    refreshLockoutStatus();
-  }, [refreshLockoutStatus]);
-
-  // Handle live countdown when locked
-  useEffect(() => {
-    if (!isLocked || lockoutRemainingMs <= 0) return;
-
-    const timer = setInterval(() => {
-      setLockoutRemainingMs((prev) => {
-        if (prev <= 1000) {
-          clearInterval(timer);
-          setIsLocked(false);
-          refreshLockoutStatus();
-          return 0;
-        }
-        return prev - 1000;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isLocked, lockoutRemainingMs, refreshLockoutStatus]);
+  }, []);
 
   const openSecretModal = () => {
-    refreshLockoutStatus();
+    setIsLocked(false);
+    setLockoutRemainingMs(0);
     setSecretModalOpen(true);
   };
 
@@ -122,36 +103,16 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsAdmin(true);
         setIsLocked(false);
         setLockoutRemainingMs(0);
-        setAttemptsRemaining(3);
         setSecretModalOpen(false);
         return { success: true };
       }
-      return { success: false, error: 'Password salah.' };
+      return { success: false, error: res.error || 'Password salah. Silakan coba lagi.' };
     } catch (err: any) {
-      if (err instanceof ApiError) {
-        const data = err.data || {};
-        if (err.status === 429 || data.locked) {
-          setIsLocked(true);
-          setLockoutRemainingMs(data.remainingMs || 12 * 60 * 60 * 1000);
-          setAttemptsRemaining(0);
-          return {
-            success: false,
-            locked: true,
-            remainingMs: data.remainingMs,
-            error: err.message,
-          };
-        }
-        if (data.attemptsLeft !== undefined) {
-          setAttemptsRemaining(data.attemptsLeft);
-          return {
-            success: false,
-            locked: false,
-            attemptsLeft: data.attemptsLeft,
-            error: err.message,
-          };
-        }
-      }
-      return { success: false, error: err.message || 'Verifikasi password gagal.' };
+      const errorMsg =
+        (err instanceof ApiError && err.data?.error) ||
+        err.message ||
+        'Password salah. Silakan periksa kembali password Anda.';
+      return { success: false, error: errorMsg };
     }
   };
 

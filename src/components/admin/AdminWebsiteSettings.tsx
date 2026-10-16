@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Image as ImageIcon, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Settings, Save, Sparkles, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { BRANDING } from '../../config/branding';
@@ -126,12 +126,12 @@ export const AdminWebsiteSettings: React.FC = () => {
 
           <button
             type="submit"
-            disabled={isSaving}
+            disabled={isSaving || loading}
             className="btn btn-primary"
             style={{ height: '44px', fontWeight: 700, marginTop: '0.5rem' }}
           >
-            <Save size={16} />
-            <span>{isSaving ? 'Menyimpan...' : 'Simpan Pengaturan'}</span>
+            {isSaving || loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            <span>{isSaving ? 'Menyimpan...' : loading ? 'Memuat Pengaturan...' : 'Simpan Pengaturan'}</span>
           </button>
         </form>
       </div>
@@ -159,6 +159,16 @@ export const AdminWebsiteSettings: React.FC = () => {
             <img
               src={formData.logoUrl}
               alt="Preview Logo Kelas"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.dataset.fallbackLevel) {
+                  target.dataset.fallbackLevel = '1';
+                  target.src = BRANDING.fallbackLogoUrl;
+                } else if (target.dataset.fallbackLevel === '1') {
+                  target.dataset.fallbackLevel = '2';
+                  target.src = BRANDING.jpegLogoUrl;
+                }
+              }}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           </div>

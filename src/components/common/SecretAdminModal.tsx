@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, AlertCircle, Clock, X, Eye, EyeOff, ShieldAlert } from 'lucide-react';
+import { Lock, AlertCircle, X, Eye, EyeOff } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 
 interface SecretAdminModalProps {
@@ -11,9 +11,6 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
     secretModalOpen,
     closeSecretModal,
     verifyPassword,
-    isLocked,
-    lockoutRemainingMs,
-    attemptsRemaining,
   } = useAdmin();
 
   const [password, setPassword] = useState('');
@@ -22,21 +19,19 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus input on open
+  // Focus input when modal opens
   useEffect(() => {
     if (secretModalOpen) {
       setPassword('');
       setErrorMsg(null);
       setShowPassword(false);
       setTimeout(() => {
-        if (!isLocked) {
-          inputRef.current?.focus();
-        }
+        inputRef.current?.focus();
       }, 150);
     }
-  }, [secretModalOpen, isLocked]);
+  }, [secretModalOpen]);
 
-  // Lock background scroll when modal open
+  // Lock background scroll when modal is open and handle ESC key
   useEffect(() => {
     if (secretModalOpen) {
       document.body.classList.add('modal-open');
@@ -55,23 +50,9 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
 
   if (!secretModalOpen) return null;
 
-  // Format milliseconds into 11h 42m 15s format
-  const formatCountdown = (ms: number): string => {
-    const totalSecs = Math.max(0, Math.floor(ms / 1000));
-    const hours = Math.floor(totalSecs / 3600);
-    const minutes = Math.floor((totalSecs % 3600) / 60);
-    const seconds = totalSecs % 60;
-
-    const parts: string[] = [];
-    if (hours > 0) parts.push(`${hours}h`);
-    parts.push(`${minutes}m`);
-    parts.push(`${seconds}s`);
-    return parts.join(' ');
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLocked || isSubmitting || !password.trim()) return;
+    if (isSubmitting || !password.trim()) return;
 
     setIsSubmitting(true);
     setErrorMsg(null);
@@ -88,7 +69,7 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
         window.dispatchEvent(new PopStateEvent('popstate'));
       }
     } else {
-      setErrorMsg(res.error || 'Password salah.');
+      setErrorMsg(res.error || 'Password salah. Silakan coba lagi.');
       setPassword('');
       setTimeout(() => {
         inputRef.current?.focus();
@@ -143,6 +124,11 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
             cursor: 'pointer',
             padding: '0.35rem',
             borderRadius: 'var(--radius-sm)',
+            border: 'none',
+            background: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             transition: 'color var(--transition-fast)',
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--gray-800)')}
@@ -158,7 +144,7 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
               width: 52,
               height: 52,
               borderRadius: '50%',
-              backgroundColor: isLocked ? 'var(--primary-100)' : 'var(--primary-50)',
+              backgroundColor: 'var(--primary-50)',
               color: 'var(--primary-600)',
               display: 'flex',
               alignItems: 'center',
@@ -167,7 +153,7 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
               border: '2px solid var(--primary-200)',
             }}
           >
-            {isLocked ? <ShieldAlert size={26} color="var(--primary-700)" /> : <Lock size={24} />}
+            <Lock size={24} />
           </div>
 
           <h3
@@ -181,100 +167,31 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
           >
             Enter the Password
           </h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)', lineHeight: 1.45 }}>
-            {isLocked
-              ? 'Sistem terkunci karena batas kesalahan tercapai.'
-              : 'Masukkan password verifikasi untuk mengakses panel pengelolaan.'}
+          <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)', lineHeight: 1.45, margin: 0 }}>
+            Masukkan password verifikasi untuk mengakses panel pengelolaan.
           </p>
         </div>
 
-        {/* 12-Hour Lockout State Banner */}
-        {isLocked ? (
+        {/* Clear Error Notice (No timer/countdown) */}
+        {errorMsg && (
           <div
             style={{
               backgroundColor: 'var(--primary-50)',
-              border: '1.5px solid var(--primary-300)',
+              border: '1px solid var(--primary-200)',
               borderRadius: 'var(--radius-md)',
-              padding: '1.25rem',
-              textAlign: 'center',
-              marginBottom: '1.5rem',
+              padding: '0.75rem 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              color: 'var(--primary-800)',
+              fontSize: '0.825rem',
+              marginBottom: '1.25rem',
+              lineHeight: 1.45,
             }}
           >
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                color: 'var(--primary-700)',
-                fontWeight: 700,
-                fontSize: '0.9rem',
-                marginBottom: '0.5rem',
-              }}
-            >
-              <AlertCircle size={16} />
-              <span>Too many failed attempts.</span>
-            </div>
-            <p
-              style={{
-                fontSize: '0.8125rem',
-                color: 'var(--primary-900)',
-                lineHeight: 1.5,
-                marginBottom: '1rem',
-              }}
-            >
-              Admin access has been temporarily locked.
-              <br />
-              Please try again later.
-            </p>
-
-            <div
-              style={{
-                backgroundColor: '#ffffff',
-                border: '1px solid var(--primary-200)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '0.6rem 0.85rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                color: 'var(--primary-700)',
-                fontWeight: 800,
-                fontSize: '0.95rem',
-              }}
-            >
-              <Clock size={16} />
-              <span>Try again in: {formatCountdown(lockoutRemainingMs)}</span>
-            </div>
+            <AlertCircle size={16} color="var(--primary-600)" style={{ flexShrink: 0 }} />
+            <span>{errorMsg}</span>
           </div>
-        ) : (
-          /* Normal / Failed Attempt Error Notice */
-          errorMsg && (
-            <div
-              style={{
-                backgroundColor: 'var(--primary-50)',
-                border: '1px solid var(--primary-200)',
-                borderRadius: 'var(--radius-md)',
-                padding: '0.75rem 1rem',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '0.65rem',
-                color: 'var(--primary-800)',
-                fontSize: '0.8125rem',
-                marginBottom: '1.25rem',
-                lineHeight: 1.45,
-              }}
-            >
-              <AlertCircle size={16} color="var(--primary-600)" style={{ flexShrink: 0, marginTop: '0.1rem' }} />
-              <div>
-                <strong>{errorMsg}</strong>
-                {attemptsRemaining < 3 && attemptsRemaining > 0 && (
-                  <div style={{ marginTop: '0.25rem', color: 'var(--primary-700)', fontSize: '0.75rem' }}>
-                    Sisa kesempatan: <strong>{attemptsRemaining} kali</strong> sebelum sistem terkunci 12 jam.
-                  </div>
-                )}
-              </div>
-            </div>
-          )
         )}
 
         {/* Password Form */}
@@ -287,14 +204,13 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={isLocked || isSubmitting}
+                disabled={isSubmitting}
                 className="form-input"
                 style={{
                   height: '46px',
                   fontSize: '0.95rem',
                   paddingRight: '2.75rem',
-                  backgroundColor: isLocked ? 'var(--gray-100)' : '#ffffff',
-                  cursor: isLocked ? 'not-allowed' : 'text',
+                  backgroundColor: '#ffffff',
                   borderColor: errorMsg ? 'var(--primary-500)' : 'var(--gray-300)',
                 }}
                 autoComplete="current-password"
@@ -302,7 +218,7 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                disabled={isLocked || isSubmitting}
+                disabled={isSubmitting}
                 aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
                 style={{
                   position: 'absolute',
@@ -310,8 +226,13 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
                   top: '50%',
                   transform: 'translateY(-50%)',
                   color: 'var(--gray-400)',
-                  cursor: isLocked ? 'not-allowed' : 'pointer',
+                  cursor: 'pointer',
                   padding: '0.25rem',
+                  border: 'none',
+                  background: 'transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -319,7 +240,7 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
             </div>
           </div>
 
-          {/* Action Buttons: Enter & Cancel per Requirement #6 */}
+          {/* Action Buttons: Enter & Cancel */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
             <button
               type="button"
@@ -337,14 +258,14 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
 
             <button
               type="submit"
-              disabled={isLocked || isSubmitting || !password.trim()}
+              disabled={isSubmitting || !password.trim()}
               className="btn btn-primary"
               style={{
                 height: '44px',
                 fontWeight: 700,
                 justifyContent: 'center',
-                opacity: isLocked || !password.trim() ? 0.6 : 1,
-                cursor: isLocked || !password.trim() ? 'not-allowed' : 'pointer',
+                opacity: !password.trim() ? 0.6 : 1,
+                cursor: !password.trim() ? 'not-allowed' : 'pointer',
               }}
             >
               {isSubmitting ? 'Verifying...' : 'Enter'}

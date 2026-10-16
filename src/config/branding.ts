@@ -1,7 +1,9 @@
+import bundledLogo from '../assets/Logo-Kelas.png';
+
 /**
  * Single source of truth for Website Branding & Class Assets
- * Per Requirement #15 & #16 and Identity Update:
- * Changing '/assets/Logo-Kelas.png' automatically updates the logo across all components and browser tabs.
+ * Bundled via Vite asset pipeline for 100% production & Vercel reliability,
+ * with fallbacks to public static assets.
  */
 export const BRANDING = {
   name: 'X ICP TKJ',
@@ -9,6 +11,8 @@ export const BRANDING = {
   fullName: 'X ICP TKJ — SMK Telkom Malang',
   program: 'International Class Program — Teknik Komputer dan Jaringan',
   tagline: 'Portal Resmi Kelas Digital',
-  logoUrl: '/assets/Logo-Kelas.png',
-  faviconUrl: '/assets/Logo-Kelas.png',
+  logoUrl: bundledLogo || '/assets/Logo-Kelas.png',
+  fallbackLogoUrl: '/assets/Logo-Kelas.png',
+  jpegLogoUrl: '/assets/Logo-Kelas.jpeg',
+  faviconUrl: '/assets/favicon.png',
 };

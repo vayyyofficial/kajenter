@@ -566,17 +566,6 @@
 }
 
 /* Responsive Navbar & Layout (Strict Desktop vs Mobile Rule per Requirement #4 & #5) */
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .navbar-desktop-nav {
   display: flex;
   align-items: center;
@@ -766,23 +755,56 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
 }
 
-/* 8. Reduced Motion Accessibility (Requirement #19) */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+/* 9. Responsive Gallery Modal System (Mobile & Desktop) */
+@media (max-width: 768px) {
+  .gallery-modal-body {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    max-height: calc(92vh - 54px) !important;
+    -webkit-overflow-scrolling: touch !important;
   }
-  .animate-float {
-    animation: none !important;
+
+  .gallery-dialog-container {
+    max-height: 94vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 16px !important;
   }
-  .scroll-reveal {
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
+
+  .gallery-image-column {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+  }
+
+  .gallery-image-column > div:first-child {
+    min-height: clamp(200px, 36vh, 280px) !important;
+    max-height: 38vh !important;
+  }
+
+  .gallery-metadata-column {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    overflow-y: visible !important;
+    max-height: none !important;
+  }
+
+  .gallery-arrow-desktop {
+    display: none !important;
   }
 }
+
+@media (min-width: 769px) {
+  .gallery-modal-body {
+    flex-direction: row !important;
+  }
+  .gallery-image-column {
+    flex: 1 1 64% !important;
+    max-width: 64% !important;
+  }
+  .gallery-metadata-column {
+    flex: 1 1 36% !important;
+    max-width: 36% !important;
+  }
+}
+
 

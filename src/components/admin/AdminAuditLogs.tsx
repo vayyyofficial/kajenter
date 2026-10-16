@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, Shield, User, RefreshCw } from 'lucide-react';
-import { ActivityLog } from '../../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Clock, User, RefreshCw } from 'lucide-react';
+import type { ActivityLog } from '../../types';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 
@@ -9,7 +9,7 @@ export const AdminAuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.admin.getAuditLogs(60);
@@ -19,11 +19,11 @@ export const AdminAuditLogs: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [fetchLogs]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

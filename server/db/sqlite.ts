@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import { CONFIG } from '../config.js';
+import { formatGalleryItem } from './supabase.js';
 
 let dbInstance: DatabaseSync | null = null;
 
@@ -54,11 +55,12 @@ export const sqliteDb = {
         sql = 'SELECT * FROM gallery WHERE category = ? ORDER BY event_date DESC, id DESC';
         params.push(category);
       }
-      return rawQuery.all(sql, ...params);
+      return rawQuery.all(sql, ...params).map(formatGalleryItem);
     },
 
     async getById(id: number | string) {
-      return rawQuery.get('SELECT * FROM gallery WHERE id = ?', id);
+      const res = rawQuery.get('SELECT * FROM gallery WHERE id = ?', id);
+      return res ? formatGalleryItem(res) : null;
     },
 
     async create(item: {
@@ -66,11 +68,22 @@ export const sqliteDb = {
       eventIdentity: string;
       category: string;
       description: string;
-      imagePath: string;
+      imagePath?: string;
+      photos?: string[];
       eventDate: string;
       createdBy: string;
     }) {
       const now = new Date().toISOString();
+      let finalImagePath = (item.imagePath || '').trim();
+      if (item.photos && Array.isArray(item.photos) && item.photos.length > 0) {
+        const cleanPhotos = item.photos.filter((p) => typeof p === 'string' && p.trim().length > 0);
+        if (cleanPhotos.length === 1) {
+          finalImagePath = cleanPhotos[0];
+        } else if (cleanPhotos.length > 1) {
+          finalImagePath = JSON.stringify(cleanPhotos);
+        }
+      }
+
       const res = rawQuery.run(
         `INSERT INTO gallery (title, event_identity, category, description, image_path, event_date, created_by, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -78,13 +91,13 @@ export const sqliteDb = {
         item.eventIdentity.trim(),
         item.category || 'Kegiatan',
         item.description.trim(),
-        item.imagePath.trim(),
+        finalImagePath,
         item.eventDate,
         item.createdBy,
         now,
         now
       );
-      return { id: res.lastInsertRowid, ...item };
+      return formatGalleryItem({ id: res.lastInsertRowid, ...item, image_path: finalImagePath });
     },
 
     async update(
@@ -95,23 +108,36 @@ export const sqliteDb = {
         category?: string;
         description?: string;
         imagePath?: string;
+        photos?: string[];
         eventDate?: string;
+        createdBy?: string;
       }
     ) {
       const existing = await this.getById(id);
       if (!existing) throw new Error('Foto tidak ditemukan.');
 
+      let finalImagePath = item.imagePath !== undefined ? item.imagePath.trim() : existing.image_path;
+      if (item.photos && Array.isArray(item.photos)) {
+        const cleanPhotos = item.photos.filter((p) => typeof p === 'string' && p.trim().length > 0);
+        if (cleanPhotos.length === 1) {
+          finalImagePath = cleanPhotos[0];
+        } else if (cleanPhotos.length > 1) {
+          finalImagePath = JSON.stringify(cleanPhotos);
+        }
+      }
+
       const now = new Date().toISOString();
       rawQuery.run(
         `UPDATE gallery
-         SET title = ?, event_identity = ?, category = ?, description = ?, image_path = ?, event_date = ?, updated_at = ?
+         SET title = ?, event_identity = ?, category = ?, description = ?, image_path = ?, event_date = ?, created_by = ?, updated_at = ?
          WHERE id = ?`,
         item.title !== undefined ? item.title.trim() : existing.title,
         item.eventIdentity !== undefined ? item.eventIdentity.trim() : existing.event_identity,
         item.category !== undefined ? item.category : existing.category,
         item.description !== undefined ? item.description.trim() : existing.description,
-        item.imagePath !== undefined ? item.imagePath.trim() : existing.image_path,
+        finalImagePath,
         item.eventDate !== undefined ? item.eventDate : existing.event_date,
+        item.createdBy !== undefined ? item.createdBy.trim() : existing.created_by,
         now,
         id
       );

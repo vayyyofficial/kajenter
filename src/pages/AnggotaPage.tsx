@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, GraduationCap, Users } from 'lucide-react';
 import { Member } from '../types';
-import { api } from '../services/api';
+import { dataCache } from '../services/dataCache';
 import { BRANDING } from '../config/branding';
 import { MemberCard } from '../components/members/MemberCard';
 import { MemberDetailModal } from '../components/members/MemberDetailModal';
@@ -10,9 +10,10 @@ import { Skeleton } from '../components/common/Skeleton';
 import { useRealtimeSync } from '../context/SyncContext';
 
 export const AnggotaPage: React.FC = () => {
-  const [guruList, setGuruList] = useState<Member[]>([]);
-  const [siswaList, setSiswaList] = useState<Member[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const cached = dataCache.getMembers();
+  const [guruList, setGuruList] = useState<Member[]>(() => cached?.guru || []);
+  const [siswaList, setSiswaList] = useState<Member[]>(() => cached?.siswa || []);
+  const [loading, setLoading] = useState<boolean>(() => !cached);
   const [search, setSearch] = useState<string>('');
 
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -20,11 +21,17 @@ export const AnggotaPage: React.FC = () => {
 
   const fetchMembers = useCallback(async () => {
     try {
-      setLoading(true);
-      const res = await api.members.getAll();
-      if (res.success) {
-        setGuruList(res.data.guru);
-        setSiswaList(res.data.siswa);
+      const cachedData = dataCache.getMembers();
+      if (!cachedData) {
+        setLoading(true);
+      } else {
+        setGuruList(cachedData.guru);
+        setSiswaList(cachedData.siswa);
+      }
+      const data = await dataCache.getOrFetchMembers(true);
+      if (data) {
+        setGuruList(data.guru || []);
+        setSiswaList(data.siswa || []);
       }
     } catch {
       // fallback
@@ -101,7 +108,7 @@ export const AnggotaPage: React.FC = () => {
         </div>
       </div>
 
-      {loading ? (
+      {loading && guruList.length === 0 && siswaList.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <div>
             <Skeleton width="220px" height="28px" style={{ marginBottom: '1.5rem' }} />

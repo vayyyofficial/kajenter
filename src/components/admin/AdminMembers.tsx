@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit2, Trash2, User, ShieldCheck, MapPin, Mail, Phone, Upload, RotateCcw, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, User, Upload, RotateCcw, Loader2 } from 'lucide-react';
 import { Member } from '../../types';
 import { api } from '../../services/api';
 import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useNotifications } from '../../context/NotificationContext';
 import { useRealtimeSync } from '../../context/SyncContext';
+import { dataCache } from '../../services/dataCache';
+import { getMemberPhotoUrl, getDefaultImgixAvatar } from '../../utils/avatar';
 
 export const AdminMembers: React.FC = () => {
   const { addToast } = useNotifications();
@@ -66,7 +68,7 @@ export const AdminMembers: React.FC = () => {
     setFormData({
       fullName: '',
       nickname: '',
-      birthPlace: 'Surabaya',
+      birthPlace: 'Malang', // Default untuk anggota baru: Malang (Sesuai Aturan #8)
       birthDate: '2008-01-01',
       email: '',
       memberType: 'siswa',
@@ -133,6 +135,7 @@ export const AdminMembers: React.FC = () => {
         await api.members.create(formData);
         addToast('success', 'Anggota baru berhasil ditambahkan.');
       }
+      dataCache.invalidate('members');
       setIsModalOpen(false);
       fetchMembers();
     } catch (err: any) {
@@ -145,6 +148,7 @@ export const AdminMembers: React.FC = () => {
     try {
       setIsDeleting(true);
       await api.members.delete(deleteId);
+      dataCache.invalidate('members');
       addToast('success', 'Anggota berhasil dihapus.');
       setDeleteId(null);
       fetchMembers();
@@ -184,13 +188,20 @@ export const AdminMembers: React.FC = () => {
         </button>
       </div>
 
-      {/* Guru Section */}
-      <div className="card" style={{ boxShadow: 'var(--shadow-md)' }}>
-        <div className="card-header" style={{ padding: '1.25rem 1.5rem' }}>
-          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--gray-900)' }}>
-            Dewan Guru & Tenaga Pendidik ({guruList.length})
-          </h4>
+      {loading && guruList.length === 0 && siswaList.length === 0 ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px', flexDirection: 'column', gap: '0.75rem', padding: '3rem' }}>
+          <Loader2 size={32} className="spin" color="var(--primary-600)" />
+          <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>Memuat data anggota...</span>
         </div>
+      ) : (
+        <>
+          {/* Guru Section */}
+          <div className="card" style={{ boxShadow: 'var(--shadow-md)' }}>
+            <div className="card-header" style={{ padding: '1.25rem 1.5rem' }}>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--gray-900)' }}>
+                Dewan Guru & Tenaga Pendidik ({guruList.length})
+              </h4>
+            </div>
         <div className="table-container" style={{ border: 'none' }}>
           <table className="table">
             <thead>
@@ -205,18 +216,16 @@ export const AdminMembers: React.FC = () => {
             </thead>
             <tbody>
               {guruList.map((g) => {
-                const guruPhoto = g.photo_number && (g.photo_number.startsWith('/') || g.photo_number.startsWith('http'))
-                  ? g.photo_number
-                  : `/foto-anggota/${g.photo_number}.jpg`;
+                const { src: initialPhoto } = getMemberPhotoUrl(g);
                 return (
                   <tr key={g.id}>
                     <td>
                       <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', backgroundColor: 'var(--primary-100)' }}>
                         <img
-                          src={guruPhoto}
+                          src={initialPhoto}
                           alt={g.full_name}
                           onError={(e) => {
-                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.src = getDefaultImgixAvatar(g.full_name, 100);
                           }}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
@@ -271,9 +280,7 @@ export const AdminMembers: React.FC = () => {
             </thead>
             <tbody>
               {siswaList.map((s) => {
-                const siswaPhoto = s.photo_number && (s.photo_number.startsWith('/') || s.photo_number.startsWith('http'))
-                  ? s.photo_number
-                  : `/foto-anggota/${String(s.attendance_number).padStart(2, '0')}.jpg`;
+                const { src: initialPhoto } = getMemberPhotoUrl(s);
                 return (
                   <tr key={s.id}>
                     <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--primary-600)' }}>
@@ -282,10 +289,10 @@ export const AdminMembers: React.FC = () => {
                     <td>
                       <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', backgroundColor: 'var(--primary-100)' }}>
                         <img
-                          src={siswaPhoto}
+                          src={initialPhoto}
                           alt={s.full_name}
                           onError={(e) => {
-                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.src = getDefaultImgixAvatar(s.full_name, 100);
                           }}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
@@ -321,6 +328,8 @@ export const AdminMembers: React.FC = () => {
           </table>
         </div>
       </div>
+      </>
+      )}
 
       {/* Add / Edit Member Modal */}
       <Modal

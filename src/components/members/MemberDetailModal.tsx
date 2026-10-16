@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Calendar, MapPin, Phone, User, ShieldCheck } from 'lucide-react';
+import { Mail, Calendar, MapPin, Phone, ShieldCheck } from 'lucide-react';
 import { Member } from '../../types';
 import { Modal } from '../common/Modal';
+import { getMemberPhotoUrl, getDefaultImgixAvatar } from '../../utils/avatar';
 
 interface MemberDetailModalProps {
   member: Member | null;
@@ -18,20 +19,8 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
 
   if (!member) return null;
 
-  const photoSrc = member.photo_number
-    ? (member.photo_number.startsWith('/') || member.photo_number.startsWith('http')
-        ? member.photo_number
-        : `/foto-anggota/${member.photo_number}.jpg`)
-    : member.attendance_number
-    ? `/foto-anggota/${String(member.attendance_number).padStart(2, '0')}.jpg`
-    : null;
-
-  const initials = member.full_name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase();
+  const { src: initialPhotoSrc, isDefault } = getMemberPhotoUrl(member);
+  const photoSrc = imgError ? getDefaultImgixAvatar(member.full_name) : initialPhotoSrc;
 
   const formattedBirthDate = member.birth_date
     ? new Date(member.birth_date).toLocaleDateString('id-ID', {
@@ -75,31 +64,20 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               flexShrink: 0,
             }}
           >
-            {photoSrc && !imgError ? (
-              <img
-                src={photoSrc}
-                alt={member.full_name}
-                onError={() => setImgError(true)}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  backgroundColor: 'var(--primary-50)',
-                  color: 'var(--primary-700)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 800,
-                  fontSize: '2.2rem',
-                }}
-              >
-                {initials || <User size={48} />}
-              </div>
-            )}
+            <img
+              src={photoSrc}
+              alt={member.full_name}
+              onError={() => {
+                if (!imgError) setImgError(true);
+              }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </div>
+          {(isDefault || imgError) && (
+            <span style={{ fontSize: '0.72rem', color: 'var(--gray-500)', marginBottom: '0.5rem' }}>
+              Avatar Standar Kelas
+            </span>
+          )}
 
           <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--gray-900)', margin: '0 0 0.25rem 0', lineHeight: 1.25 }}>
             {member.full_name}

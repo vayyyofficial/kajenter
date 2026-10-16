@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { API_BASE } from '../services/api';
+import { dataCache } from '../services/dataCache';
 
 export interface SyncPayload {
   type: 'gallery' | 'members' | 'social' | 'settings' | 'metrics';
@@ -15,7 +16,7 @@ interface SyncContextType {
 const SyncContext = createContext<SyncContextType>({ lastEvent: null });
 
 export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const lastEventRef = useRef<SyncPayload | null>(null);
+  const [lastEvent, setLastEvent] = useState<SyncPayload | null>(null);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
@@ -28,7 +29,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         eventSource.onmessage = (e) => {
           try {
             const parsed: SyncPayload = JSON.parse(e.data);
-            lastEventRef.current = parsed;
+            setLastEvent(parsed);
 
             // Broadcast to window listeners
             window.dispatchEvent(
@@ -61,7 +62,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <SyncContext.Provider value={{ lastEvent: lastEventRef.current }}>
+    <SyncContext.Provider value={{ lastEvent }}>
       {children}
     </SyncContext.Provider>
   );
@@ -70,35 +71,38 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useSync = () => useContext(SyncContext);
 
 /**
- * Hook to automatically trigger refetch when relevant database entities change in real-time.
+ * Hook to automatically trigger updates when relevant database entities change in real-time.
+ * Uses cached data and eliminates aggressive window focus re-fetching.
  */
 export function useRealtimeSync(
   types: ('gallery' | 'members' | 'social' | 'settings')[],
   onUpdate: () => void
 ) {
   const callbackRef = useRef(onUpdate);
-  callbackRef.current = onUpdate;
 
   useEffect(() => {
+    callbackRef.current = onUpdate;
+  }, [onUpdate]);
+
+  const typesKey = types.join(',');
+
+  useEffect(() => {
+    const activeTypes = typesKey.split(',') as ('gallery' | 'members' | 'social' | 'settings')[];
+
     const handleSync = (e: Event) => {
       const customEvent = e as CustomEvent<SyncPayload>;
       const detail = customEvent.detail;
-      if (detail && types.includes(detail.type as any)) {
+      if (detail && activeTypes.includes(detail.type as any)) {
+        // Invalidate cache for the updated type so fresh data is fetched
+        dataCache.invalidate(detail.type as any);
         callbackRef.current();
       }
     };
 
-    // Re-verify on window focus if tab was in background
-    const handleFocus = () => {
-      callbackRef.current();
-    };
-
     window.addEventListener('x_icp_sync', handleSync);
-    window.addEventListener('focus', handleFocus);
 
     return () => {
       window.removeEventListener('x_icp_sync', handleSync);
-      window.removeEventListener('focus', handleFocus);
     };
-  }, [types.join(',')]);
+  }, [typesKey]);
 }

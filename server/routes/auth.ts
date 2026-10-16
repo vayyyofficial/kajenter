@@ -8,34 +8,20 @@ import { requireAdmin, recordAuditLog } from '../middleware/auth.js';
 const router = Router();
 
 // 1. GET /api/auth/admin-status
-// Checks if admin access is currently locked out
+// Checks admin status without timer / lockout countdown
 router.get('/admin-status', async (_req, res): Promise<void> => {
   try {
+    // If there was any legacy locked_until from previous tests, reset it cleanly
     const state = await dbService.auth.getAuthState();
-    const now = Date.now();
-
     if (state.locked_until) {
-      const lockExpiry = new Date(state.locked_until).getTime();
-      if (lockExpiry > now) {
-        const remainingMs = lockExpiry - now;
-        res.json({
-          success: true,
-          locked: true,
-          remainingMs,
-          message: 'Too many failed attempts. Admin access has been temporarily locked. Please try again later.',
-        });
-        return;
-      } else {
-        // Lockout expired, reset automatically
-        await dbService.auth.resetLockout();
-      }
+      await dbService.auth.resetLockout();
     }
 
     res.json({
       success: true,
       locked: false,
       remainingMs: 0,
-      attemptsRemaining: Math.max(0, 3 - (state.failed_attempts || 0)),
+      attemptsRemaining: 999,
     });
   } catch (err: any) {
     console.error('Check admin status error:', err);
@@ -44,33 +30,11 @@ router.get('/admin-status', async (_req, res): Promise<void> => {
 });
 
 // 2. POST /api/auth/admin-verify
-// Secret Admin Password Verification with 3-attempt 12-hour lockout
+// Secret Admin Password Verification without timer/countdown lockout
 router.post('/admin-verify', async (req, res): Promise<void> => {
   try {
     const { password } = req.body;
-    const now = Date.now();
-    const nowIso = new Date().toISOString();
     const state = await dbService.auth.getAuthState();
-
-    // Check if lockout is currently active
-    if (state.locked_until) {
-      const lockExpiry = new Date(state.locked_until).getTime();
-      if (lockExpiry > now) {
-        const remainingMs = lockExpiry - now;
-        res.status(429).json({
-          success: false,
-          locked: true,
-          remainingMs,
-          error: 'Too many failed attempts. Admin access has been temporarily locked. Please try again later.',
-        });
-        return;
-      } else {
-        // Lockout expired, reset attempts
-        await dbService.auth.resetLockout();
-        state.failed_attempts = 0;
-        state.locked_until = null;
-      }
-    }
 
     if (!password) {
       res.status(400).json({
@@ -85,7 +49,7 @@ router.post('/admin-verify', async (req, res): Promise<void> => {
     const isMatch = await bcrypt.compare(String(password), state.password_hash);
 
     if (isMatch) {
-      // Reset failed attempts on success
+      // Reset any legacy failed attempts on success
       await dbService.auth.resetLockout();
 
       // Sign secure JWT for Admin (8 hours expiry)
@@ -105,54 +69,13 @@ router.post('/admin-verify', async (req, res): Promise<void> => {
       return;
     }
 
-    // Password incorrect: Increment failed attempts
-    const newFailedCount = (state.failed_attempts || 0) + 1;
-
-    if (newFailedCount >= 3) {
-      // 12-HOUR LOCKOUT (Requirement #9)
-      const twelveHoursMs = 12 * 60 * 60 * 1000;
-      const lockedUntilIso = new Date(now + twelveHoursMs).toISOString();
-
-      await dbService.auth.updateAuthState({
-        failedAttempts: newFailedCount,
-        lockedUntil: lockedUntilIso,
-        lastFailedAt: nowIso,
-      });
-
-      recordAuditLog(
-        'System',
-        'SECURITY_LOCKOUT',
-        'SECURITY',
-        '3 kali percobaan password salah. Akses Admin dikunci selama 12 jam.'
-      );
-
-      res.status(429).json({
-        success: false,
-        locked: true,
-        remainingMs: twelveHoursMs,
-        attemptsLeft: 0,
-        error: 'Too many failed attempts. Admin access has been temporarily locked. Please try again later.',
-      });
-      return;
-    }
-
-    // Percobaan 1 atau 2 gagal
-    await dbService.auth.updateAuthState({
-      failedAttempts: newFailedCount,
-      lastFailedAt: nowIso,
-    });
-
-    const attemptsLeft = 3 - newFailedCount;
-    const message =
-      attemptsLeft === 1
-        ? 'Incorrect password. 1 attempt remaining before 12-hour lockout.'
-        : 'Incorrect password. Please try again.';
+    // Password incorrect: Record audit log and return clear error without any timer
+    recordAuditLog('System', 'FAILED_LOGIN', 'SECURITY', 'Percobaan password admin salah.');
 
     res.status(401).json({
       success: false,
       locked: false,
-      attemptsLeft,
-      error: message,
+      error: 'Password salah. Silakan periksa kembali password Anda.',
     });
   } catch (err: any) {
     console.error('Admin verify error:', err);

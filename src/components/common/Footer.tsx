@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Globe, ExternalLink } from 'lucide-react';
+import { siInstagram, siTiktok, siDiscord } from 'simple-icons';
 import { BRANDING } from '../../config/branding';
 import { useAdmin } from '../../context/AdminContext';
+import { dataCache } from '../../services/dataCache';
+import { SocialMedia } from '../../types';
 
 interface FooterProps {
   onNavigate?: (route: string) => void;
@@ -8,6 +12,15 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   const { openSecretModal } = useAdmin();
+  const [socials, setSocials] = useState<SocialMedia[]>(() => dataCache.getSocial() || []);
+
+  useEffect(() => {
+    dataCache.getOrFetchSocial().then((data) => {
+      if (data && data.length > 0) {
+        setSocials(data);
+      }
+    });
+  }, []);
 
   // Clean routing paths: /beranda, /galeri, /anggota, /contact
   const navItems = [
@@ -27,6 +40,35 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const renderSocialIcon = (platform: string) => {
+    const p = platform.toLowerCase();
+    if (p.includes('instagram')) {
+      return (
+        <svg role="img" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d={siInstagram.path} />
+        </svg>
+      );
+    }
+    if (p.includes('tiktok')) {
+      return (
+        <svg role="img" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d={siTiktok.path} />
+        </svg>
+      );
+    }
+    if (p.includes('discord')) {
+      return (
+        <svg role="img" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d={siDiscord.path} />
+        </svg>
+      );
+    }
+    if (p.includes('email') || p.includes('surat')) {
+      return <Mail size={16} />;
+    }
+    return <Globe size={16} />;
+  };
+
   return (
     <footer
       style={{
@@ -39,20 +81,31 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
       }}
     >
       <div className="container">
+        {/* Balanced 3-column Grid */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '3rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: '2.5rem',
             marginBottom: '3rem',
           }}
         >
           {/* 1. Brand Identity */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1rem' }}>
               <img
                 src={BRANDING.logoUrl}
                 alt={BRANDING.name}
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.fallbackLevel) {
+                    target.dataset.fallbackLevel = '1';
+                    target.src = BRANDING.fallbackLogoUrl;
+                  } else if (target.dataset.fallbackLevel === '1') {
+                    target.dataset.fallbackLevel = '2';
+                    target.src = BRANDING.jpegLogoUrl;
+                  }
+                }}
                 style={{
                   width: 44,
                   height: 44,
@@ -60,10 +113,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   objectFit: 'cover',
                   border: '2px solid var(--primary-500)',
                   boxShadow: '0 2px 10px rgba(220, 38, 38, 0.35)',
+                  flexShrink: 0,
                 }}
               />
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
                   {BRANDING.name}
                 </h3>
                 <span style={{ fontSize: '0.8rem', color: 'var(--primary-400)', fontWeight: 700, display: 'block', marginTop: '0.15rem' }}>
@@ -75,8 +129,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            <p style={{ fontSize: '0.875rem', color: 'var(--gray-400)', lineHeight: 1.6, maxWidth: '380px' }}>
-              {BRANDING.school}. Dokumentasi kegiatan kejuruan, arsip prestasi, serta direktori resmi guru dan siswa.
+            <p style={{ fontSize: '0.875rem', color: 'var(--gray-400)', lineHeight: 1.6, margin: 0, maxWidth: '340px' }}>
+              Portal resmi dokumentasi kegiatan, direktori pendidik dan siswa, serta arsip prestasi kelas {BRANDING.name}.
             </p>
           </div>
 
@@ -85,16 +139,16 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <h4
               style={{
                 color: '#ffffff',
-                fontSize: '0.95rem',
+                fontSize: '0.9rem',
                 fontWeight: 700,
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '1.25rem',
+                letterSpacing: '0.06em',
+                marginBottom: '1rem',
               }}
             >
               Navigasi Cepat
             </h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: 0 }}>
+            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.65rem', padding: 0, margin: 0 }}>
               {navItems.map((item) => (
                 <li key={item.id}>
                   <a
@@ -107,12 +161,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       color: 'var(--gray-300)',
                       textDecoration: 'none',
                       cursor: 'pointer',
-                      textAlign: 'left',
-                      padding: 0,
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.5rem',
-                      fontSize: '0.9rem',
+                      fontSize: '0.875rem',
                       transition: 'color var(--transition-fast)',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-400)')}
@@ -124,6 +176,116 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* 3. Media Sosial & Hubungi Kami (Balancing the right column per Requirement #4) */}
+          <div>
+            <h4
+              style={{
+                color: '#ffffff',
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                marginBottom: '1rem',
+              }}
+            >
+              Kanal Sosial Resmi
+            </h4>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              {socials.length > 0 ? (
+                socials.slice(0, 4).map((soc) => (
+                  <a
+                    key={soc.id}
+                    href={soc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      color: 'var(--gray-300)',
+                      fontSize: '0.875rem',
+                      textDecoration: 'none',
+                      transition: 'color var(--transition-fast)',
+                      padding: '0.2rem 0',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-400)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gray-300)')}
+                  >
+                    <span style={{ color: 'var(--primary-400)', display: 'flex', alignItems: 'center' }}>
+                      {renderSocialIcon(soc.platform)}
+                    </span>
+                    <span>{soc.platform}</span>
+                    <ExternalLink size={12} style={{ opacity: 0.6 }} />
+                  </a>
+                ))
+              ) : (
+                <>
+                  <a
+                    href="https://www.instagram.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      color: 'var(--gray-300)',
+                      fontSize: '0.875rem',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <span style={{ color: 'var(--primary-400)' }}>
+                      <svg role="img" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d={siInstagram.path} />
+                      </svg>
+                    </span>
+                    <span>Instagram Resmi</span>
+                  </a>
+                  <a
+                    href="https://www.tiktok.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      color: 'var(--gray-300)',
+                      fontSize: '0.875rem',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <span style={{ color: 'var(--primary-400)' }}>
+                      <svg role="img" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d={siTiktok.path} />
+                      </svg>
+                    </span>
+                    <span>TikTok Resmi</span>
+                  </a>
+                  <a
+                    href="https://discord.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      color: 'var(--gray-300)',
+                      fontSize: '0.875rem',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <span style={{ color: 'var(--primary-400)' }}>
+                      <svg role="img" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d={siDiscord.path} />
+                      </svg>
+                    </span>
+                    <span>Tech Lounge Discord</span>
+                  </a>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -146,7 +308,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem' }}>
             <span>© 2026 {BRANDING.name}. All rights reserved.</span>
 
-            {/* SECRET ACCESS TRIGGER (Subtle bullet with comfortable touch target) */}
+            {/* SECRET ACCESS TRIGGER (Subtle portal button with comfortable touch target) */}
             <button
               onClick={openSecretModal}
               title="Portal"
@@ -155,10 +317,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minWidth: '40px',
+                minWidth: '36px',
                 minHeight: '36px',
-                padding: '0 0.5rem',
-                margin: '0 0.25rem',
+                padding: '0 0.4rem',
+                margin: '0 0.2rem',
                 backgroundColor: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
@@ -169,7 +331,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = 'var(--primary-400)';
-                e.currentTarget.style.transform = 'scale(1.15)';
+                e.currentTarget.style.transform = 'scale(1.2)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.color = 'var(--gray-600)';
@@ -182,7 +344,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 e.currentTarget.style.color = 'var(--gray-600)';
               }}
             >
-              <span style={{ fontSize: '1rem', lineHeight: 1 }}>•</span>
+              <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>•</span>
             </button>
 
             <span>Portal Resmi Kelas.</span>

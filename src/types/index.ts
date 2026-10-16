@@ -21,8 +21,11 @@ export interface GalleryItem {
   category: string;
   description: string;
   image_path: string;
+  photos?: string[];
+  images?: string[];
   event_date: string;
   created_by: string;
+  dokumentator?: string;
   created_at?: string;
   updated_at?: string;
 }

@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Globe, ExternalLink, Check, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit2, Trash2, ExternalLink } from 'lucide-react';
 import { SocialMedia } from '../../types';
 import { api } from '../../services/api';
 import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useNotifications } from '../../context/NotificationContext';
 import { useRealtimeSync } from '../../context/SyncContext';
+import { dataCache } from '../../services/dataCache';
 
 export const AdminSocial: React.FC = () => {
   const { addToast } = useNotifications();
@@ -25,7 +26,7 @@ export const AdminSocial: React.FC = () => {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchSocials = async () => {
+  const fetchSocials = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.social.getAll();
@@ -35,11 +36,11 @@ export const AdminSocial: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
   useEffect(() => {
     fetchSocials();
-  }, []);
+  }, [fetchSocials]);
 
   // Multi-user real-time sync for social media updates
   useRealtimeSync(['social'], () => {
@@ -85,6 +86,7 @@ export const AdminSocial: React.FC = () => {
         await api.social.create(formData);
         addToast('success', 'Media sosial baru berhasil ditambahkan.');
       }
+      dataCache.invalidate('social');
       setIsModalOpen(false);
       fetchSocials();
     } catch (err: any) {
@@ -97,6 +99,7 @@ export const AdminSocial: React.FC = () => {
     try {
       setIsDeleting(true);
       await api.social.delete(deleteId);
+      dataCache.invalidate('social');
       addToast('success', 'Media sosial berhasil dihapus.');
       setDeleteId(null);
       fetchSocials();

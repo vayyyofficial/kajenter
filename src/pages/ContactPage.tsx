@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { siInstagram, siTiktok, siDiscord } from 'simple-icons';
 import type { SocialMedia } from '../types';
-import { api } from '../services/api';
+import { dataCache } from '../services/dataCache';
 import { BRANDING } from '../config/branding';
 import { ScrollReveal } from '../components/common/ScrollReveal';
 import { Skeleton } from '../components/common/Skeleton';
@@ -19,22 +19,27 @@ interface ContactPageProps {
 }
 
 export const ContactPage: React.FC<ContactPageProps> = () => {
-  const [socials, setSocials] = useState<SocialMedia[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = dataCache.getSocial();
+  const [socials, setSocials] = useState<SocialMedia[]>(() => {
+    if (!cached) return [];
+    return cached.filter((s) => !s.platform.toLowerCase().includes('youtube'));
+  });
+  const [loading, setLoading] = useState(!cached);
 
-  const fetchSocials = useCallback(() => {
-    setLoading(true);
-    api.social
-      .getActive()
-      .then((res) => {
-        if (res.success) {
-          const activeOnly = res.data.filter(
-            (s) => !s.platform.toLowerCase().includes('youtube')
-          );
-          setSocials(activeOnly);
-        }
-      })
-      .finally(() => setLoading(false));
+  const fetchSocials = useCallback(async () => {
+    try {
+      const c = dataCache.getSocial();
+      if (!c) setLoading(true);
+      const data = await dataCache.getOrFetchSocial(true);
+      const activeOnly = data.filter(
+        (s) => !s.platform.toLowerCase().includes('youtube')
+      );
+      setSocials(activeOnly);
+    } catch {
+      // fallback
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // Initial fetch from shared persistent database
@@ -107,7 +112,7 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
       </div>
 
       {/* Requirements #7, #8: Symmetrical, consistent 3-column cards for Instagram, TikTok, and Discord */}
-      {loading ? (
+      {loading && socials.length === 0 ? (
         <div
           style={{
             display: 'grid',

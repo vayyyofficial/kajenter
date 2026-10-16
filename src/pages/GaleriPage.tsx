@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 import { GalleryItem } from '../types';
-import { api } from '../services/api';
+import { dataCache } from '../services/dataCache';
 import { BRANDING } from '../config/branding';
 import { GalleryCard } from '../components/gallery/GalleryCard';
 import { GalleryViewerModal } from '../components/gallery/GalleryViewerModal';
@@ -10,22 +10,32 @@ import { ScrollReveal } from '../components/common/ScrollReveal';
 import { Skeleton } from '../components/common/Skeleton';
 import { useRealtimeSync } from '../context/SyncContext';
 
+const STANDARD_CATEGORIES = ['Semua', 'Kegiatan', 'Dokumentasi', 'Prestasi', 'Event Sekolah'];
+
 export const GaleriPage: React.FC = () => {
-  const [items, setItems] = useState<GalleryItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
 
-  const categories = ['Semua', 'Kegiatan', 'Proyek TKJ', 'Event Sekolah', 'Dokumentasi'];
+  // Initialize from cache immediately for instant rendering without skeleton flash
+  const cachedInitial = dataCache.getGallery(selectedCategory);
+  const [items, setItems] = useState<GalleryItem[]>(() => cachedInitial || []);
+  const [loading, setLoading] = useState<boolean>(() => !cachedInitial);
 
-  const fetchGallery = useCallback(async (category?: string) => {
+  const fetchGallery = useCallback(async (category: string) => {
     try {
-      setLoading(true);
-      const res = await api.gallery.getAll(category === 'Semua' ? undefined : category);
-      if (res.success) setItems(res.data);
+      const cached = dataCache.getGallery(category);
+      if (!cached) {
+        setLoading(true);
+      } else {
+        setItems(cached);
+      }
+
+      // Fetch fresh data in background or foreground
+      const data = await dataCache.getOrFetchGallery(category, true);
+      setItems(data);
     } catch {
-      // fallback
+      // Keep displaying existing cached items on error
     } finally {
       setLoading(false);
     }
@@ -35,7 +45,7 @@ export const GaleriPage: React.FC = () => {
     fetchGallery(selectedCategory);
   }, [selectedCategory, fetchGallery]);
 
-  // Real-time synchronization: automatically refetches when admin adds/edits/deletes photos
+  // Real-time synchronization: automatically updates when photos are modified
   useRealtimeSync(['gallery'], () => {
     fetchGallery(selectedCategory);
   });
@@ -44,6 +54,21 @@ export const GaleriPage: React.FC = () => {
     setSelectedItem(item);
     setIsViewerOpen(true);
   };
+
+  // Ensure any category already in the database is visible in filter tabs
+  const categoryTabs = useMemo(() => {
+    const presentCategories = new Set<string>();
+    items.forEach((item) => {
+      if (item.category) presentCategories.add(item.category);
+    });
+    const combined = [...STANDARD_CATEGORIES];
+    presentCategories.forEach((cat) => {
+      if (!combined.includes(cat)) {
+        combined.push(cat);
+      }
+    });
+    return combined;
+  }, [items]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -66,27 +91,31 @@ export const GaleriPage: React.FC = () => {
           paddingBottom: '1rem',
         }}
       >
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className="btn btn-sm"
-            style={{
-              backgroundColor: selectedCategory === cat ? 'var(--primary-600)' : 'var(--gray-100)',
-              color: selectedCategory === cat ? '#ffffff' : 'var(--gray-700)',
-              fontWeight: selectedCategory === cat ? 700 : 500,
-              borderRadius: 'var(--radius-full)',
-              padding: '0.4rem 1.15rem',
-              transition: 'all var(--transition-fast)',
-            }}
-          >
-            {cat}
-          </button>
-        ))}
+        {categoryTabs.map((cat) => {
+          const isActive = selectedCategory === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className="btn btn-sm"
+              style={{
+                backgroundColor: isActive ? 'var(--primary-600)' : 'var(--gray-100)',
+                color: isActive ? '#ffffff' : 'var(--gray-700)',
+                fontWeight: isActive ? 700 : 500,
+                borderRadius: 'var(--radius-full)',
+                padding: '0.45rem 1.15rem',
+                transition: 'all var(--transition-fast)',
+                border: '1px solid transparent',
+              }}
+            >
+              {cat}
+            </button>
+          );
+        })}
       </div>
 
       {/* Photos Grid */}
-      {loading ? (
+      {loading && items.length === 0 ? (
         <div
           style={{
             display: 'grid',
@@ -120,7 +149,7 @@ export const GaleriPage: React.FC = () => {
           }}
         >
           {items.map((item, idx) => (
-            <ScrollReveal key={item.id} delay={idx * 50}>
+            <ScrollReveal key={item.id} delay={idx * 40}>
               <GalleryCard item={item} onClick={handlePhotoClick} />
             </ScrollReveal>
           ))}

@@ -3,7 +3,6 @@ import {
   Users,
   Image as ImageIcon,
   Globe,
-  GraduationCap,
   ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
@@ -17,10 +16,8 @@ interface AdminOverviewProps {
 }
 
 export const AdminOverview: React.FC<AdminOverviewProps> = ({ metrics, onTabChange }) => {
-  // Count-up animations for dashboard metrics (Requirement #7 & #16)
+  // Count-up animations for dashboard metrics
   const animatedMembers = useCountUp(metrics?.totalMembers || 0, 900);
-  const animatedGuru = useCountUp(metrics?.guruCount || 0, 700);
-  const animatedSiswa = useCountUp(metrics?.siswaCount || 0, 900);
   const animatedGallery = useCountUp(metrics?.galleryCount || 0, 900);
   const animatedSocial = useCountUp(metrics?.socialCount || 0, 700);
 
@@ -66,11 +63,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ metrics, onTabChan
         </div>
       </div>
 
-      {/* Primary KPI Grid (Real Statistics only with Count-Up per Req #7 & #38) */}
+      {/* Primary KPI Grid (Clean and simplified per Requirement #2) */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
           gap: '1.25rem',
         }}
       >
@@ -92,51 +89,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ metrics, onTabChan
             {animatedMembers}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)', marginTop: '0.5rem' }}>
-            {metrics.guruCount} Guru Pendidik • {metrics.siswaCount} Siswa
-          </div>
-        </div>
-
-        {/* Guru */}
-        <div
-          className="card card-hover"
-          onClick={() => onTabChange('members')}
-          style={{ padding: '1.5rem', cursor: 'pointer', borderLeft: '4px solid var(--primary-700)' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--gray-500)', textTransform: 'uppercase' }}>
-              Tenaga Pendidik
-            </span>
-            <div style={{ padding: '0.45rem', backgroundColor: 'var(--primary-50)', color: 'var(--primary-700)', borderRadius: 'var(--radius-md)' }}>
-              <GraduationCap size={20} />
-            </div>
-          </div>
-          <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--gray-900)', lineHeight: 1 }}>
-            {animatedGuru}
-          </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)', marginTop: '0.5rem' }}>
-            Wali Kelas & Pembina {BRANDING.school}
-          </div>
-        </div>
-
-        {/* Siswa */}
-        <div
-          className="card card-hover"
-          onClick={() => onTabChange('members')}
-          style={{ padding: '1.5rem', cursor: 'pointer', borderLeft: '4px solid #ef4444' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--gray-500)', textTransform: 'uppercase' }}>
-              Siswa Terdaftar
-            </span>
-            <div style={{ padding: '0.45rem', backgroundColor: '#fef2f2', color: '#ef4444', borderRadius: 'var(--radius-md)' }}>
-              <Users size={20} />
-            </div>
-          </div>
-          <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--gray-900)', lineHeight: 1 }}>
-            {animatedSiswa}
-          </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)', marginTop: '0.5rem' }}>
-            Terdata sesuai nomor absen resmi
+            Guru & Siswa Kelas {BRANDING.name}
           </div>
         </div>
 

@@ -35,31 +35,37 @@ router.get('/:id', async (req, res): Promise<void> => {
 // 3. POST /api/gallery (Admin only)
 router.post('/', requireAdmin, async (req, res): Promise<void> => {
   try {
-    const { title, eventIdentity, category, description, imagePath, eventDate } = req.body;
+    const { title, eventIdentity, category, description, imagePath, photos, images, eventDate, dokumentator, createdBy } = req.body;
 
-    if (!title || !eventIdentity || !description || !imagePath || !eventDate) {
+    const rawPhotos = Array.isArray(photos) ? photos : (Array.isArray(images) ? images : (imagePath ? [imagePath] : []));
+    const cleanPhotos = rawPhotos.map((p: any) => String(p || '').trim()).filter(Boolean);
+
+    if (!title || !eventIdentity || !description || cleanPhotos.length === 0 || !eventDate) {
       res.status(400).json({
         success: false,
-        error: 'Judul, identitas kegiatan, deskripsi, foto, dan tanggal wajib diisi.',
+        error: 'Judul, identitas kegiatan, deskripsi, setidaknya satu foto, dan tanggal wajib diisi.',
       });
       return;
     }
+
+    const docName = (dokumentator || createdBy || 'Tim Dokumentasi').trim();
 
     const created = await dbService.gallery.create({
       title: title.trim(),
       eventIdentity: eventIdentity.trim(),
       category: category || 'Kegiatan',
       description: description.trim(),
-      imagePath: imagePath.trim(),
+      imagePath: cleanPhotos[0],
+      photos: cleanPhotos,
       eventDate,
-      createdBy: 'Admin X ICP TKJ',
+      createdBy: docName,
     });
 
     recordAuditLog(
       'Admin',
       'CREATE',
       'GALLERY',
-      `Menambahkan dokumentasi: "${title}" (${eventIdentity})`
+      `Menambahkan dokumentasi: "${title}" (${eventIdentity}) [${cleanPhotos.length} Foto] [Dokumentator: ${docName}]`
     );
 
     // Multi-user real-time broadcast
@@ -68,7 +74,7 @@ router.post('/', requireAdmin, async (req, res): Promise<void> => {
     res.status(201).json({
       success: true,
       message: 'Foto kegiatan berhasil ditambahkan ke galeri.',
-      data: { id: (created as any).id },
+      data: created,
     });
   } catch (err: any) {
     console.error('Add gallery error:', err);
@@ -79,15 +85,26 @@ router.post('/', requireAdmin, async (req, res): Promise<void> => {
 // 4. PUT /api/gallery/:id (Admin only)
 router.put('/:id', requireAdmin, async (req, res): Promise<void> => {
   try {
-    const { title, eventIdentity, category, description, imagePath, eventDate } = req.body;
+    const { title, eventIdentity, category, description, imagePath, photos, images, eventDate, dokumentator, createdBy } = req.body;
+
+    const docName = dokumentator !== undefined ? (dokumentator ? dokumentator.trim() : 'Tim Dokumentasi') : (createdBy ? createdBy.trim() : undefined);
+
+    let cleanPhotos: string[] | undefined = undefined;
+    if (Array.isArray(photos)) {
+      cleanPhotos = photos.map((p: any) => String(p || '').trim()).filter(Boolean);
+    } else if (Array.isArray(images)) {
+      cleanPhotos = images.map((p: any) => String(p || '').trim()).filter(Boolean);
+    }
 
     const updated = await dbService.gallery.update(req.params.id, {
       title,
       eventIdentity,
       category,
       description,
-      imagePath,
+      imagePath: cleanPhotos && cleanPhotos.length > 0 ? cleanPhotos[0] : (imagePath ? imagePath.trim() : undefined),
+      photos: cleanPhotos,
       eventDate,
+      createdBy: docName,
     });
 
     recordAuditLog(

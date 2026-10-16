@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Mail, Calendar, MapPin, User, ShieldCheck } from 'lucide-react';
+import { Mail, MapPin, ShieldCheck } from 'lucide-react';
 import { Member } from '../../types';
+import { getMemberPhotoUrl, getDefaultImgixAvatar } from '../../utils/avatar';
 
 interface MemberCardProps {
   member: Member;
@@ -10,24 +11,10 @@ interface MemberCardProps {
 export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
   const [imgError, setImgError] = useState(false);
 
-  // Requirement #13 & #16: Automatic local photo mapping or uploaded persistent photo URL
-  const photoSrc = member.photo_number
-    ? (member.photo_number.startsWith('/') || member.photo_number.startsWith('http')
-        ? member.photo_number
-        : `/foto-anggota/${member.photo_number}.jpg`)
-    : member.attendance_number
-    ? `/foto-anggota/${String(member.attendance_number).padStart(2, '0')}.jpg`
-    : null;
+  const { src: initialPhotoSrc } = getMemberPhotoUrl(member);
+  const photoSrc = imgError ? getDefaultImgixAvatar(member.full_name) : initialPhotoSrc;
 
   const isTeacher = member.member_type === 'guru';
-
-  // Extract initials for fallback avatar
-  const initials = member.full_name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase();
 
   return (
     <div
@@ -77,38 +64,20 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
             position: 'relative',
           }}
         >
-          {photoSrc && !imgError ? (
-            <img
-              src={photoSrc}
-              alt={member.full_name}
-              onError={() => setImgError(true)}
-              loading="lazy"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-              }}
-            />
-          ) : (
-            /* Professional Fallback Avatar */
-            <div
-              style={{
-                width: '100%',
-                height: '100%',
-                backgroundColor: 'var(--primary-50)',
-                color: 'var(--primary-700)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '1.5rem',
-              }}
-            >
-              <span>{initials || <User size={36} />}</span>
-            </div>
-          )}
+          <img
+            src={photoSrc}
+            alt={member.full_name}
+            onError={() => {
+              if (!imgError) setImgError(true);
+            }}
+            loading="lazy"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          />
         </div>
       </div>
 

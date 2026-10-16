@@ -105,6 +105,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
             <img
               src={BRANDING.logoUrl}
               alt={BRANDING.name}
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.dataset.fallbackLevel) {
+                  target.dataset.fallbackLevel = '1';
+                  target.src = BRANDING.fallbackLogoUrl;
+                } else if (target.dataset.fallbackLevel === '1') {
+                  target.dataset.fallbackLevel = '2';
+                  target.src = BRANDING.jpegLogoUrl;
+                }
+              }}
               style={{
                 width: 40,
                 height: 40,

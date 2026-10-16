@@ -243,8 +243,8 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
                 border: '1px solid var(--gray-200)',
               }}
             >
-              <span style={{ color: 'var(--gray-500)', fontSize: '0.75rem', display: 'block' }}>Kebijakan Anti Brute-Force</span>
-              <strong style={{ color: 'var(--gray-900)' }}>Maksimal 3x Percobaan → Lockout 12 Jam</strong>
+              <span style={{ color: 'var(--gray-500)', fontSize: '0.75rem', display: 'block' }}>Kebijakan Keamanan Kredensial</span>
+              <strong style={{ color: 'var(--gray-900)' }}>Audit Log Realtime & Proteksi Akses Server-Side</strong>
             </div>
 
             <div

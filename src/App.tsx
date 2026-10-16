@@ -44,20 +44,21 @@ export function parsePath(pathname: string): ResolvedRoute {
   return { id: 'notfound', path: pathname };
 }
 
-export function AppContent() {
-  const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
-
-  // If page was loaded with a legacy hash like #/galeri, smoothly convert to clean /galeri URL
-  useEffect(() => {
-    if (window.location.hash) {
-      const hashClean = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-      if (['beranda', 'galeri', 'anggota', 'contact', 'admin'].includes(hashClean)) {
-        const target = `/${hashClean}`;
-        window.history.replaceState(null, '', target);
-        setCurrentPath(target);
-      }
+function getInitialPath(): string {
+  if (typeof window === 'undefined') return '/beranda';
+  if (window.location.hash) {
+    const hashClean = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+    if (['beranda', 'galeri', 'anggota', 'contact', 'admin'].includes(hashClean)) {
+      const target = `/${hashClean}`;
+      window.history.replaceState(null, '', target);
+      return target;
     }
-  }, []);
+  }
+  return window.location.pathname || '/beranda';
+}
+
+export function AppContent() {
+  const [currentPath, setCurrentPath] = useState<string>(getInitialPath);
 
   // Listen to browser Back and Forward navigation events
   useEffect(() => {

@@ -236,7 +236,7 @@ VALUES
   (17, 'Pandu Wijaya', 'Pandu', 'Surabaya', '2008-05-19', 'pandu.w@tkj.sch.id', 'Siswa', 'siswa', '17', '+628123456717', NOW(), NOW()),
   (18, 'Rania Azzahra', 'Rania', 'Malang', '2008-06-25', 'rania.a@tkj.sch.id', 'Siswa', 'siswa', '18', '+628123456718', NOW(), NOW()),
   (19, 'Satria Bagus', 'Satria', 'Surabaya', '2008-07-08', 'satria.b@tkj.sch.id', 'Siswa', 'siswa', '19', '+628123456719', NOW(), NOW()),
-  (20, 'Tiara Maharani', 'Tiara', 'Gresik', '2008-08-31', 'tiara.m@tkj.sch.id', 'Siswa', '20', '+628123456720', NOW(), NOW())
+(20, 'Tiara Maharani', 'Tiara', 'Gresik', '2008-08-31', 'tiara.m@tkj.sch.id', 'Siswa', 'siswa', '20', '+628123456720', NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 -- Gallery Items
@@ -313,8 +313,8 @@ ON CONFLICT DO NOTHING;
 -- Social Media Accounts (Instagram, TikTok, Discord)
 INSERT INTO social_media (platform, username, url, icon, is_active, created_at, updated_at)
 VALUES
-  ('Instagram', '@xicp.tkj', 'https://instagram.com/xicp.tkj', 'Instagram', 1, NOW(), NOW()),
-  ('TikTok', '@xicp_tkj.official', 'https://tiktok.com/@xicp_tkj.official', 'Video', 1, NOW(), NOW()),
+  ('Instagram', '@kaje.nter', 'https://instagram.com/kaje.nter', 'Instagram', 1, NOW(), NOW()),
+  ('TikTok', '@kaje.nter', 'https://tiktok.com/@kaje.nter', 'Video', 1, NOW(), NOW()),
   ('Discord', 'X ICP TKJ Community', 'https://discord.gg/xicptkj', 'Discord', 1, NOW(), NOW())
 ON CONFLICT DO NOTHING;
 

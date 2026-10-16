@@ -22,6 +22,38 @@ export function getSupabaseClient(): SupabaseClient | null {
   return supabaseInstance;
 }
 
+export function parseGalleryImages(imagePath: string | null | undefined): string[] {
+  if (!imagePath) return [];
+  const trimmed = imagePath.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter((p) => typeof p === 'string' && p.trim().length > 0);
+      }
+    } catch {
+      // fallback
+    }
+  }
+  if (trimmed.includes('\n')) {
+    const list = trimmed.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (list.length > 0) return list;
+  }
+  return [trimmed];
+}
+
+export function formatGalleryItem(item: any) {
+  if (!item) return item;
+  const photos = parseGalleryImages(item.image_path);
+  const primaryImage = photos[0] || item.image_path || '';
+  return {
+    ...item,
+    image_path: primaryImage,
+    photos: photos.length > 0 ? photos : (primaryImage ? [primaryImage] : []),
+    images: photos.length > 0 ? photos : (primaryImage ? [primaryImage] : []),
+  };
+}
+
 export const supabaseDb = {
   // ==========================================
   // GALLERY
@@ -35,14 +67,14 @@ export const supabaseDb = {
       }
       const { data, error } = await query;
       if (error) throw new Error(error.message);
-      return data || [];
+      return (data || []).map(formatGalleryItem);
     },
 
     async getById(id: number | string) {
       const client = getSupabaseClient()!;
       const { data, error } = await client.from('gallery').select('*').eq('id', id).maybeSingle();
       if (error) throw new Error(error.message);
-      return data;
+      return data ? formatGalleryItem(data) : null;
     },
 
     async create(item: {
@@ -50,12 +82,24 @@ export const supabaseDb = {
       eventIdentity: string;
       category: string;
       description: string;
-      imagePath: string;
+      imagePath?: string;
+      photos?: string[];
       eventDate: string;
       createdBy: string;
     }) {
       const client = getSupabaseClient()!;
       const now = new Date().toISOString();
+
+      let finalImagePath = (item.imagePath || '').trim();
+      if (item.photos && Array.isArray(item.photos) && item.photos.length > 0) {
+        const cleanPhotos = item.photos.filter((p) => typeof p === 'string' && p.trim().length > 0);
+        if (cleanPhotos.length === 1) {
+          finalImagePath = cleanPhotos[0];
+        } else if (cleanPhotos.length > 1) {
+          finalImagePath = JSON.stringify(cleanPhotos);
+        }
+      }
+
       const { data, error } = await client
         .from('gallery')
         .insert({
@@ -63,7 +107,7 @@ export const supabaseDb = {
           event_identity: item.eventIdentity,
           category: item.category || 'Kegiatan',
           description: item.description,
-          image_path: item.imagePath,
+          image_path: finalImagePath,
           event_date: item.eventDate,
           created_by: item.createdBy,
           created_at: now,
@@ -73,7 +117,7 @@ export const supabaseDb = {
         .single();
 
       if (error) throw new Error(error.message);
-      return data;
+      return formatGalleryItem(data);
     },
 
     async update(
@@ -84,7 +128,9 @@ export const supabaseDb = {
         category?: string;
         description?: string;
         imagePath?: string;
+        photos?: string[];
         eventDate?: string;
+        createdBy?: string;
       }
     ) {
       const client = getSupabaseClient()!;
@@ -100,8 +146,22 @@ export const supabaseDb = {
       if (item.eventIdentity !== undefined) updatePayload.event_identity = item.eventIdentity;
       if (item.category !== undefined) updatePayload.category = item.category;
       if (item.description !== undefined) updatePayload.description = item.description;
-      if (item.imagePath !== undefined) updatePayload.image_path = item.imagePath;
+
+      if (item.photos && Array.isArray(item.photos)) {
+        const cleanPhotos = item.photos.filter((p) => typeof p === 'string' && p.trim().length > 0);
+        if (cleanPhotos.length === 1) {
+          updatePayload.image_path = cleanPhotos[0];
+        } else if (cleanPhotos.length > 1) {
+          updatePayload.image_path = JSON.stringify(cleanPhotos);
+        } else if (item.imagePath !== undefined) {
+          updatePayload.image_path = item.imagePath;
+        }
+      } else if (item.imagePath !== undefined) {
+        updatePayload.image_path = item.imagePath;
+      }
+
       if (item.eventDate !== undefined) updatePayload.event_date = item.eventDate;
+      if (item.createdBy !== undefined) updatePayload.created_by = item.createdBy;
 
       const { data, error } = await client
         .from('gallery')
@@ -111,7 +171,7 @@ export const supabaseDb = {
         .single();
 
       if (error) throw new Error(error.message);
-      return data;
+      return formatGalleryItem(data);
     },
 
     async delete(id: number | string) {

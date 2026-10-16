@@ -54,7 +54,7 @@ export const api = {
     checkAdminStatus: () =>
       request<AdminStatusResponse>('/auth/admin-status'),
     verifyAdminPassword: (password: string) =>
-      request<{ success: boolean; token: string; message: string }>('/auth/admin-verify', {
+      request<{ success: boolean; token?: string; message?: string; error?: string }>('/auth/admin-verify', {
         method: 'POST',
         body: JSON.stringify({ password }),
       }),
@@ -104,12 +104,32 @@ export const api = {
     },
     getById: (id: number | string) =>
       request<{ success: boolean; data: GalleryItem }>(`/gallery/${id}`),
-    create: (payload: { title: string; eventIdentity: string; category?: string; description: string; imagePath: string; eventDate: string }) =>
+    create: (payload: {
+      title: string;
+      eventIdentity: string;
+      category?: string;
+      description: string;
+      imagePath?: string;
+      photos?: string[];
+      eventDate: string;
+      dokumentator?: string;
+      createdBy?: string;
+    }) =>
       request<{ success: boolean; message: string; data: { id: number } }>('/gallery', {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
-    update: (id: number | string, payload: Partial<GalleryItem> & { eventIdentity?: string; imagePath?: string; eventDate?: string }) =>
+    update: (
+      id: number | string,
+      payload: Partial<GalleryItem> & {
+        eventIdentity?: string;
+        imagePath?: string;
+        photos?: string[];
+        eventDate?: string;
+        dokumentator?: string;
+        createdBy?: string;
+      }
+    ) =>
       request<{ success: boolean; message: string }>(`/gallery/${id}`, {
         method: 'PUT',
         body: JSON.stringify(payload),
@@ -164,6 +184,20 @@ export const api = {
         message: string;
         data: { filename: string; url: string; size: number; mimetype: string };
       }>('/upload', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    images: async (files: File[]) => {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append('images', file);
+      });
+      return request<{
+        success: boolean;
+        message: string;
+        data: Array<{ filename: string; url: string; size: number; mimetype: string }>;
+      }>('/upload/multiple', {
         method: 'POST',
         body: formData,
       });

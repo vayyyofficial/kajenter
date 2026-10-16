@@ -11,7 +11,7 @@ import {
   GraduationCap,
   Calendar,
 } from 'lucide-react';
-import { api } from '../services/api';
+import { dataCache } from '../services/dataCache';
 import { GalleryItem } from '../types';
 import { BRANDING } from '../config/branding';
 import { GalleryViewerModal } from '../components/gallery/GalleryViewerModal';
@@ -25,44 +25,57 @@ interface BerandaPageProps {
 }
 
 export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
+  const cachedMembers = dataCache.getMembers();
+  const cachedGallery = dataCache.getGallery();
+  const cachedSocial = dataCache.getSocial();
+  const hasCache = Boolean(cachedMembers || cachedGallery || cachedSocial);
+
   const [stats, setStats] = useState({
-    totalSiswa: 0,
-    totalGuru: 0,
-    galleryCount: 0,
-    socialCount: 0,
+    totalSiswa: cachedMembers?.totalSiswa || 0,
+    totalGuru: cachedMembers?.totalGuru || 0,
+    galleryCount: cachedGallery?.length || 0,
+    socialCount: cachedSocial?.length || 0,
   });
 
-  const [loading, setLoading] = useState(true);
-  const [featuredGallery, setFeaturedGallery] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(!hasCache);
+  const [featuredGallery, setFeaturedGallery] = useState<GalleryItem[]>(() =>
+    cachedGallery ? cachedGallery.slice(0, 3) : []
+  );
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryItem | null>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
-  const fetchStatsAndFeatured = React.useCallback(() => {
-    Promise.all([
-      api.members.getAll().then((res) => {
-        if (res.success) {
-          setStats((prev) => ({
-            ...prev,
-            totalSiswa: res.data.totalSiswa,
-            totalGuru: res.data.totalGuru,
-          }));
-        }
-      }),
-      api.gallery.getAll().then((res) => {
-        if (res.success) {
-          setStats((prev) => ({ ...prev, galleryCount: res.data.length }));
-          setFeaturedGallery(res.data.slice(0, 3));
-        }
-      }),
-      api.social.getActive().then((res) => {
-        if (res.success) {
-          setStats((prev) => ({ ...prev, socialCount: res.data.length }));
-        }
-      }),
-    ]).finally(() => setLoading(false));
+  const fetchStatsAndFeatured = React.useCallback(async () => {
+    try {
+      const [membersData, galleryData, socialData] = await Promise.all([
+        dataCache.getOrFetchMembers(),
+        dataCache.getOrFetchGallery(),
+        dataCache.getOrFetchSocial(),
+      ]);
+
+      if (membersData) {
+        setStats((prev) => ({
+          ...prev,
+          totalSiswa: membersData.totalSiswa || 0,
+          totalGuru: membersData.totalGuru || 0,
+        }));
+      }
+
+      if (galleryData) {
+        setStats((prev) => ({ ...prev, galleryCount: galleryData.length }));
+        setFeaturedGallery(galleryData.slice(0, 3));
+      }
+
+      if (socialData) {
+        setStats((prev) => ({ ...prev, socialCount: socialData.length }));
+      }
+    } catch {
+      // keep existing cached stats
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Live database stats initial fetch
+  // Live database stats fetch
   useEffect(() => {
     fetchStatsAndFeatured();
   }, [fetchStatsAndFeatured]);
@@ -242,6 +255,19 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
               <img
                 src={BRANDING.logoUrl}
                 alt={BRANDING.fullName}
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.fallbackLevel) {
+                    target.dataset.fallbackLevel = '1';
+                    target.src = BRANDING.fallbackLogoUrl;
+                  } else if (target.dataset.fallbackLevel === '1') {
+                    target.dataset.fallbackLevel = '2';
+                    target.src = BRANDING.jpegLogoUrl;
+                  } else if (target.dataset.fallbackLevel === '2') {
+                    target.dataset.fallbackLevel = '3';
+                    target.src = BRANDING.faviconUrl;
+                  }
+                }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             </div>
@@ -358,7 +384,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                 {loading ? <Skeleton width="40px" height="36px" /> : <CountUpNumber value={stats.totalGuru} durationMs={700} />}
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)', fontWeight: 600, marginTop: '0.2rem' }}>
-                Tenaga Pendidik
+                Guru
               </div>
             </div>
           </div>
@@ -366,7 +392,12 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
 
         {/* Galeri */}
         <ScrollReveal delay={150}>
-          <div className="card card-hover" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          <div
+            className="card card-hover"
+            onClick={() => onNavigate('galeri')}
+            title="Klik untuk membuka Galeri"
+            style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: 'pointer' }}
+          >
             <div
               style={{
                 width: 52,
@@ -387,7 +418,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                 {loading ? <Skeleton width="50px" height="36px" /> : <CountUpNumber value={stats.galleryCount} durationMs={1000} />}
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)', fontWeight: 600, marginTop: '0.2rem' }}>
-                Dokumentasi Kegiatan
+                Galeri
               </div>
             </div>
           </div>
@@ -430,10 +461,10 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
         <section style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <div className="section-tag">Dokumentasi Terkini</div>
-              <h2 className="section-title">Aktivitas & Praktikum Kelas</h2>
+              <div className="section-tag">Galeri Terkini</div>
+              <h2 className="section-title">Dokumentasi Aktivitas & Prestasi</h2>
               <p className="section-subtitle">
-                Momen penting praktikum jaringan, sertifikasi internasional, dan kegiatan kebersamaan X ICP TKJ di {BRANDING.school}.
+                Sorotan visual kegiatan kelas, praktikum jaringan kejuruan, dan momen berharga X ICP TKJ di {BRANDING.school}.
               </p>
             </div>
 
@@ -456,7 +487,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
           ) : featuredGallery.length === 0 ? (
             <div className="empty-state">
               <ImageIcon className="empty-state-icon" />
-              <h3 className="empty-state-title">Belum ada dokumentasi kegiatan</h3>
+              <h3 className="empty-state-title">Belum ada foto galeri</h3>
               <p className="empty-state-desc">Foto kegiatan terbaru akan segera diunggah oleh pengurus kelas.</p>
             </div>
           ) : (

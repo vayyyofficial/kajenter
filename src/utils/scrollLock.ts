@@ -17,7 +17,7 @@ export function lockScroll(): void {
     document.body.style.top = `-${preservedScrollY}px`;
     document.body.style.position = 'fixed';
     document.body.style.width = '100%';
-    document.body.style.overflowY = 'scroll';
+    document.body.style.overflow = 'hidden';
     if (scrollbarWidth > 0) {
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     }
