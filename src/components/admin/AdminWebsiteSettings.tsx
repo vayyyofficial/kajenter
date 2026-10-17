@@ -164,9 +164,6 @@ export const AdminWebsiteSettings: React.FC = () => {
                 if (!target.dataset.fallbackLevel) {
                   target.dataset.fallbackLevel = '1';
                   target.src = BRANDING.fallbackLogoUrl;
-                } else if (target.dataset.fallbackLevel === '1') {
-                  target.dataset.fallbackLevel = '2';
-                  target.src = BRANDING.jpegLogoUrl;
                 }
               }}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}

@@ -13,7 +13,7 @@ export const ToastContainer: React.FC = () => {
         position: 'fixed',
         bottom: '1.5rem',
         right: '1.5rem',
-        zIndex: 1000,
+        zIndex: 100010,
         display: 'flex',
         flexDirection: 'column',
         gap: '0.75rem',

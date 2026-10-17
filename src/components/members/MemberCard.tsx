@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, MapPin, ShieldCheck } from 'lucide-react';
 import { Member } from '../../types';
-import { getMemberPhotoUrl, getDefaultImgixAvatar } from '../../utils/avatar';
+import { getMemberPhotoUrl, getDefaultAvatar } from '../../utils/avatar';
 
 interface MemberCardProps {
   member: Member;
@@ -12,7 +12,7 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
   const [imgError, setImgError] = useState(false);
 
   const { src: initialPhotoSrc } = getMemberPhotoUrl(member);
-  const photoSrc = imgError ? getDefaultImgixAvatar(member.full_name) : initialPhotoSrc;
+  const photoSrc = imgError ? getDefaultAvatar() : initialPhotoSrc;
 
   const isTeacher = member.member_type === 'guru';
 
@@ -57,7 +57,7 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
             overflow: 'hidden',
             border: '3px solid var(--white)',
             boxShadow: 'var(--shadow-md)',
-            backgroundColor: 'var(--primary-100)',
+            backgroundColor: 'var(--primary-50, #fef2f2)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -106,6 +106,8 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
           className={
             isTeacher
               ? 'badge badge-primary'
+              : member.role === 'Developer'
+              ? 'badge badge-developer'
               : member.role !== 'Siswa'
               ? 'badge badge-warning'
               : 'badge badge-neutral'

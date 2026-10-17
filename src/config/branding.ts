@@ -13,6 +13,5 @@ export const BRANDING = {
   tagline: 'Portal Resmi Kelas Digital',
   logoUrl: bundledLogo || '/assets/Logo-Kelas.png',
   fallbackLogoUrl: '/assets/Logo-Kelas.png',
-  jpegLogoUrl: '/assets/Logo-Kelas.jpeg',
   faviconUrl: '/assets/favicon.png',
 };

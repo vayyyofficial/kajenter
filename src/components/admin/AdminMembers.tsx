@@ -7,7 +7,7 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useNotifications } from '../../context/NotificationContext';
 import { useRealtimeSync } from '../../context/SyncContext';
 import { dataCache } from '../../services/dataCache';
-import { getMemberPhotoUrl, getDefaultImgixAvatar } from '../../utils/avatar';
+import { getMemberPhotoUrl, getDefaultAvatar } from '../../utils/avatar';
 
 export const AdminMembers: React.FC = () => {
   const { addToast } = useNotifications();
@@ -159,18 +159,12 @@ export const AdminMembers: React.FC = () => {
     }
   };
 
-  // Preview path based on custom upload or attendance number per requirement #13 & #16
-  const previewPhotoNum = formData.memberType === 'siswa' && formData.attendanceNumber
-    ? String(formData.attendanceNumber).padStart(2, '0')
-    : null;
-
+  // Preview path based on custom upload or default vector avatar
   const previewPhotoSrc = formData.customPhotoNumber
     ? (formData.customPhotoNumber.startsWith('/') || formData.customPhotoNumber.startsWith('http')
         ? formData.customPhotoNumber
         : `/foto-anggota/${formData.customPhotoNumber}.jpg`)
-    : previewPhotoNum
-    ? `/foto-anggota/${previewPhotoNum}.jpg`
-    : null;
+    : getDefaultAvatar();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -225,7 +219,7 @@ export const AdminMembers: React.FC = () => {
                           src={initialPhoto}
                           alt={g.full_name}
                           onError={(e) => {
-                            e.currentTarget.src = getDefaultImgixAvatar(g.full_name, 100);
+                            e.currentTarget.src = getDefaultAvatar();
                           }}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
@@ -292,7 +286,7 @@ export const AdminMembers: React.FC = () => {
                           src={initialPhoto}
                           alt={s.full_name}
                           onError={(e) => {
-                            e.currentTarget.src = getDefaultImgixAvatar(s.full_name, 100);
+                            e.currentTarget.src = getDefaultAvatar();
                           }}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
@@ -303,7 +297,16 @@ export const AdminMembers: React.FC = () => {
                     {s.nickname && <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginLeft: '0.4rem' }}>({s.nickname})</span>}
                   </td>
                   <td>
-                    <span className={s.role !== 'Siswa' ? 'badge badge-warning' : 'badge badge-neutral'} style={{ fontSize: '0.725rem' }}>
+                    <span
+                      className={
+                        s.role === 'Developer'
+                          ? 'badge badge-developer'
+                          : s.role !== 'Siswa'
+                          ? 'badge badge-warning'
+                          : 'badge badge-neutral'
+                      }
+                      style={{ fontSize: '0.725rem' }}
+                    >
                       {s.role}
                     </span>
                   </td>
@@ -381,13 +384,11 @@ export const AdminMembers: React.FC = () => {
                 )}
               </div>
               <div style={{ fontSize: '0.8125rem', color: 'var(--primary-800)' }}>
-                <strong>{formData.customPhotoNumber ? 'Foto Kustom Server:' : 'Foto Mapping Otomatis:'}</strong>
+                <strong>{formData.customPhotoNumber ? 'Foto Kustom Server:' : 'Foto Profil:'}</strong>
                 <div style={{ wordBreak: 'break-all', fontSize: '0.75rem', color: 'var(--primary-700)' }}>
                   {formData.customPhotoNumber
                     ? formData.customPhotoNumber
-                    : (formData.memberType === 'siswa' && previewPhotoNum
-                        ? `/foto-anggota/${previewPhotoNum}.jpg`
-                        : 'Foto lokal identitas guru')}
+                    : 'Default Avatar Outline Vector'}
                 </div>
               </div>
             </div>
@@ -413,7 +414,7 @@ export const AdminMembers: React.FC = () => {
                   type="button"
                   onClick={() => setFormData({ ...formData, customPhotoNumber: '' })}
                   className="btn-icon"
-                  title="Kembalikan ke Foto Absen Default"
+                  title="Kembalikan ke Default Avatar"
                   style={{ padding: '0.35rem', color: 'var(--gray-600)' }}
                 >
                   <RotateCcw size={14} />
@@ -494,14 +495,22 @@ export const AdminMembers: React.FC = () => {
                   <option value="Guru Produktif TKJ">Guru Produktif TKJ</option>
                   <option value="Guru Bimbingan Konseling">Guru Bimbingan Konseling</option>
                   <option value="Guru Mata Pelajaran">Guru Mata Pelajaran</option>
+                  {!['Wali Kelas', 'Guru Produktif TKJ', 'Guru Bimbingan Konseling', 'Guru Mata Pelajaran'].includes(formData.role) && (
+                    <option value={formData.role}>{formData.role}</option>
+                  )}
                 </>
               ) : (
                 <>
                   <option value="Siswa">Siswa</option>
                   <option value="Ketua Kelas">Ketua Kelas</option>
                   <option value="Wakil Ketua">Wakil Ketua</option>
-                  <option value="Bendahara">Bendahara</option>
                   <option value="Sekretaris">Sekretaris</option>
+                  <option value="Bendahara">Bendahara</option>
+                  <option value="Developer">Developer</option>
+                  <option value="Wali Kelas">Wali Kelas</option>
+                  {!['Siswa', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris', 'Bendahara', 'Developer', 'Wali Kelas'].includes(formData.role) && (
+                    <option value={formData.role}>{formData.role}</option>
+                  )}
                 </>
               )}
             </select>

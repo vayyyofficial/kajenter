@@ -262,9 +262,6 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                     target.src = BRANDING.fallbackLogoUrl;
                   } else if (target.dataset.fallbackLevel === '1') {
                     target.dataset.fallbackLevel = '2';
-                    target.src = BRANDING.jpegLogoUrl;
-                  } else if (target.dataset.fallbackLevel === '2') {
-                    target.dataset.fallbackLevel = '3';
                     target.src = BRANDING.faviconUrl;
                   }
                 }}
@@ -332,9 +329,14 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
           gap: '1.25rem',
         }}
       >
-        {/* Siswa */}
+        {/* Total Anggota (Guru & Siswa digabungkan per Requirement #19) */}
         <ScrollReveal delay={0}>
-          <div className="card card-hover" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          <div
+            className="card card-hover"
+            onClick={() => onNavigate('anggota')}
+            title="Klik untuk membuka Direktori Anggota"
+            style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: 'pointer' }}
+          >
             <div
               style={{
                 width: 52,
@@ -352,46 +354,17 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
             </div>
             <div>
               <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--gray-900)', lineHeight: 1.1 }}>
-                {loading ? <Skeleton width="60px" height="36px" /> : <CountUpNumber value={stats.totalSiswa} durationMs={1000} />}
+                {loading ? <Skeleton width="60px" height="36px" /> : <CountUpNumber value={stats.totalSiswa + stats.totalGuru} durationMs={1000} />}
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)', fontWeight: 600, marginTop: '0.2rem' }}>
-                Siswa Terdaftar
-              </div>
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* Guru */}
-        <ScrollReveal delay={75}>
-          <div className="card card-hover" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'var(--primary-50)',
-                color: 'var(--primary-600)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <GraduationCap size={26} />
-            </div>
-            <div>
-              <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--gray-900)', lineHeight: 1.1 }}>
-                {loading ? <Skeleton width="40px" height="36px" /> : <CountUpNumber value={stats.totalGuru} durationMs={700} />}
-              </div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)', fontWeight: 600, marginTop: '0.2rem' }}>
-                Guru
+                Total Anggota
               </div>
             </div>
           </div>
         </ScrollReveal>
 
         {/* Galeri */}
-        <ScrollReveal delay={150}>
+        <ScrollReveal delay={100}>
           <div
             className="card card-hover"
             onClick={() => onNavigate('galeri')}
@@ -425,8 +398,13 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
         </ScrollReveal>
 
         {/* Social */}
-        <ScrollReveal delay={225}>
-          <div className="card card-hover" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        <ScrollReveal delay={200}>
+          <div
+            className="card card-hover"
+            onClick={() => onNavigate('contact')}
+            title="Klik untuk membuka Media Sosial"
+            style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: 'pointer' }}
+          >
             <div
               style={{
                 width: 52,
@@ -455,14 +433,14 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
       </section>
 
       {/* ========================================================= */}
-      {/* 3. Featured Gallery Section with Scroll Reveal (Req #8 & 11) */}
+      {/* 3. Featured Gallery Section with Scroll Reveal (Req #20)   */}
       {/* ========================================================= */}
       <ScrollReveal>
         <section style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <div className="section-tag">Galeri Terkini</div>
-              <h2 className="section-title">Dokumentasi Aktivitas & Prestasi</h2>
+              <div className="section-tag">Galeri</div>
+              <h2 className="section-title">Galeri</h2>
               <p className="section-subtitle">
                 Sorotan visual kegiatan kelas, praktikum jaringan kejuruan, dan momen berharga X ICP TKJ di {BRANDING.school}.
               </p>

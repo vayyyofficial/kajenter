@@ -1,59 +1,60 @@
 /**
  * Helper utility for Member Avatars.
- * Guarantees that if a member has no photo or if their photo fails to load,
- * a clean, neutral, professional avatar generated via Imgix is displayed.
- * (Uses initials on a sleek slate/dark background — never a random human photo).
+ * Consistent across all devices and browsers (iOS, Android, Windows, Mac, Linux).
+ * 
+ * Rules:
+ * - If member has custom photo from database/storage: display the custom photo.
+ * - If member has NO custom photo: display the consistent modern OUTLINE vector 👤 avatar.
+ * - Style: Outline / Line Icon in brand theme red (#dc2626) with soft background (#fef2f2).
+ * - Never use random human faces or native OS emojis.
  */
 
-export function getMemberInitials(fullName: string = ''): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'TKJ';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
+const DEFAULT_AVATAR_RAW_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="256" height="256" fill="none">
+  <circle cx="12" cy="12" r="11" fill="#fef2f2" stroke="#fecaca" stroke-width="1.2"/>
+  <circle cx="12" cy="8" r="3.75" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M5.5 19.25c0-3.3 2.9-6 6.5-6s6.5 2.7 6.5 6" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+export const DEFAULT_AVATAR_URL = `data:image/svg+xml;utf8,${encodeURIComponent(DEFAULT_AVATAR_RAW_SVG)}`;
 
 /**
- * Returns a high-resolution, neutral Imgix avatar placeholder.
- * Safe, professional, and consistent with the X ICP TKJ branding.
+ * Returns the default outline vector avatar URL in theme red.
  */
-export function getDefaultImgixAvatar(fullName: string = '', size = 300): string {
-  const initials = getMemberInitials(fullName);
-  // Imgix Typesetting endpoint: Generates clean typography on high-contrast dark slate
-  return `https://assets.imgix.net/~text?txt=${encodeURIComponent(initials)}&w=${size}&h=${size}&bg=0f172a&txtclr=f8fafc&txt-align=middle,center&txt-size=${Math.round(size * 0.38)}&txt-font=Helvetica,Bold&fit=crop`;
+export function getDefaultAvatar(): string {
+  return DEFAULT_AVATAR_URL;
 }
 
 /**
  * Resolves the photo URL for a member.
- * If the member has an uploaded photo or a mapped local photo, uses it.
- * Otherwise, returns the neutral Imgix avatar.
+ * Logic:
+ * IF custom photo exists -> tampilkan custom photo
+ * ELSE -> tampilkan default avatar outline vector
  */
 export function getMemberPhotoUrl(member: {
   photo_number?: string | null;
   attendance_number?: number | null;
-  full_name: string;
-}): { src: string; isDefault: boolean } {
+  full_name?: string;
+}): { src: string; isCustom: boolean } {
+  // 1. If explicit custom URL or path uploaded (Supabase Storage / local persistent uploads)
   if (member.photo_number) {
     const trimmed = member.photo_number.trim();
-    if (trimmed.startsWith('http') || trimmed.startsWith('/')) {
-      return { src: trimmed, isDefault: false };
+    if (
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('https://') ||
+      trimmed.startsWith('/') ||
+      trimmed.startsWith('data:')
+    ) {
+      return { src: trimmed, isCustom: true };
     }
-    return { src: `/foto-anggota/${trimmed}.jpg`, isDefault: false };
+    // Teacher local identity photo
+    if (trimmed.startsWith('guru_')) {
+      return { src: `/foto-anggota/${trimmed}.jpg`, isCustom: true };
+    }
   }
 
-  if (
-    member.attendance_number !== null &&
-    member.attendance_number !== undefined &&
-    member.attendance_number >= 1 &&
-    member.attendance_number <= 20
-  ) {
-    return {
-      src: `/foto-anggota/${String(member.attendance_number).padStart(2, '0')}.jpg`,
-      isDefault: false,
-    };
-  }
-
+  // 2. Otherwise member does NOT have a custom photo -> use modern outline vector default avatar
   return {
-    src: getDefaultImgixAvatar(member.full_name),
-    isDefault: true,
+    src: DEFAULT_AVATAR_URL,
+    isCustom: false,
   };
 }

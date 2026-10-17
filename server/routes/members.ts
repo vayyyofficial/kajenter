@@ -65,7 +65,7 @@ router.post('/', requireAdmin, async (req, res): Promise<void> => {
         return;
       }
       attNum = parseInt(attendanceNumber, 10);
-      photoNumber = customPhotoNumber?.trim() || String(attNum).padStart(2, '0');
+      photoNumber = customPhotoNumber?.trim() || null;
 
       // Check unique attendance number for siswa
       const isDuplicate = await dbService.members.checkDuplicateAttendance(attNum);
@@ -78,8 +78,7 @@ router.post('/', requireAdmin, async (req, res): Promise<void> => {
       }
     } else {
       // Guru: Admin can add multiple teachers without artificial limits
-      const guruCount = await dbService.members.getGuruCount();
-      photoNumber = customPhotoNumber?.trim() || `guru_${String(guruCount + 1).padStart(2, '0')}`;
+      photoNumber = customPhotoNumber?.trim() || null;
     }
 
     const created = await dbService.members.create({
@@ -111,7 +110,11 @@ router.post('/', requireAdmin, async (req, res): Promise<void> => {
       data: {
         id: (created as any).id,
         photoNumber,
-        mappedPhotoPath: photoNumber.startsWith('http') || photoNumber.startsWith('/') ? photoNumber : `/foto-anggota/${photoNumber}.jpg`,
+        mappedPhotoPath: photoNumber
+          ? (photoNumber.startsWith('http') || photoNumber.startsWith('/')
+              ? photoNumber
+              : `/foto-anggota/${photoNumber}.jpg`)
+          : null,
       },
     });
   } catch (err: any) {
@@ -160,14 +163,12 @@ router.put('/:id', requireAdmin, async (req, res): Promise<void> => {
         }
       }
       if (customPhotoNumber !== undefined) {
-        photoNumber = customPhotoNumber.trim() || (attNum ? String(attNum).padStart(2, '0') : null);
-      } else if (!photoNumber && attNum) {
-        photoNumber = String(attNum).padStart(2, '0');
+        photoNumber = customPhotoNumber.trim() || null;
       }
     } else if (memberType === 'guru') {
       attNum = null;
       if (customPhotoNumber !== undefined) {
-        photoNumber = customPhotoNumber.trim() || existing.photo_number;
+        photoNumber = customPhotoNumber.trim() || null;
       }
     }
 
