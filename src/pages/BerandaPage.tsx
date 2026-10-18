@@ -19,12 +19,14 @@ import { CountUpNumber } from '../components/common/CountUpNumber';
 import { ScrollReveal } from '../components/common/ScrollReveal';
 import { Skeleton } from '../components/common/Skeleton';
 import { useRealtimeSync } from '../context/SyncContext';
+import { useLanguage } from '../context/LanguageContext';
 
 interface BerandaPageProps {
   onNavigate: (route: string) => void;
 }
 
 export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
+  const { t, language } = useLanguage();
   const cachedMembers = dataCache.getMembers();
   const cachedGallery = dataCache.getGallery();
   const cachedSocial = dataCache.getSocial();
@@ -98,7 +100,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
       {/* ========================================================= */}
       <section
         style={{
-          backgroundColor: '#ffffff',
+          backgroundColor: 'var(--white)',
           borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--gray-200)',
           padding: 'clamp(2.5rem, 5vw, 4.5rem) clamp(1.5rem, 4vw, 3.5rem)',
@@ -139,7 +141,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
             }}
           >
             <Sparkles size={14} />
-            <span>Portal Resmi Kelas Unggulan</span>
+            <span>{t.home.heroTag}</span>
           </div>
 
           <h1
@@ -190,7 +192,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
               marginBottom: '2rem',
             }}
           >
-            Pusat dokumentasi kegiatan kejuruan, direktori resmi guru dan seluruh siswa, serta kanal komunikasi terpadu kelas {BRANDING.name} {BRANDING.school}.
+            {t.home.heroDesc}
           </p>
 
           {/* Action CTAs with Interactive Hover */}
@@ -200,7 +202,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
               className="btn btn-primary btn-lg"
               style={{ fontWeight: 700 }}
             >
-              <span>Jelajahi Galeri</span>
+              <span>{t.home.exploreGallery}</span>
               <ArrowRight size={18} />
             </button>
 
@@ -210,7 +212,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
               style={{ fontWeight: 600 }}
             >
               <Users size={18} />
-              <span>Direktori Anggota</span>
+              <span>{t.home.memberDirectory}</span>
             </button>
           </div>
         </div>
@@ -230,9 +232,9 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
             style={{
               position: 'relative',
               padding: '2rem',
-              backgroundColor: 'var(--gray-50)',
+              backgroundColor: 'var(--bg-card)',
               borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--gray-200)',
+              border: '1px solid var(--border-color)',
               boxShadow: 'var(--shadow-lg)',
               textAlign: 'center',
               width: '100%',
@@ -241,20 +243,25 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
           >
             <div
               style={{
-                width: 140,
-                height: 140,
+                width: 148,
+                height: 148,
                 borderRadius: '50%',
                 overflow: 'hidden',
                 margin: '0 auto 1.5rem auto',
-                border: '4px solid #ffffff',
-                boxShadow: '0 8px 24px rgba(220, 38, 38, 0.25)',
+                border: '4px solid var(--primary-600)',
+                boxShadow: '0 8px 28px rgba(220, 38, 38, 0.35)',
                 backgroundColor: '#ffffff',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
               <img
                 src={BRANDING.logoUrl}
-                alt={BRANDING.fullName}
+                alt={t.home.classCrestAlt}
+                loading="eager"
                 onError={(e) => {
                   const target = e.currentTarget;
                   if (!target.dataset.fallbackLevel) {
@@ -263,9 +270,12 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                   } else if (target.dataset.fallbackLevel === '1') {
                     target.dataset.fallbackLevel = '2';
                     target.src = BRANDING.faviconUrl;
+                  } else if (target.dataset.fallbackLevel === '2') {
+                    target.dataset.fallbackLevel = '3';
+                    target.src = BRANDING.svgFaviconUrl;
                   }
                 }}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }}
               />
             </div>
 
@@ -289,7 +299,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                 marginBottom: '1rem',
               }}
             >
-              International Class Program
+              {t.home.programBadge}
             </span>
 
             <div
@@ -305,14 +315,14 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
               }}
             >
               <div>
-                <span style={{ color: 'var(--gray-400)', display: 'block', fontSize: '0.725rem' }}>Jurusan</span>
+                <span style={{ color: 'var(--gray-400)', display: 'block', fontSize: '0.725rem' }}>{t.home.vocationalMajor}</span>
                 <strong style={{ color: 'var(--gray-900)', lineHeight: 1.25, display: 'block' }}>
-                  Teknik Komputer<br />dan Jaringan
+                  {t.home.majorName}
                 </strong>
               </div>
               <div>
-                <span style={{ color: 'var(--gray-400)', display: 'block', fontSize: '0.725rem' }}>Tahun Ajaran</span>
-                <strong style={{ color: 'var(--gray-900)' }}>2026 / 2027</strong>
+                <span style={{ color: 'var(--gray-400)', display: 'block', fontSize: '0.725rem' }}>{t.home.academicYear}</span>
+                <strong style={{ color: 'var(--gray-900)' }}>{t.home.academicYearVal}</strong>
               </div>
             </div>
           </div>
@@ -357,7 +367,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                 {loading ? <Skeleton width="60px" height="36px" /> : <CountUpNumber value={stats.totalSiswa + stats.totalGuru} durationMs={1000} />}
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)', fontWeight: 600, marginTop: '0.2rem' }}>
-                Total Anggota
+                {t.home.statsTotalMembers}
               </div>
             </div>
           </div>
@@ -368,7 +378,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
           <div
             className="card card-hover"
             onClick={() => onNavigate('galeri')}
-            title="Klik untuk membuka Galeri"
+            title={t.home.statsGallery}
             style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: 'pointer' }}
           >
             <div
@@ -391,7 +401,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                 {loading ? <Skeleton width="50px" height="36px" /> : <CountUpNumber value={stats.galleryCount} durationMs={1000} />}
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)', fontWeight: 600, marginTop: '0.2rem' }}>
-                Galeri
+                {t.home.statsGallery}
               </div>
             </div>
           </div>
@@ -402,7 +412,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
           <div
             className="card card-hover"
             onClick={() => onNavigate('contact')}
-            title="Klik untuk membuka Media Sosial"
+            title={t.home.statsSocial}
             style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: 'pointer' }}
           >
             <div
@@ -425,7 +435,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                 {loading ? <Skeleton width="40px" height="36px" /> : <CountUpNumber value={stats.socialCount} durationMs={800} />}
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)', fontWeight: 600, marginTop: '0.2rem' }}>
-                Media Sosial Aktif
+                {t.home.statsSocial}
               </div>
             </div>
           </div>
@@ -439,10 +449,10 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
         <section style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <div className="section-tag">Galeri</div>
-              <h2 className="section-title">Galeri</h2>
+              <div className="section-tag">{t.home.featuredTag}</div>
+              <h2 className="section-title">{t.home.featuredTitle}</h2>
               <p className="section-subtitle">
-                Sorotan visual kegiatan kelas, praktikum jaringan kejuruan, dan momen berharga X ICP TKJ di {BRANDING.school}.
+                {t.home.featuredSubtitle}
               </p>
             </div>
 
@@ -451,7 +461,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
               className="btn btn-outline"
               style={{ fontWeight: 700 }}
             >
-              <span>Buka Seluruh Galeri</span>
+              <span>{t.home.viewAllGallery}</span>
               <ArrowRight size={16} />
             </button>
           </div>
@@ -465,8 +475,8 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
           ) : featuredGallery.length === 0 ? (
             <div className="empty-state">
               <ImageIcon className="empty-state-icon" />
-              <h3 className="empty-state-title">Belum ada foto galeri</h3>
-              <p className="empty-state-desc">Foto kegiatan terbaru akan segera diunggah oleh pengurus kelas.</p>
+              <h3 className="empty-state-title">{t.home.noGalleryTitle}</h3>
+              <p className="empty-state-desc">{t.home.noGalleryDesc}</p>
             </div>
           ) : (
             <div
@@ -499,7 +509,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--gray-500)', fontSize: '0.75rem', marginBottom: '0.4rem' }}>
                       <Calendar size={13} color="var(--primary-600)" />
                       <span>
-                        {new Date(item.event_date).toLocaleDateString('id-ID', {
+                        {new Date(item.event_date).toLocaleDateString(language === 'en' ? 'en-US' : 'id-ID', {
                           day: 'numeric',
                           month: 'long',
                           year: 'numeric',
@@ -547,11 +557,11 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
         >
           <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 2.5rem auto' }}>
             <div className="section-tag" style={{ margin: '0 auto 0.75rem auto' }}>
-              Konsentrasi Kejuruan
+              {t.home.pillarsTag}
             </div>
-            <h2 className="section-title">Pilar Kompetensi Teknik Komputer & Jaringan</h2>
+            <h2 className="section-title">{t.home.pillarsTitle}</h2>
             <p className="section-subtitle" style={{ margin: '0 auto' }}>
-              Kurikulum unggulan berbasis standar industri di {BRANDING.school} untuk mencetak tenaga ahli infrastruktur IT yang kompeten.
+              {t.home.pillarsSubtitle}
             </p>
           </div>
 
@@ -567,10 +577,10 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                 <Network size={22} />
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
-                Computer Networking
+                {t.home.networkingTitle}
               </h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)', lineHeight: 1.6 }}>
-                Konfigurasi router dan switch enterprise (Cisco & Mikrotik), routing dinamis BGP/OSPF, VLAN trunking, dan manajemen bandwidth.
+                {t.home.networkingDesc}
               </p>
             </div>
 
@@ -579,10 +589,10 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                 <Server size={22} />
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
-                Server & Cloud Systems
+                {t.home.serverTitle}
               </h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)', lineHeight: 1.6 }}>
-                Administrasi Linux Server (Debian/Ubuntu), virtualisasi Proxmox VE, containerization Docker, serta deployment layanan web terdistribusi.
+                {t.home.serverDesc}
               </p>
             </div>
 
@@ -591,10 +601,10 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                 <ShieldCheck size={22} />
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
-                Cyber Security
+                {t.home.securityTitle}
               </h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)', lineHeight: 1.6 }}>
-                Analisis traffic jaringan dengan Wireshark, hardening firewall iptables, pertahanan terhadap serangan siber, serta mitigasi insiden keamanan data.
+                {t.home.securityDesc}
               </p>
             </div>
           </div>
@@ -621,13 +631,13 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
         >
           <div style={{ maxWidth: '600px' }}>
             <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 800, color: '#ffffff', marginBottom: '0.5rem' }}>
-              Terhubung Dengan {BRANDING.name}
+              {t.home.ctaTitle}
             </h2>
             <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.95)', marginBottom: '0.5rem' }}>
               {BRANDING.school}
             </div>
             <p style={{ fontSize: '0.925rem', color: 'rgba(255, 255, 255, 0.85)', lineHeight: 1.6 }}>
-              Ikuti kabar kegiatan, proyek kejuruan, dan dokumentasi eksklusif melalui media sosial resmi kelas kami.
+              {t.home.ctaDesc}
             </p>
           </div>
 
@@ -641,7 +651,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             }}
           >
-            <span>Kunjungi Kanal Media Sosial</span>
+            <span>{t.home.ctaButton}</span>
             <ArrowRight size={18} />
           </button>
         </section>

@@ -5,6 +5,7 @@ import { Modal } from '../common/Modal';
 import { MemberPhotoModal } from './MemberPhotoModal';
 import { getMemberPhotoUrl, getDefaultAvatar } from '../../utils/avatar';
 import { useNotifications } from '../../context/NotificationContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface MemberDetailModalProps {
   member: Member | null;
@@ -17,6 +18,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { language, t } = useLanguage();
   const { addToast } = useNotifications();
   const [imgError, setImgError] = useState(false);
   const [isFullPhotoOpen, setIsFullPhotoOpen] = useState(false);
@@ -32,7 +34,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
   const photoSrc = imgError ? getDefaultAvatar() : initialPhotoSrc;
 
   const formattedBirthDate = member.birth_date
-    ? new Date(member.birth_date).toLocaleDateString('id-ID', {
+    ? new Date(member.birth_date).toLocaleDateString(language === 'en' ? 'en-US' : 'id-ID', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -57,9 +59,9 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
         document.execCommand('copy');
         document.body.removeChild(textArea);
       }
-      addToast('success', 'Nomor telepon berhasil disalin.');
+      addToast('success', t.memberDetail.phoneCopied);
     } catch {
-      addToast('error', 'Gagal menyalin nomor telepon.');
+      addToast('error', t.memberDetail.phoneCopyFailed);
     }
   };
 
@@ -70,7 +72,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={isTeacher ? 'Profil Pendidik & Wali Kelas' : 'Profil Siswa X ICP TKJ'}
+        title={isTeacher ? t.memberDetail.teacherHeader : t.memberDetail.studentHeader}
         size="md"
       >
         <div
@@ -100,16 +102,16 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               }}
               role="button"
               tabIndex={0}
-              aria-label={`Buka foto penuh ${member.full_name}`}
-              title="Klik untuk melihat foto penuh"
+              aria-label={`${t.memberDetail.clickToViewFullPhoto} - ${member.full_name}`}
+              title={t.memberDetail.clickToViewFullPhoto}
               style={{
                 width: 130,
                 height: 130,
                 borderRadius: '50%',
                 overflow: 'hidden',
-                border: '4px solid #ffffff',
+                border: '4px solid var(--border-color)',
                 boxShadow: 'var(--shadow-lg)',
-                backgroundColor: 'var(--primary-50, #fef2f2)',
+                backgroundColor: 'var(--bg-surface)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -121,7 +123,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'scale(1.04)';
-                e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.2)';
+                e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.25)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'scale(1)';
@@ -145,13 +147,13 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               />
             </div>
 
-            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--gray-900)', margin: '0 0 0.25rem 0', lineHeight: 1.25 }}>
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.25rem 0', lineHeight: 1.25 }}>
               {member.full_name}
             </h3>
 
             {member.nickname && member.member_type !== 'guru' && (
-              <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', margin: '0 0 0.75rem 0' }}>
-                Nama Panggilan: <strong style={{ color: 'var(--gray-800)' }}>{member.nickname}</strong>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0 0 0.75rem 0' }}>
+                {t.memberDetail.nickname}: <strong style={{ color: 'var(--text-main)' }}>{member.nickname}</strong>
               </p>
             )}
 
@@ -168,12 +170,16 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                 }
                 style={{ fontSize: '0.8125rem', padding: '0.35rem 0.85rem', fontWeight: 700 }}
               >
-                {isTeacher ? `Wali Kelas • ${member.role}` : member.role}
+                {isTeacher
+                  ? `${t.members.roleHomeroom} • ${member.role}`
+                  : member.role === 'Siswa'
+                  ? t.members.roleStudent
+                  : member.role}
               </span>
 
               {member.attendance_number && (
                 <span className="badge badge-neutral" style={{ fontSize: '0.8125rem', padding: '0.35rem 0.85rem' }}>
-                  Absen #{String(member.attendance_number).padStart(2, '0')}
+                  {t.members.attendanceBadge(member.attendance_number)}
                 </span>
               )}
             </div>
@@ -182,9 +188,9 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
           {/* Right Side: Detailed Metadata Cards */}
           <div
             style={{
-              backgroundColor: 'var(--gray-50)',
+              backgroundColor: 'var(--bg-surface)',
               borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--gray-200)',
+              border: '1px solid var(--border-color)',
               padding: '1.25rem 1.5rem',
               display: 'flex',
               flexDirection: 'column',
@@ -198,8 +204,8 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   width: 36,
                   height: 36,
                   borderRadius: 'var(--radius-md)',
-                  backgroundColor: 'var(--primary-50)',
-                  color: 'var(--primary-600)',
+                  backgroundColor: 'rgba(220, 38, 38, 0.12)',
+                  color: 'var(--primary-500)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -209,10 +215,10 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                 <MapPin size={18} />
               </div>
               <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--gray-500)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
-                  Tempat Lahir
+                <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+                  {t.memberDetail.birthPlace}
                 </span>
-                <strong style={{ color: 'var(--gray-900)' }}>{member.birth_place || '-'}</strong>
+                <strong style={{ color: 'var(--text-main)' }}>{member.birth_place || '-'}</strong>
               </div>
             </div>
 
@@ -222,8 +228,8 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   width: 36,
                   height: 36,
                   borderRadius: 'var(--radius-md)',
-                  backgroundColor: 'var(--primary-50)',
-                  color: 'var(--primary-600)',
+                  backgroundColor: 'rgba(220, 38, 38, 0.12)',
+                  color: 'var(--primary-500)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -233,10 +239,10 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                 <Calendar size={18} />
               </div>
               <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--gray-500)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
-                  Tanggal Lahir
+                <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+                  {t.memberDetail.birthDate}
                 </span>
-                <strong style={{ color: 'var(--gray-900)' }}>{formattedBirthDate}</strong>
+                <strong style={{ color: 'var(--text-main)' }}>{formattedBirthDate}</strong>
               </div>
             </div>
 
@@ -246,8 +252,8 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   width: 36,
                   height: 36,
                   borderRadius: 'var(--radius-md)',
-                  backgroundColor: 'var(--primary-50)',
-                  color: 'var(--primary-600)',
+                  backgroundColor: 'rgba(220, 38, 38, 0.12)',
+                  color: 'var(--primary-500)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -257,10 +263,10 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                 <Mail size={18} />
               </div>
               <div style={{ overflow: 'hidden' }}>
-                <span style={{ fontSize: '0.725rem', color: 'var(--gray-500)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
-                  Email Resmi
+                <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+                  {t.memberDetail.email}
                 </span>
-                <strong style={{ color: 'var(--gray-900)', wordBreak: 'break-all' }}>{member.email || '-'}</strong>
+                <strong style={{ color: 'var(--text-main)', wordBreak: 'break-all' }}>{member.email || '-'}</strong>
               </div>
             </div>
 
@@ -271,8 +277,8 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                     width: 36,
                     height: 36,
                     borderRadius: 'var(--radius-md)',
-                    backgroundColor: 'var(--primary-50)',
-                    color: 'var(--primary-600)',
+                    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+                    color: 'var(--primary-500)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -282,8 +288,8 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   <Phone size={18} />
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.725rem', color: 'var(--gray-500)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
-                    Kontak / Telepon
+                  <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+                    {t.memberDetail.phone}
                   </span>
                   {/*
                     Requirement #9 & #10:
@@ -300,16 +306,16 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                     }}
                     role="button"
                     tabIndex={0}
-                    title="Klik untuk menyalin nomor telepon"
+                    title={language === 'en' ? 'Click to copy phone number' : 'Klik untuk menyalin nomor telepon'}
                     style={{
-                      color: 'var(--gray-900)',
+                      color: 'var(--text-main)',
                       cursor: 'pointer',
                       userSelect: 'all',
                       transition: 'color 0.15s ease',
                       outline: 'none',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-600)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gray-900)')}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-500)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-main)')}
                   >
                     {member.phone}
                   </strong>

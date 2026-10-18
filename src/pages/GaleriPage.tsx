@@ -9,10 +9,12 @@ import { EmptyState } from '../components/common/EmptyState';
 import { ScrollReveal } from '../components/common/ScrollReveal';
 import { Skeleton } from '../components/common/Skeleton';
 import { useRealtimeSync } from '../context/SyncContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const STANDARD_CATEGORIES = ['Semua', 'Kegiatan', 'Dokumentasi', 'Prestasi', 'Event Sekolah'];
 
 export const GaleriPage: React.FC = () => {
+  const { t } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState<boolean>(false);
@@ -55,6 +57,15 @@ export const GaleriPage: React.FC = () => {
     setIsViewerOpen(true);
   };
 
+  const getCategoryLabel = (cat: string) => {
+    if (cat === 'Semua' || cat === 'All') return t.gallery.all;
+    if (cat === 'Kegiatan' || cat === 'Activities') return t.gallery.activities;
+    if (cat === 'Dokumentasi' || cat === 'Documentation') return t.gallery.documentation;
+    if (cat === 'Prestasi' || cat === 'Achievements') return t.gallery.achievements;
+    if (cat === 'Event Sekolah' || cat === 'School Events') return t.gallery.schoolEvents;
+    return cat;
+  };
+
   // Ensure any category already in the database is visible in filter tabs
   const categoryTabs = useMemo(() => {
     const presentCategories = new Set<string>();
@@ -74,10 +85,10 @@ export const GaleriPage: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Page Header */}
       <div className="section-header" style={{ marginBottom: '1.5rem' }}>
-        <div className="section-tag">Dokumentasi Visual</div>
-        <h1 className="section-title">Galeri Kegiatan {BRANDING.name}</h1>
+        <div className="section-tag">{t.gallery.pageTag}</div>
+        <h1 className="section-title">{t.gallery.pageTitle}</h1>
         <p className="section-subtitle">
-          Kumpulan momen resmi praktikum instalasi jaringan, sertifikasi kejuruan, kunjungan industri, dan kebersamaan kelas di {BRANDING.school}.
+          {t.gallery.pageSubtitle}
         </p>
       </div>
 
@@ -108,7 +119,7 @@ export const GaleriPage: React.FC = () => {
                 border: '1px solid transparent',
               }}
             >
-              {cat}
+              {getCategoryLabel(cat)}
             </button>
           );
         })}
@@ -137,8 +148,8 @@ export const GaleriPage: React.FC = () => {
       ) : items.length === 0 ? (
         <EmptyState
           icon={ImageIcon}
-          title="Belum Ada Dokumentasi"
-          description={`Belum ada foto dokumentasi yang dipublikasikan dalam kategori "${selectedCategory}".`}
+          title={t.gallery.noPhotosTitle}
+          description={t.gallery.noPhotosDesc}
         />
       ) : (
         <div

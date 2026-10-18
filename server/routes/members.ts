@@ -112,8 +112,8 @@ router.post('/', requireAdmin, async (req, res): Promise<void> => {
         photoNumber,
         mappedPhotoPath: photoNumber
           ? (photoNumber.startsWith('http') || photoNumber.startsWith('/')
-              ? photoNumber
-              : `/foto-anggota/${photoNumber}.jpg`)
+            ? photoNumber
+            : `/foto-anggota/${photoNumber}.jpg`)
           : null,
       },
     });

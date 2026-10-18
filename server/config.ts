@@ -17,10 +17,10 @@ export const CONFIG = {
   DB_PATH: path.join(__dirname, 'data', 'database.sqlite'),
   PUBLIC_DIR: path.join(__dirname, '..', 'public'),
   FOTO_ANGGOTA_DIR: path.join(__dirname, '..', 'public', 'foto-anggota'),
-  SUPABASE_URL: process.env.SUPABASE_URL || '',
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
+  SUPABASE_URL: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || 'uploads',
+  STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || process.env.VITE_SUPABASE_STORAGE_BUCKET || 'uploads',
   get IS_SUPABASE_CONFIGURED(): boolean {
     return Boolean(this.SUPABASE_URL && (this.SUPABASE_SERVICE_ROLE_KEY || this.SUPABASE_ANON_KEY));
   },

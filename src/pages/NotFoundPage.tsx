@@ -1,12 +1,15 @@
 import React from 'react';
 import { ArrowLeft, Compass } from 'lucide-react';
 import { BRANDING } from '../config/branding';
+import { useLanguage } from '../context/LanguageContext';
 
 interface NotFoundPageProps {
   onNavigate: (route: string) => void;
 }
 
 export const NotFoundPage: React.FC<NotFoundPageProps> = ({ onNavigate }) => {
+  const { t } = useLanguage();
+
   return (
     <div
       style={{
@@ -24,10 +27,10 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ onNavigate }) => {
         style={{
           maxWidth: '540px',
           width: '100%',
-          padding: ' clamp(2rem, 5vw, 3.5rem) clamp(1.5rem, 4vw, 2.5rem)',
-          backgroundColor: '#ffffff',
+          padding: 'clamp(2rem, 5vw, 3.5rem) clamp(1.5rem, 4vw, 2.5rem)',
+          backgroundColor: 'var(--bg-surface)',
           borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--gray-200)',
+          border: '1px solid var(--border-color)',
           boxShadow: 'var(--shadow-md)',
           display: 'flex',
           flexDirection: 'column',
@@ -40,14 +43,14 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ onNavigate }) => {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.4rem',
-            backgroundColor: 'var(--primary-50)',
-            color: 'var(--primary-700)',
+            backgroundColor: 'rgba(220, 38, 38, 0.12)',
+            color: 'var(--primary-500)',
             padding: '0.35rem 0.85rem',
             borderRadius: 'var(--radius-full)',
             fontSize: '0.8rem',
             fontWeight: 700,
             marginBottom: '1.5rem',
-            border: '1px solid var(--primary-100)',
+            border: '1px solid rgba(220, 38, 38, 0.25)',
           }}
         >
           <Compass size={15} />
@@ -60,36 +63,36 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ onNavigate }) => {
             fontSize: 'clamp(4rem, 10vw, 6.5rem)',
             fontWeight: 800,
             lineHeight: 1,
-            color: 'var(--primary-600)',
+            color: 'var(--primary-500)',
             letterSpacing: '-0.04em',
             marginBottom: '0.75rem',
           }}
         >
-          404
+          {t.notFound.code}
         </div>
 
         <h1
           style={{
             fontSize: 'clamp(1.25rem, 3vw, 1.65rem)',
             fontWeight: 800,
-            color: 'var(--gray-900)',
+            color: 'var(--text-main)',
             marginBottom: '0.65rem',
             lineHeight: 1.3,
           }}
         >
-          Halaman tidak ditemukan.
+          {t.notFound.title}
         </h1>
 
         <p
           style={{
             fontSize: '0.925rem',
-            color: 'var(--gray-600)',
+            color: 'var(--text-muted)',
             lineHeight: 1.6,
             maxWidth: '420px',
             marginBottom: '2rem',
           }}
         >
-          Tautan yang Anda tuju tidak tersedia atau telah dipindahkan. Silakan kembali ke halaman utama {BRANDING.name}.
+          {t.notFound.desc}
         </p>
 
         {/* CTA Back to Home */}
@@ -106,7 +109,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ onNavigate }) => {
           }}
         >
           <ArrowLeft size={18} />
-          <span>Kembali ke Beranda</span>
+          <span>{t.notFound.backToHome}</span>
         </button>
       </div>
     </div>

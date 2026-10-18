@@ -22,7 +22,7 @@
 
 .btn-primary {
   background-color: var(--primary-600);
-  color: var(--white);
+  color: #ffffff;
   box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
 }
 
@@ -55,7 +55,7 @@
 
 .btn-danger {
   background-color: var(--danger-main);
-  color: var(--white);
+  color: #ffffff;
 }
 
 .btn-danger:hover {
@@ -202,6 +202,14 @@
   outline: none;
   border-color: var(--primary-500);
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.form-input::placeholder,
+.form-select::placeholder,
+.form-textarea::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: var(--gray-400);
 }
 
 .form-error {
@@ -814,4 +822,228 @@
   }
 }
 
+/* ========================================================= */
+/* COMPREHENSIVE DARK MODE COMPONENT STYLES                  */
+/* ========================================================= */
+[data-theme="dark"] .navbar {
+  background-color: var(--navbar-bg) !important;
+  border-bottom: 1px solid var(--navbar-border) !important;
+}
 
+[data-theme="dark"] .navbar-wrapper.is-scrolled .navbar {
+  background-color: var(--navbar-scrolled-bg) !important;
+  border: 1px solid var(--navbar-border) !important;
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="dark"] .navbar-mobile-drawer {
+  background-color: #171717 !important;
+  border-color: #292929 !important;
+  border-bottom: 2px solid var(--primary-600) !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-theme="dark"] .card {
+  background-color: #171717 !important;
+  border-color: #292929 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .card-hover:hover {
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.65) !important;
+}
+
+[data-theme="dark"] .modal-content {
+  background-color: #171717 !important;
+  border: 1px solid #292929 !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="dark"] .modal-header {
+  border-bottom: 1px solid #262626 !important;
+}
+
+[data-theme="dark"] .modal-header h3 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .modal-footer {
+  border-top: 1px solid #262626 !important;
+  background-color: #141414 !important;
+}
+
+[data-theme="dark"] .gallery-metadata-column {
+  background-color: #171717 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .gallery-metadata-column h3,
+[data-theme="dark"] .gallery-metadata-column h4 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea {
+  background-color: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .form-input::placeholder,
+[data-theme="dark"] .form-select::placeholder,
+[data-theme="dark"] .form-textarea::placeholder,
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #71717a !important;
+}
+
+[data-theme="dark"] .form-input:focus,
+[data-theme="dark"] .form-select:focus,
+[data-theme="dark"] .form-textarea:focus {
+  border-color: var(--primary-500) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+}
+
+[data-theme="dark"] .form-label {
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .table-container {
+  background-color: #171717 !important;
+  border-color: #292929 !important;
+}
+
+[data-theme="dark"] .table th {
+  background-color: #141414 !important;
+  color: #d4d4d8 !important;
+  border-bottom: 1px solid #292929 !important;
+}
+
+[data-theme="dark"] .table td {
+  border-bottom: 1px solid #242424 !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .table tr:hover td {
+  background-color: #1f1f1f !important;
+}
+
+[data-theme="dark"] .empty-state {
+  background-color: #141414 !important;
+  border-color: #2e2e2e !important;
+}
+
+[data-theme="dark"] .empty-state-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .empty-state-desc {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .btn-secondary {
+  background-color: #242424 !important;
+  border-color: #333333 !important;
+  color: #f4f4f5 !important;
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+  background-color: #2e2e2e !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-icon:hover {
+  background-color: #242424 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .badge-neutral {
+  background-color: #242424 !important;
+  border: 1px solid #333333 !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .skeleton-shimmer {
+  background: linear-gradient(90deg, #1e1e1e 25%, #2a2a2a 50%, #1e1e1e 75%) !important;
+  background-size: 200% 100% !important;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #141414;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #2e2e2e;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #3e3e3e;
+}
+
+/* ========================================================= */
+/* PORTAL MOBILE-APP CHASSIS (Requirements #9, #31, #32)     */
+/* ========================================================= */
+.portal-viewport-wrapper {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 1.5rem 1rem 3rem 1rem;
+}
+
+.portal-mobile-chassis {
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--bg-card);
+  border-radius: 36px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--gray-200);
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: min(640px, calc(100vh - 100px));
+  max-height: calc(100vh - 80px);
+  position: relative;
+  transition: all var(--transition-normal);
+}
+
+/* Explicit Form Input styling for Light & Dark mode consistency */
+.form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-input);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-input:focus {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+@media (max-width: 640px) {
+  .portal-viewport-wrapper {
+    padding: 0;
+    min-height: 100vh;
+  }
+  .portal-mobile-chassis {
+    max-width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100vh;
+    max-height: none;
+    border: none;
+  }
+}

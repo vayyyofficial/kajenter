@@ -12,6 +12,7 @@ import socialRouter from './routes/social.js';
 import adminRouter from './routes/admin.js';
 import syncRouter from './routes/sync.js';
 import uploadRouter from './routes/upload.js';
+import portalRouter from './routes/portal.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,6 +72,7 @@ apiRouter.use('/social', socialRouter);
 apiRouter.use('/admin', adminRouter);
 apiRouter.use('/sync', syncRouter);
 apiRouter.use('/upload', uploadRouter);
+apiRouter.use('/portal', portalRouter);
 
 // Mount router on BOTH /api and root / to support both standalone Express and Vercel serverless rewrites
 app.use('/api', apiRouter);

@@ -631,6 +631,577 @@ export const supabaseDb = {
       if (error) throw new Error(error.message);
     },
   },
+
+  // ==========================================
+  // PORTAL AUTH & ACCOUNTS
+  // ==========================================
+  portalAuth: {
+    async findMemberByEmail(email: string) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      const cleanEmail = email.trim().toLowerCase();
+
+      // 1. Direct case-insensitive lookup
+      try {
+        const { data, error } = await client
+          .from('members')
+          .select('*')
+          .ilike('email', cleanEmail)
+          .maybeSingle();
+
+        if (error) {
+          console.warn('findMemberByEmail ilike warning:', error.message);
+        }
+        if (data) return data;
+      } catch (err: any) {
+        console.warn('findMemberByEmail ilike exception:', err.message);
+      }
+
+      // 2. Fallback: match trimmed lowercase in case of whitespace in DB
+      try {
+        const { data: allMembers, error: errAll } = await client.from('members').select('*');
+        if (!errAll && allMembers && Array.isArray(allMembers)) {
+          const found = allMembers.find(
+            (m: any) => m.email && String(m.email).trim().toLowerCase() === cleanEmail
+          );
+          if (found) return found;
+        }
+      } catch (err: any) {
+        console.warn('findMemberByEmail allMembers fallback warning:', err.message);
+      }
+
+      // 3. Safe Additive Ensure for Fairuzzi Achmad (Absen 02, Developer) if missing in remote Supabase
+      if (cleanEmail === 'fairuzziachmad@gmail.com') {
+        try {
+          const now = new Date().toISOString();
+          const { data: inserted, error: insErr } = await client
+            .from('members')
+            .insert({
+              attendance_number: 2,
+              full_name: 'Fairuzzi Achmad',
+              nickname: 'Fairuz',
+              email: 'fairuzziachmad@gmail.com',
+              role: 'Developer',
+              member_type: 'siswa',
+              bio: 'Fullstack Developer & Student of X ICP TKJ',
+              created_at: now,
+              updated_at: now,
+            })
+            .select()
+            .single();
+
+          if (!insErr && inserted) {
+            console.log('Auto-ensured Fairuzzi Achmad member record in Supabase.');
+            return inserted;
+          }
+        } catch {
+          // Safe ignore if fails
+        }
+      }
+
+      return null;
+    },
+
+    async getAccountByMemberId(memberId: number | string) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const { data, error } = await client
+          .from('member_accounts')
+          .select('*')
+          .eq('member_id', memberId)
+          .maybeSingle();
+        if (error && error.code !== 'PGRST116') {
+          console.warn('getAccountByMemberId error:', error.message);
+        }
+        return data || null;
+      } catch (err: any) {
+        console.warn('getAccountByMemberId exception:', err.message);
+        return null;
+      }
+    },
+
+    async getAccountByEmail(email: string) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      const cleanEmail = email.trim().toLowerCase();
+      try {
+        const { data, error } = await client
+          .from('member_accounts')
+          .select('*')
+          .ilike('email', cleanEmail)
+          .maybeSingle();
+        if (error && error.code !== 'PGRST116') {
+          console.warn('getAccountByEmail error:', error.message);
+        }
+        return data || null;
+      } catch (err: any) {
+        console.warn('getAccountByEmail exception:', err.message);
+        return null;
+      }
+    },
+
+    async createAccount(memberId: number | string, email: string, passwordHash: string) {
+      const client = getSupabaseClient();
+      const now = new Date().toISOString();
+      const cleanEmail = email.trim().toLowerCase();
+      if (!client) {
+        return {
+          id: memberId,
+          member_id: memberId,
+          email: cleanEmail,
+          password_hash: passwordHash,
+          has_changed_password: 0,
+          created_at: now,
+          updated_at: now,
+        };
+      }
+
+      try {
+        const { data, error } = await client
+          .from('member_accounts')
+          .insert({
+            member_id: memberId,
+            email: cleanEmail,
+            password_hash: passwordHash,
+            has_changed_password: 0,
+            created_at: now,
+            updated_at: now,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.warn('portalAuth.createAccount insert warning (RLS or table):', error.message);
+          return {
+            id: memberId,
+            member_id: memberId,
+            email: cleanEmail,
+            password_hash: passwordHash,
+            has_changed_password: 0,
+            created_at: now,
+            updated_at: now,
+          };
+        }
+        return data;
+      } catch (err: any) {
+        console.warn('portalAuth.createAccount exception:', err.message);
+        return {
+          id: memberId,
+          member_id: memberId,
+          email: cleanEmail,
+          password_hash: passwordHash,
+          has_changed_password: 0,
+          created_at: now,
+          updated_at: now,
+        };
+      }
+    },
+
+    async updatePassword(memberId: number | string, passwordHash: string) {
+      const client = getSupabaseClient();
+      const now = new Date().toISOString();
+      if (!client) return null;
+
+      try {
+        const { data, error } = await client
+          .from('member_accounts')
+          .update({
+            password_hash: passwordHash,
+            has_changed_password: 1,
+            updated_at: now,
+          })
+          .eq('member_id', memberId)
+          .select()
+          .maybeSingle();
+
+        if (error) {
+          console.warn('portalAuth.updatePassword warning:', error.message);
+        }
+        return data;
+      } catch (err: any) {
+        console.warn('portalAuth.updatePassword exception:', err.message);
+        return null;
+      }
+    },
+
+    async updateEmail(memberId: number | string, newEmail: string) {
+      const client = getSupabaseClient()!;
+      const now = new Date().toISOString();
+      const cleanEmail = newEmail.trim().toLowerCase();
+
+      await client.from('members').update({ email: cleanEmail, updated_at: now }).eq('id', memberId);
+      await client.from('member_accounts').update({ email: cleanEmail, updated_at: now }).eq('member_id', memberId);
+
+      return this.findMemberByEmail(cleanEmail);
+    },
+
+    async saveVerificationCode(email: string, code: string, purpose: string, newEmail?: string) {
+      const client = getSupabaseClient()!;
+      const now = new Date().toISOString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      const { error } = await client.from('verification_codes').insert({
+        email: email.trim().toLowerCase(),
+        code,
+        purpose,
+        new_email: newEmail ? newEmail.trim().toLowerCase() : null,
+        expires_at: expiresAt,
+        used: 0,
+        created_at: now,
+      });
+      if (error) console.warn('saveVerificationCode warning:', error.message);
+    },
+
+    async verifyCode(email: string, code: string, purpose: string) {
+      const client = getSupabaseClient()!;
+      const now = new Date().toISOString();
+      const { data, error } = await client
+        .from('verification_codes')
+        .select('*')
+        .ilike('email', email.trim().toLowerCase())
+        .eq('code', code.trim())
+        .eq('purpose', purpose)
+        .eq('used', 0)
+        .gt('expires_at', now)
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) return null;
+
+      await client.from('verification_codes').update({ used: 1 }).eq('id', data.id);
+      return data;
+    },
+  },
+
+  // ==========================================
+  // KAS MINGGUAN
+  // ==========================================
+  kas: {
+    async getAll(monthYear?: string) {
+      const client = getSupabaseClient()!;
+      let query = client
+        .from('class_kas_records')
+        .select('*, members(full_name, attendance_number, role)');
+
+      if (monthYear) {
+        query = query.eq('month_year', monthYear);
+      }
+      const { data, error } = await query
+        .order('month_year', { ascending: false })
+        .order('week_number', { ascending: true });
+
+      if (error) {
+        console.warn('kas.getAll error:', error.message);
+        return [];
+      }
+      return (data || []).map((row: any) => ({
+        ...row,
+        full_name: row.members?.full_name || '',
+        attendance_number: row.members?.attendance_number || null,
+        role: row.members?.role || '',
+      }));
+    },
+
+    async getByMember(memberId: number | string) {
+      const client = getSupabaseClient()!;
+      const { data, error } = await client
+        .from('class_kas_records')
+        .select('*')
+        .eq('member_id', memberId)
+        .order('month_year', { ascending: false })
+        .order('week_number', { ascending: true });
+      if (error) return [];
+      return data || [];
+    },
+
+    async recordPayment(item: {
+      memberId: number | string;
+      weekNumber: number;
+      monthYear: string;
+      amount?: number;
+      status?: string;
+      recordedBy: string;
+      notes?: string;
+    }) {
+      const client = getSupabaseClient()!;
+      const now = new Date().toISOString();
+      const amount = item.amount || 3000;
+      const status = item.status || 'paid';
+      const paidAt = status === 'paid' ? now : null;
+
+      const { data: existing } = await client
+        .from('class_kas_records')
+        .select('id')
+        .eq('member_id', item.memberId)
+        .eq('week_number', item.weekNumber)
+        .eq('month_year', item.monthYear)
+        .maybeSingle();
+
+      if (existing) {
+        const { data, error } = await client
+          .from('class_kas_records')
+          .update({
+            amount,
+            status,
+            paid_at: paidAt,
+            recorded_by: item.recordedBy,
+            notes: item.notes || null,
+            updated_at: now,
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+        if (error) throw new Error(error.message);
+        return data;
+      } else {
+        const { data, error } = await client
+          .from('class_kas_records')
+          .insert({
+            member_id: item.memberId,
+            week_number: item.weekNumber,
+            month_year: item.monthYear,
+            amount,
+            status,
+            paid_at: paidAt,
+            recorded_by: item.recordedBy,
+            notes: item.notes || null,
+            created_at: now,
+            updated_at: now,
+          })
+          .select()
+          .single();
+        if (error) throw new Error(error.message);
+        return data;
+      }
+    },
+
+    async deletePayment(id: number | string) {
+      const client = getSupabaseClient()!;
+      const { data } = await client.from('class_kas_records').select('*').eq('id', id).maybeSingle();
+      await client.from('class_kas_records').delete().eq('id', id);
+      return data;
+    },
+
+    async getSummary() {
+      const client = getSupabaseClient()!;
+      const { data } = await client.from('class_kas_records').select('amount').eq('status', 'paid');
+      const total = (data || []).reduce((acc: number, cur: any) => acc + (cur.amount || 0), 0);
+      const { data: nominalRow } = await client.from('website_settings').select('value').eq('key', 'kas_nominal').maybeSingle();
+      return {
+        totalCollected: total,
+        weeklyNominal: nominalRow?.value ? parseInt(nominalRow.value, 10) : 3000,
+      };
+    },
+  },
+
+  // ==========================================
+  // TUGAS
+  // ==========================================
+  tasks: {
+    async getAll() {
+      const client = getSupabaseClient()!;
+      const { data, error } = await client.from('class_tasks').select('*').order('deadline', { ascending: true });
+      if (error) {
+        console.warn('tasks.getAll error:', error.message);
+        return [];
+      }
+      return data || [];
+    },
+
+    async getById(id: number | string) {
+      const client = getSupabaseClient()!;
+      const { data, error } = await client.from('class_tasks').select('*').eq('id', id).maybeSingle();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async create(item: {
+      title: string;
+      subject: string;
+      teacherName?: string;
+      deadline: string;
+      description?: string;
+      notes?: string;
+      createdBy: string;
+    }) {
+      const client = getSupabaseClient()!;
+      const now = new Date().toISOString();
+      const { data, error } = await client
+        .from('class_tasks')
+        .insert({
+          title: item.title.trim(),
+          subject: item.subject.trim(),
+          teacher_name: item.teacherName?.trim() || null,
+          deadline: item.deadline.trim(),
+          description: item.description?.trim() || null,
+          notes: item.notes?.trim() || null,
+          created_by: item.createdBy,
+          created_at: now,
+          updated_at: now,
+        })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async update(id: number | string, item: Partial<any>) {
+      const client = getSupabaseClient()!;
+      const now = new Date().toISOString();
+      const payload: Record<string, any> = { updated_at: now };
+      if (item.title !== undefined) payload.title = item.title.trim();
+      if (item.subject !== undefined) payload.subject = item.subject.trim();
+      if (item.teacherName !== undefined) payload.teacher_name = item.teacherName?.trim() || null;
+      if (item.deadline !== undefined) payload.deadline = item.deadline.trim();
+      if (item.description !== undefined) payload.description = item.description?.trim() || null;
+      if (item.notes !== undefined) payload.notes = item.notes?.trim() || null;
+
+      const { data, error } = await client.from('class_tasks').update(payload).eq('id', id).select().single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async delete(id: number | string) {
+      const client = getSupabaseClient()!;
+      const { data } = await client.from('class_tasks').select('*').eq('id', id).maybeSingle();
+      await client.from('class_tasks').delete().eq('id', id);
+      return data;
+    },
+  },
+
+  // ==========================================
+  // JADWAL PELAJARAN
+  // ==========================================
+  schedules: {
+    async getAll() {
+      const client = getSupabaseClient()!;
+      const { data, error } = await client
+        .from('class_schedules')
+        .select('*')
+        .order('order_index', { ascending: true })
+        .order('start_time', { ascending: true });
+      if (error) {
+        console.warn('schedules.getAll error:', error.message);
+        return [];
+      }
+      return data || [];
+    },
+
+    async create(item: {
+      day: string;
+      startTime: string;
+      endTime: string;
+      subject: string;
+      teacherName: string;
+      room?: string;
+      orderIndex?: number;
+    }) {
+      const client = getSupabaseClient()!;
+      const now = new Date().toISOString();
+      const { data, error } = await client
+        .from('class_schedules')
+        .insert({
+          day: item.day.trim(),
+          start_time: item.startTime.trim(),
+          end_time: item.endTime.trim(),
+          subject: item.subject.trim(),
+          teacher_name: item.teacherName.trim(),
+          room: item.room?.trim() || null,
+          order_index: item.orderIndex || 0,
+          created_at: now,
+          updated_at: now,
+        })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async update(id: number | string, item: Partial<any>) {
+      const client = getSupabaseClient()!;
+      const now = new Date().toISOString();
+      const payload: Record<string, any> = { updated_at: now };
+      if (item.day !== undefined) payload.day = item.day.trim();
+      if (item.startTime !== undefined) payload.start_time = item.startTime.trim();
+      if (item.endTime !== undefined) payload.end_time = item.endTime.trim();
+      if (item.subject !== undefined) payload.subject = item.subject.trim();
+      if (item.teacherName !== undefined) payload.teacher_name = item.teacherName.trim();
+      if (item.room !== undefined) payload.room = item.room?.trim() || null;
+      if (item.orderIndex !== undefined) payload.order_index = item.orderIndex;
+
+      const { data, error } = await client.from('class_schedules').update(payload).eq('id', id).select().single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async delete(id: number | string) {
+      const client = getSupabaseClient()!;
+      const { data } = await client.from('class_schedules').select('*').eq('id', id).maybeSingle();
+      await client.from('class_schedules').delete().eq('id', id);
+      return data;
+    },
+  },
+
+  // ==========================================
+  // JADWAL PIKET
+  // ==========================================
+  piket: {
+    async getAll() {
+      const client = getSupabaseClient()!;
+      const { data, error } = await client.from('piket_schedules').select('*').order('id', { ascending: true });
+      if (error) {
+        console.warn('piket.getAll error:', error.message);
+        return [];
+      }
+      return data || [];
+    },
+
+    async create(item: {
+      day: string;
+      memberId?: number | null;
+      memberName: string;
+      tasks?: string;
+    }) {
+      const client = getSupabaseClient()!;
+      const now = new Date().toISOString();
+      const { data, error } = await client
+        .from('piket_schedules')
+        .insert({
+          day: item.day.trim(),
+          member_id: item.memberId || null,
+          member_name: item.memberName.trim(),
+          tasks: item.tasks?.trim() || 'Membersihkan kelas dan merapikan perlengkapan',
+          created_at: now,
+          updated_at: now,
+        })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async update(id: number | string, item: Partial<any>) {
+      const client = getSupabaseClient()!;
+      const now = new Date().toISOString();
+      const payload: Record<string, any> = { updated_at: now };
+      if (item.day !== undefined) payload.day = item.day.trim();
+      if (item.memberId !== undefined) payload.member_id = item.memberId;
+      if (item.memberName !== undefined) payload.member_name = item.memberName.trim();
+      if (item.tasks !== undefined) payload.tasks = item.tasks.trim();
+
+      const { data, error } = await client.from('piket_schedules').update(payload).eq('id', id).select().single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async delete(id: number | string) {
+      const client = getSupabaseClient()!;
+      const { data } = await client.from('piket_schedules').select('*').eq('id', id).maybeSingle();
+      await client.from('piket_schedules').delete().eq('id', id);
+      return data;
+    },
+  },
 };
 
 // ==========================================

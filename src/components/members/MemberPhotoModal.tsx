@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { lockScroll, unlockScroll } from '../../utils/scrollLock';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface MemberPhotoModalProps {
   photoSrc: string | null;
@@ -21,6 +22,8 @@ export const MemberPhotoModal: React.FC<MemberPhotoModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { t } = useLanguage();
+
   // Lock body scroll while full photo viewer is active
   useEffect(() => {
     if (isOpen) {
@@ -46,7 +49,7 @@ export const MemberPhotoModal: React.FC<MemberPhotoModalProps> = ({
       className="member-photo-modal-portal"
       role="dialog"
       aria-modal="true"
-      aria-label={`Foto Penuh: ${altText}`}
+      aria-label={t.memberPhoto.fullPhotoOf.replace('{name}', altText)}
       style={{
         position: 'fixed',
         inset: 0,
@@ -119,8 +122,8 @@ export const MemberPhotoModal: React.FC<MemberPhotoModalProps> = ({
             e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
             e.currentTarget.style.transform = 'scale(1)';
           }}
-          title="Tutup Foto (ESC)"
-          aria-label="Tutup Foto"
+          title={t.memberPhoto.close}
+          aria-label={t.memberPhoto.close}
         >
           <X size={22} />
         </button>

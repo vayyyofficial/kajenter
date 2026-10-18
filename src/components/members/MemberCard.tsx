@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, MapPin, ShieldCheck } from 'lucide-react';
 import { Member } from '../../types';
 import { getMemberPhotoUrl, getDefaultAvatar } from '../../utils/avatar';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface MemberCardProps {
   member: Member;
@@ -9,6 +10,7 @@ interface MemberCardProps {
 }
 
 export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
+  const { t } = useLanguage();
   const [imgError, setImgError] = useState(false);
 
   const { src: initialPhotoSrc } = getMemberPhotoUrl(member);
@@ -38,11 +40,11 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
             className="badge badge-primary"
             style={{ fontWeight: 800, fontSize: '0.75rem', padding: '0.2rem 0.55rem' }}
           >
-            Absen #{String(member.attendance_number).padStart(2, '0')}
+            {t.members.attendanceBadge(member.attendance_number)}
           </span>
         ) : (
           <span className="badge badge-info" style={{ fontWeight: 700, fontSize: '0.7rem' }}>
-            <ShieldCheck size={12} /> Tenaga Pendidik
+            <ShieldCheck size={12} /> {t.members.educatorBadge}
           </span>
         )}
       </div>
@@ -55,9 +57,9 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
             height: 100,
             borderRadius: '50%',
             overflow: 'hidden',
-            border: '3px solid var(--white)',
+            border: '3px solid var(--border-color)',
             boxShadow: 'var(--shadow-md)',
-            backgroundColor: 'var(--primary-50, #fef2f2)',
+            backgroundColor: 'var(--bg-surface)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -86,7 +88,7 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
         style={{
           fontSize: '1.1rem',
           fontWeight: 800,
-          color: 'var(--gray-900)',
+          color: 'var(--text-main)',
           marginBottom: '0.25rem',
           lineHeight: 1.3,
         }}
@@ -95,7 +97,7 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
       </h3>
 
       {member.nickname && (
-        <span style={{ fontSize: '0.8125rem', color: 'var(--gray-500)', marginBottom: '0.5rem', display: 'block' }}>
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>
           "{member.nickname}"
         </span>
       )}
@@ -114,7 +116,7 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
           }
           style={{ fontSize: '0.75rem', fontWeight: 700 }}
         >
-          {member.role}
+          {member.role === 'Siswa' ? t.members.roleStudent : member.role}
         </span>
       </div>
 
@@ -122,13 +124,13 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
       <div
         style={{
           marginTop: 'auto',
-          borderTop: '1px solid var(--gray-100)',
+          borderTop: '1px solid var(--border-color)',
           paddingTop: '0.85rem',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.4rem',
           fontSize: '0.78rem',
-          color: 'var(--gray-500)',
+          color: 'var(--text-muted)',
           textAlign: 'left',
         }}
       >

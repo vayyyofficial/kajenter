@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Modal } from './Modal';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -18,13 +19,20 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  title = 'Konfirmasi Tindakan',
-  message = 'Apakah kamu yakin ingin melanjutkan tindakan ini? Tindakan ini tidak dapat dibatalkan.',
-  confirmLabel = 'Ya, Lanjutkan',
-  cancelLabel = 'Batal',
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
   isDangerous = true,
   isLoading = false,
 }) => {
+  const { t } = useLanguage();
+
+  const activeTitle = title || t.common.confirmTitle;
+  const activeMessage = message || t.common.confirmMessage;
+  const activeConfirmLabel = confirmLabel || t.common.yesContinue;
+  const activeCancelLabel = cancelLabel || t.common.cancel;
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="sm">
       <div style={{ textAlign: 'center', padding: '1rem 0.5rem 0.5rem 0.5rem' }}>
@@ -33,8 +41,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             width: 48,
             height: 48,
             borderRadius: '50%',
-            backgroundColor: isDangerous ? 'var(--danger-bg)' : 'var(--warning-bg)',
-            color: isDangerous ? 'var(--danger-main)' : 'var(--warning-main)',
+            backgroundColor: isDangerous ? 'rgba(220, 38, 38, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+            color: isDangerous ? 'var(--primary-500)' : 'var(--warning-main, #eab308)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -44,12 +52,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <AlertTriangle size={24} />
         </div>
 
-        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--gray-900)' }}>
-          {title}
+        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-main)' }}>
+          {activeTitle}
         </h3>
 
-        <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)', lineHeight: 1.5, marginBottom: '1.5rem' }}>
-          {message}
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+          {activeMessage}
         </p>
 
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
@@ -59,7 +67,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             disabled={isLoading}
             style={{ flex: 1 }}
           >
-            {cancelLabel}
+            {activeCancelLabel}
           </button>
           <button
             onClick={onConfirm}
@@ -67,7 +75,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             disabled={isLoading}
             style={{ flex: 1 }}
           >
-            {isLoading ? 'Memproses...' : confirmLabel}
+            {isLoading ? t.common.processing : activeConfirmLabel}
           </button>
         </div>
       </div>

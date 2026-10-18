@@ -1,11 +1,7 @@
-import { db } from './index.js';
+import { db, query } from './index.js';
 
 export function initializeDatabase() {
   db.exec(`
-    -- Drop legacy tasks and kas tables if they exist
-    DROP TABLE IF EXISTS tasks;
-    DROP TABLE IF EXISTS kas_periods;
-    DROP TABLE IF EXISTS payments;
 
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,8 +91,121 @@ export function initializeDatabase() {
       created_at TEXT NOT NULL
     );
 
+    -- Portal: Member Accounts for Student/Teacher Login
+    CREATE TABLE IF NOT EXISTS member_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      has_changed_password INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Portal: Kas Records (Weekly payments)
+    CREATE TABLE IF NOT EXISTS class_kas_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+      week_number INTEGER NOT NULL,
+      month_year TEXT NOT NULL,
+      amount INTEGER NOT NULL DEFAULT 3000,
+      status TEXT NOT NULL DEFAULT 'paid', -- 'paid' | 'unpaid'
+      paid_at TEXT,
+      recorded_by TEXT NOT NULL,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Portal: Tugas (Class assignments with deadline dates)
+    CREATE TABLE IF NOT EXISTS class_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      teacher_name TEXT,
+      deadline TEXT NOT NULL,
+      description TEXT,
+      notes TEXT,
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Portal: Jadwal Pelajaran (Subject schedules)
+    CREATE TABLE IF NOT EXISTS class_schedules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      day TEXT NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      teacher_name TEXT NOT NULL,
+      room TEXT,
+      order_index INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Portal: Jadwal Piket (Duty rosters)
+    CREATE TABLE IF NOT EXISTS piket_schedules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      day TEXT NOT NULL,
+      member_id INTEGER NULL REFERENCES members(id) ON DELETE SET NULL,
+      member_name TEXT NOT NULL,
+      tasks TEXT NOT NULL DEFAULT 'Membersihkan kelas dan merapikan perlengkapan',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Portal: 6-digit Verification Codes (Password and Email changes)
+    CREATE TABLE IF NOT EXISTS verification_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      code TEXT NOT NULL,
+      purpose TEXT NOT NULL, -- 'change_password' | 'change_email'
+      new_email TEXT NULL,
+      expires_at TEXT NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_members_type ON members(member_type);
     CREATE INDEX IF NOT EXISTS idx_members_attendance ON members(attendance_number);
     CREATE INDEX IF NOT EXISTS idx_gallery_date ON gallery(event_date);
+    CREATE INDEX IF NOT EXISTS idx_member_accounts_email ON member_accounts(email);
+    CREATE INDEX IF NOT EXISTS idx_member_accounts_member ON member_accounts(member_id);
+    CREATE INDEX IF NOT EXISTS idx_kas_member ON class_kas_records(member_id);
+    CREATE INDEX IF NOT EXISTS idx_kas_period ON class_kas_records(month_year, week_number);
+    CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON class_tasks(deadline);
+    CREATE INDEX IF NOT EXISTS idx_schedules_day ON class_schedules(day);
+    CREATE INDEX IF NOT EXISTS idx_piket_day ON piket_schedules(day);
+    CREATE INDEX IF NOT EXISTS idx_verification_email ON verification_codes(email, code);
   `);
+
+  // Safe Additive Migrations:
+  // 1. Ensure Developer role exists in roles_permissions
+  try {
+    db.exec(`
+      INSERT OR IGNORE INTO roles_permissions (role_name, can_manage_gallery, can_manage_members, can_manage_social, can_manage_settings, updated_at)
+      VALUES ('Developer', 1, 1, 1, 1, datetime('now'));
+    `);
+  } catch {
+    // ignore
+  }
+
+  // 2. Ensure fairuzziachmad@gmail.com is registered in members table (Attendance 02, Role Developer)
+  // Strictly additive: Never deletes, resets, or overwrites existing data
+  try {
+    const existingDev = query.get('SELECT id FROM members WHERE LOWER(TRIM(email)) = ?', 'fairuzziachmad@gmail.com');
+    if (!existingDev) {
+      const now = new Date().toISOString();
+      query.run(
+        `INSERT INTO members (attendance_number, full_name, nickname, birth_place, birth_date, email, role, member_type, photo_number, phone, created_at, updated_at)
+         VALUES (2, 'Fairuzzi Achmad', 'Fairuz', 'Surabaya', '2008-01-14', 'fairuzziachmad@gmail.com', 'Developer', 'siswa', '02', '+628123456702', ?, ?)`,
+        now,
+        now
+      );
+    }
+  } catch {
+    // ignore
+  }
 }

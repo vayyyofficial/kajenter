@@ -6,10 +6,12 @@ import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useNotifications } from '../../context/NotificationContext';
 import { useRealtimeSync } from '../../context/SyncContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { dataCache } from '../../services/dataCache';
 
 export const AdminSocial: React.FC = () => {
   const { addToast } = useNotifications();
+  const { t } = useLanguage();
   const [socials, setSocials] = useState<SocialMedia[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +34,7 @@ export const AdminSocial: React.FC = () => {
       const res = await api.social.getAll();
       if (res.success) setSocials(res.data);
     } catch (err: any) {
-      addToast('error', err.message || 'Gagal memuat media sosial.');
+      addToast('error', err.message || 'Failed to load social media.');
     } finally {
       setLoading(false);
     }
@@ -74,23 +76,23 @@ export const AdminSocial: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.platform || !formData.username || !formData.url) {
-      addToast('error', 'Platform, username, dan URL wajib diisi.');
+      addToast('error', 'Platform, username, and URL are required.');
       return;
     }
 
     try {
       if (editingItem) {
         await api.social.update(editingItem.id, formData);
-        addToast('success', 'Media sosial berhasil diperbarui.');
+        addToast('success', t.admin.saveSocialSuccess);
       } else {
         await api.social.create(formData);
-        addToast('success', 'Media sosial baru berhasil ditambahkan.');
+        addToast('success', t.admin.saveSocialSuccess);
       }
       dataCache.invalidate('social');
       setIsModalOpen(false);
       fetchSocials();
     } catch (err: any) {
-      addToast('error', err.message || 'Gagal menyimpan media sosial.');
+      addToast('error', err.message || 'Failed to save social media.');
     }
   };
 
@@ -100,11 +102,11 @@ export const AdminSocial: React.FC = () => {
       setIsDeleting(true);
       await api.social.delete(deleteId);
       dataCache.invalidate('social');
-      addToast('success', 'Media sosial berhasil dihapus.');
+      addToast('success', t.admin.deleteSocialSuccess);
       setDeleteId(null);
       fetchSocials();
     } catch (err: any) {
-      addToast('error', err.message || 'Gagal menghapus media sosial.');
+      addToast('error', err.message || 'Failed to delete social media.');
     } finally {
       setIsDeleting(false);
     }
@@ -114,46 +116,48 @@ export const AdminSocial: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--gray-900)' }}>Kelola Kontak Media Sosial Kelas</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)', margin: 0 }}>
-            Atur platform resmi kelas X ICP TKJ (Instagram, TikTok, dll.)
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>{t.admin.socialTitle}</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+            {t.admin.socialSubtitle}
           </p>
         </div>
 
         <button onClick={handleOpenAdd} className="btn btn-primary btn-sm">
           <Plus size={16} />
-          <span>Tambah Platform Baru</span>
+          <span>{t.admin.addSocialBtn}</span>
         </button>
       </div>
 
-      <div className="card" style={{ boxShadow: 'var(--shadow-md)' }}>
+      <div className="card" style={{ boxShadow: 'var(--shadow-md)', backgroundColor: 'var(--bg-card)' }}>
         <div className="table-container" style={{ border: 'none' }}>
           <table className="table">
             <thead>
               <tr>
-                <th>Platform</th>
-                <th>Username / Handle</th>
-                <th>Tautan Resmi (URL)</th>
-                <th>Status Tampil</th>
-                <th style={{ textAlign: 'center' }}>Aksi</th>
+                <th>{t.admin.colSocialPlatform}</th>
+                <th>{t.admin.colSocialUsername}</th>
+                <th>{t.admin.colSocialUrl}</th>
+                <th>{t.admin.colSocialStatus}</th>
+                <th style={{ textAlign: 'center' }}>{t.admin.colActions}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>Memuat media sosial...</td>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                    {t.common.loading}
+                  </td>
                 </tr>
               ) : socials.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>
-                    Belum ada platform media sosial.
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                    {t.admin.emptySocial}
                   </td>
                 </tr>
               ) : (
                 socials.map((s) => (
                   <tr key={s.id}>
                     <td>
-                      <strong style={{ color: 'var(--gray-900)' }}>{s.platform}</strong>
+                      <strong style={{ color: 'var(--text-main)' }}>{s.platform}</strong>
                     </td>
                     <td>
                       <span className="badge badge-primary" style={{ fontSize: '0.75rem' }}>
@@ -173,17 +177,17 @@ export const AdminSocial: React.FC = () => {
                     </td>
                     <td>
                       {s.is_active === 1 ? (
-                        <span className="badge badge-success">Aktif</span>
+                        <span className="badge badge-success">{t.admin.statusActive}</span>
                       ) : (
-                        <span className="badge badge-neutral">Nonaktif</span>
+                        <span className="badge badge-neutral">{t.admin.statusInactive}</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                        <button onClick={() => handleOpenEdit(s)} className="btn-icon" style={{ padding: '0.35rem' }} title="Edit">
+                        <button onClick={() => handleOpenEdit(s)} className="btn-icon" style={{ padding: '0.35rem' }} title={t.admin.edit}>
                           <Edit2 size={16} />
                         </button>
-                        <button onClick={() => setDeleteId(s.id)} className="btn-icon" style={{ color: 'var(--danger-main)', padding: '0.35rem' }} title="Hapus">
+                        <button onClick={() => setDeleteId(s.id)} className="btn-icon" style={{ color: 'var(--danger-main)', padding: '0.35rem' }} title={t.admin.delete}>
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -199,12 +203,12 @@ export const AdminSocial: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingItem ? 'Edit Media Sosial' : 'Tambah Media Sosial Baru'}
+        title={editingItem ? t.admin.editSocialTitle : t.admin.addSocialTitle}
         size="sm"
       >
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="form-group">
-            <label className="form-label">Platform Sosial Media *</label>
+            <label className="form-label">{t.admin.socialPlatformLabel}</label>
             <select
               value={formData.platform}
               onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
@@ -221,7 +225,7 @@ export const AdminSocial: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Username / Akun *</label>
+            <label className="form-label">{t.admin.socialUsernameLabel}</label>
             <input
               type="text"
               value={formData.username}
@@ -233,7 +237,7 @@ export const AdminSocial: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Tautan Web / URL Lengkap *</label>
+            <label className="form-label">{t.admin.socialUrlLabel}</label>
             <input
               type="url"
               value={formData.url}
@@ -252,17 +256,17 @@ export const AdminSocial: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
               style={{ width: 16, height: 16, accentColor: 'var(--primary-600)' }}
             />
-            <label htmlFor="isActiveCheck" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)', cursor: 'pointer' }}>
-              Aktifkan dan tampilkan di halaman kontak publik
+            <label htmlFor="isActiveCheck" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer' }}>
+              {t.admin.socialActiveLabel}
             </label>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
             <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">
-              Batal
+              {t.common.cancel}
             </button>
             <button type="submit" className="btn btn-primary">
-              Simpan Media Sosial
+              {t.admin.saveSocialBtn}
             </button>
           </div>
         </form>
@@ -272,8 +276,8 @@ export const AdminSocial: React.FC = () => {
         isOpen={deleteId !== null}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title="Hapus Media Sosial"
-        message="Apakah Anda yakin ingin menghapus tautan media sosial ini?"
+        title={t.admin.confirmDeleteTitle}
+        message={t.admin.confirmDeleteSocialMsg}
         isLoading={isDeleting}
       />
     </div>

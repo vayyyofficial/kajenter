@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Lock, AlertCircle, X, Eye, EyeOff } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface SecretAdminModalProps {
   onSuccessNavigate?: (route: string) => void;
 }
 
 export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNavigate }) => {
+  const { t } = useLanguage();
   const {
     secretModalOpen,
     closeSecretModal,
@@ -69,7 +71,7 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
         window.dispatchEvent(new PopStateEvent('popstate'));
       }
     } else {
-      setErrorMsg(res.error || 'Password salah. Silakan coba lagi.');
+      setErrorMsg(res.error || t.secretAdmin.wrongPassword);
       setPassword('');
       setTimeout(() => {
         inputRef.current?.focus();
@@ -81,8 +83,8 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
     <div
       className="modal-overlay"
       style={{
-        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        backdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(5, 10, 24, 0.85)',
+        backdropFilter: 'blur(10px)',
         zIndex: 2000,
         display: 'flex',
         alignItems: 'center',
@@ -101,10 +103,10 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
         style={{
           width: '100%',
           maxWidth: '420px',
-          backgroundColor: '#ffffff',
+          backgroundColor: 'var(--bg-surface)',
           borderRadius: 'var(--radius-lg)',
-          boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
-          border: '1px solid var(--gray-200)',
+          boxShadow: 'var(--shadow-xl)',
+          border: '1px solid var(--border-color)',
           overflow: 'hidden',
           padding: '2rem 1.75rem',
           position: 'relative',
@@ -115,12 +117,12 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
         <button
           onClick={closeSecretModal}
           disabled={isSubmitting}
-          aria-label="Tutup Modal"
+          aria-label={t.secretAdmin.close}
           style={{
             position: 'absolute',
             top: '1.25rem',
             right: '1.25rem',
-            color: 'var(--gray-400)',
+            color: 'var(--text-muted)',
             cursor: 'pointer',
             padding: '0.35rem',
             borderRadius: 'var(--radius-sm)',
@@ -131,8 +133,8 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
             justifyContent: 'center',
             transition: 'color var(--transition-fast)',
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--gray-800)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gray-400)')}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-main)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
         >
           <X size={18} />
         </button>
@@ -160,15 +162,15 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
             style={{
               fontSize: '1.35rem',
               fontWeight: 800,
-              color: 'var(--gray-900)',
+              color: 'var(--text-main)',
               letterSpacing: '-0.02em',
               marginBottom: '0.35rem',
             }}
           >
-            Enter the Password
+            {t.secretAdmin.title}
           </h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)', lineHeight: 1.45, margin: 0 }}>
-            Masukkan password verifikasi untuk mengakses panel pengelolaan.
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.45, margin: 0 }}>
+            {t.secretAdmin.subtitle}
           </p>
         </div>
 
@@ -176,14 +178,14 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
         {errorMsg && (
           <div
             style={{
-              backgroundColor: 'var(--primary-50)',
-              border: '1px solid var(--primary-200)',
+              backgroundColor: 'var(--danger-bg)',
+              border: '1px solid var(--danger-border)',
               borderRadius: 'var(--radius-md)',
               padding: '0.75rem 1rem',
               display: 'flex',
               alignItems: 'center',
               gap: '0.65rem',
-              color: 'var(--primary-800)',
+              color: 'var(--danger-text)',
               fontSize: '0.825rem',
               marginBottom: '1.25rem',
               lineHeight: 1.45,
@@ -201,7 +203,7 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
               <input
                 ref={inputRef}
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Password"
+                placeholder={t.secretAdmin.placeholder}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isSubmitting}
@@ -210,8 +212,9 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
                   height: '46px',
                   fontSize: '0.95rem',
                   paddingRight: '2.75rem',
-                  backgroundColor: '#ffffff',
-                  borderColor: errorMsg ? 'var(--primary-500)' : 'var(--gray-300)',
+                  backgroundColor: 'var(--bg-input)',
+                  color: 'var(--text-main)',
+                  borderColor: errorMsg ? 'var(--primary-500)' : 'var(--border-color)',
                 }}
                 autoComplete="current-password"
               />
@@ -219,13 +222,13 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
-                aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
                 style={{
                   position: 'absolute',
                   right: '0.85rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: 'var(--gray-400)',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: '0.25rem',
                   border: 'none',
@@ -253,7 +256,7 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
                 justifyContent: 'center',
               }}
             >
-              Cancel
+              {t.common.cancel}
             </button>
 
             <button
@@ -263,12 +266,13 @@ export const SecretAdminModal: React.FC<SecretAdminModalProps> = ({ onSuccessNav
               style={{
                 height: '44px',
                 fontWeight: 700,
+                color: '#ffffff',
                 justifyContent: 'center',
                 opacity: !password.trim() ? 0.6 : 1,
                 cursor: !password.trim() ? 'not-allowed' : 'pointer',
               }}
             >
-              {isSubmitting ? 'Verifying...' : 'Enter'}
+              {isSubmitting ? t.secretAdmin.submitting : t.secretAdmin.submit}
             </button>
           </div>
         </form>

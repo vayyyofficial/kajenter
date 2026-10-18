@@ -10,8 +10,21 @@ export interface AdminTokenPayload {
   exp?: number;
 }
 
+export interface MemberTokenPayload {
+  memberId: number | string;
+  email: string;
+  role: string;
+  type: 'member';
+  iat?: number;
+  exp?: number;
+}
+
 export interface AuthenticatedAdminRequest extends Request {
   admin?: AdminTokenPayload;
+}
+
+export interface AuthenticatedMemberRequest extends Request {
+  memberUser?: MemberTokenPayload;
 }
 
 /**
@@ -51,6 +64,87 @@ export function requireAdmin(req: AuthenticatedAdminRequest, res: Response, next
       code: 'INVALID_TOKEN'
     });
   }
+}
+
+/**
+ * Server-side protection for Portal Kelas Member access
+ */
+export async function requireMemberAuth(req: AuthenticatedMemberRequest, res: Response, next: NextFunction): Promise<void> {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+  if (!token) {
+    res.status(401).json({
+      success: false,
+      error: 'Akses ditolak. Sesi login anggota kelas diperlukan.',
+      code: 'UNAUTHORIZED_MEMBER'
+    });
+    return;
+  }
+
+  try {
+    const decoded = jwt.verify(token, CONFIG.JWT_SECRET) as MemberTokenPayload;
+    if (decoded.type !== 'member' || !decoded.memberId) {
+      res.status(403).json({
+        success: false,
+        error: 'Token bukan merupakan token anggota kelas.',
+        code: 'FORBIDDEN'
+      });
+      return;
+    }
+
+    // Verify member still exists in database and get fresh role
+    const currentMember = await dbService.members.getById(decoded.memberId);
+    if (!currentMember) {
+      res.status(401).json({
+        success: false,
+        error: 'Data anggota tidak ditemukan di database.',
+        code: 'MEMBER_NOT_FOUND'
+      });
+      return;
+    }
+
+    // Update role in request to live database role
+    req.memberUser = {
+      ...decoded,
+      email: currentMember.email,
+      role: currentMember.role,
+    };
+    next();
+  } catch (_err) {
+    res.status(401).json({
+      success: false,
+      error: 'Sesi login telah kedaluwarsa. Silakan login kembali.',
+      code: 'EXPIRED_SESSION'
+    });
+  }
+}
+
+/**
+ * Role-based permission guard for Portal features
+ */
+export function requireRole(allowedRoles: string[]) {
+  return (req: AuthenticatedMemberRequest, res: Response, next: NextFunction): void => {
+    if (!req.memberUser) {
+      res.status(401).json({ success: false, error: 'Otentikasi diperlukan.' });
+      return;
+    }
+
+    const currentRole = req.memberUser.role;
+    // 'Developer' always has full class permissions
+    const isAllowed = currentRole === 'Developer' || allowedRoles.includes(currentRole);
+
+    if (!isAllowed) {
+      res.status(403).json({
+        success: false,
+        error: `Aksi ini hanya dapat dilakukan oleh role: ${allowedRoles.join(', ')} atau Developer.`,
+        code: 'PERMISSION_DENIED'
+      });
+      return;
+    }
+
+    next();
+  };
 }
 
 /**

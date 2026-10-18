@@ -3,9 +3,11 @@ import { Clock, User, RefreshCw } from 'lucide-react';
 import type { ActivityLog } from '../../types';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const AdminAuditLogs: React.FC = () => {
   const { addToast } = useNotifications();
+  const { t, language } = useLanguage();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,7 +17,7 @@ export const AdminAuditLogs: React.FC = () => {
       const res = await api.admin.getAuditLogs(60);
       if (res.success) setLogs(res.data);
     } catch (err: any) {
-      addToast('error', err.message || 'Gagal memuat log aktivitas.');
+      addToast('error', err.message || 'Failed to load audit logs.');
     } finally {
       setLoading(false);
     }
@@ -25,45 +27,49 @@ export const AdminAuditLogs: React.FC = () => {
     fetchLogs();
   }, [fetchLogs]);
 
+  const locale = language === 'en' ? 'en-US' : 'id-ID';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--gray-900)' }}>
-            Log Aktivitas & Jejak Audit (Audit Trail)
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            {t.admin.auditTitle}
           </h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)', margin: 0 }}>
-            Rekaman historis seluruh aksi administratif yang dilakukan oleh Super Admin, Pengurus, dan Guru
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+            {t.admin.auditSubtitle}
           </p>
         </div>
 
         <button onClick={fetchLogs} className="btn btn-secondary btn-sm" disabled={loading}>
           <RefreshCw size={14} className={loading ? 'spin' : ''} />
-          <span>Muat Ulang Log</span>
+          <span>{t.admin.refreshLogsBtn}</span>
         </button>
       </div>
 
-      <div className="card" style={{ boxShadow: 'var(--shadow-md)' }}>
+      <div className="card" style={{ boxShadow: 'var(--shadow-md)', backgroundColor: 'var(--bg-card)' }}>
         <div className="table-container" style={{ border: 'none' }}>
           <table className="table">
             <thead>
               <tr>
-                <th style={{ width: '180px' }}>Waktu & Tanggal</th>
-                <th>Pelaksana Aksi</th>
-                <th>Jenis Aksi</th>
-                <th>Entitas</th>
-                <th>Rincian Aktivitas</th>
+                <th style={{ width: '180px' }}>{t.admin.colAuditTime}</th>
+                <th>{t.admin.colAuditActor}</th>
+                <th>{t.admin.colAuditAction}</th>
+                <th>{t.admin.colAuditEntity}</th>
+                <th>{t.admin.colAuditDetails}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>Memuat riwayat audit...</td>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                    {t.admin.loadingAudit}
+                  </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>
-                    Belum ada riwayat aktivitas yang tercatat.
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                    {t.admin.emptyAudit}
                   </td>
                 </tr>
               ) : (
@@ -88,11 +94,11 @@ export const AdminAuditLogs: React.FC = () => {
 
                   return (
                     <tr key={log.id}>
-                      <td style={{ fontSize: '0.8125rem', color: 'var(--gray-600)' }}>
+                      <td style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <Clock size={13} color="var(--primary-600)" />
                           <span>
-                            {new Date(log.created_at).toLocaleString('id-ID', {
+                            {new Date(log.created_at).toLocaleString(locale, {
                               day: 'numeric',
                               month: 'short',
                               year: 'numeric',
@@ -104,8 +110,8 @@ export const AdminAuditLogs: React.FC = () => {
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <User size={14} color="var(--gray-500)" />
-                          <strong style={{ color: 'var(--gray-900)', fontSize: '0.85rem' }}>{log.user_name}</strong>
+                          <User size={14} color="var(--text-muted)" />
+                          <strong style={{ color: 'var(--text-main)', fontSize: '0.85rem' }}>{log.user_name}</strong>
                         </div>
                       </td>
                       <td>
@@ -126,7 +132,7 @@ export const AdminAuditLogs: React.FC = () => {
                           {log.entity_type}
                         </span>
                       </td>
-                      <td style={{ fontSize: '0.85rem', color: 'var(--gray-700)' }}>
+                      <td style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>
                         {log.details}
                       </td>
                     </tr>

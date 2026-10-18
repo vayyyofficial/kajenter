@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Save, Sparkles, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { BRANDING } from '../../config/branding';
 
 export const AdminWebsiteSettings: React.FC = () => {
   const { addToast } = useNotifications();
+  const { t } = useLanguage();
 
   const [formData, setFormData] = useState({
     className: BRANDING.name,
@@ -40,9 +42,9 @@ export const AdminWebsiteSettings: React.FC = () => {
         logoUrl: formData.logoUrl,
         classDescription: formData.classDescription,
       });
-      addToast('success', 'Pengaturan website berhasil disimpan.');
+      addToast('success', t.admin.settingsSaved);
     } catch (err: any) {
-      addToast('error', err.message || 'Gagal menyimpan pengaturan.');
+      addToast('error', err.message || 'Failed to save settings.');
     } finally {
       setIsSaving(false);
     }
@@ -51,7 +53,7 @@ export const AdminWebsiteSettings: React.FC = () => {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
       {/* Form Settings */}
-      <div className="card" style={{ padding: '1.75rem' }}>
+      <div className="card" style={{ padding: '1.75rem', backgroundColor: 'var(--bg-card)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
           <div
             style={{
@@ -68,18 +70,18 @@ export const AdminWebsiteSettings: React.FC = () => {
             <Settings size={22} />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--gray-900)' }}>
-              Pengaturan Identitas Website
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
+              {t.admin.websiteSettingsTitle}
             </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--gray-500)', margin: 0 }}>
-              Konfigurasi penamaan dan deskripsi umum kelas
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+              {t.admin.websiteSettingsSubtitle}
             </p>
           </div>
         </div>
 
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Nama Kelas Resmi</label>
+            <label className="form-label">{t.admin.classNameLabel}</label>
             <input
               type="text"
               value={formData.className}
@@ -90,7 +92,7 @@ export const AdminWebsiteSettings: React.FC = () => {
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Program Kejuruan / Sekolah</label>
+            <label className="form-label">{t.admin.schoolProgramLabel}</label>
             <input
               type="text"
               value={formData.schoolProgram}
@@ -101,7 +103,7 @@ export const AdminWebsiteSettings: React.FC = () => {
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Path File Logo Utama</label>
+            <label className="form-label">{t.admin.logoUrlLabel}</label>
             <input
               type="text"
               value={formData.logoUrl}
@@ -109,13 +111,13 @@ export const AdminWebsiteSettings: React.FC = () => {
               className="form-input"
               required
             />
-            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', display: 'block', marginTop: '0.35rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.35rem' }}>
               Default: <code>/assets/Logo-Kelas.png</code>
             </span>
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Deskripsi Singkat Website</label>
+            <label className="form-label">{t.admin.classDescLabel}</label>
             <textarea
               rows={3}
               value={formData.classDescription}
@@ -131,17 +133,17 @@ export const AdminWebsiteSettings: React.FC = () => {
             style={{ height: '44px', fontWeight: 700, marginTop: '0.5rem' }}
           >
             {isSaving || loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            <span>{isSaving ? 'Menyimpan...' : loading ? 'Memuat Pengaturan...' : 'Simpan Pengaturan'}</span>
+            <span>{isSaving ? t.common.saving : loading ? t.common.loading : t.admin.saveSettingsBtn}</span>
           </button>
         </form>
       </div>
 
       {/* Centralized Logo & Branding Preview (Requirement #15 & #16) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        <div className="card" style={{ padding: '1.75rem', textAlign: 'center' }}>
+        <div className="card" style={{ padding: '1.75rem', textAlign: 'center', backgroundColor: 'var(--bg-card)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1.25rem', color: 'var(--primary-600)', fontWeight: 700, fontSize: '0.85rem' }}>
             <Sparkles size={16} />
-            <span>Sistem Branding Tersentralisasi</span>
+            <span>{t.admin.brandingPreviewTitle}</span>
           </div>
 
           <div
@@ -170,30 +172,29 @@ export const AdminWebsiteSettings: React.FC = () => {
             />
           </div>
 
-          <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--gray-900)', marginBottom: '0.25rem' }}>
+          <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.25rem' }}>
             {formData.className}
           </h4>
-          <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)', display: 'block', marginBottom: '1.25rem' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '1.25rem' }}>
             {formData.schoolProgram}
           </span>
 
           <div
             style={{
-              backgroundColor: 'var(--gray-50)',
-              border: '1px solid var(--gray-200)',
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-md)',
               padding: '1rem',
               textAlign: 'left',
               fontSize: '0.8125rem',
-              color: 'var(--gray-600)',
+              color: 'var(--text-muted)',
               lineHeight: 1.55,
             }}
           >
-            <strong style={{ color: 'var(--gray-900)', display: 'block', marginBottom: '0.25rem' }}>
-              Aturan Logo (Requirement #16):
+            <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '0.25rem' }}>
+              {t.admin.brandingRuleTitle}
             </strong>
-            Seluruh halaman (Navbar, Footer, Admin Panel, dan Favicon) terhubung ke sumber logo yang sama di folder <code>public/assets/Logo-Kelas.png</code>.
-            Jika file tersebut diganti, logo otomatis terbarui di seluruh sistem tanpa perlu edit kode secara manual.
+            {t.admin.brandingRuleDesc}
           </div>
         </div>
       </div>

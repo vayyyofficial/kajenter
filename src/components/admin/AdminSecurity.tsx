@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Lock, KeyRound, AlertCircle, CheckCircle2, LogOut } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
 
 export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const { changePassword, logout } = useAdmin();
   const { addToast } = useNotifications();
+  const { t, language } = useLanguage();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -31,17 +33,17 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
     setSuccessMsg(null);
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setErrorMsg('Semua kolom password wajib diisi.');
+      setErrorMsg(t.admin.passwordRequired);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setErrorMsg('Password baru dan konfirmasi password tidak cocok.');
+      setErrorMsg(t.admin.passwordMismatch);
       return;
     }
 
     if (newPassword.length < 6) {
-      setErrorMsg('Password baru minimal 6 karakter.');
+      setErrorMsg(t.admin.passwordMinLength);
       return;
     }
 
@@ -50,21 +52,21 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
     setIsSubmitting(false);
 
     if (res.success) {
-      addToast('success', res.message || 'Password admin berhasil diubah.');
-      setSuccessMsg('Password admin berhasil diubah dengan aman.');
+      addToast('success', res.message || t.admin.passwordChangedSuccess);
+      setSuccessMsg(t.admin.passwordChangedSuccess);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setLastPasswordChange(new Date().toISOString());
     } else {
-      setErrorMsg(res.error || 'Gagal mengubah password admin.');
-      addToast('error', res.error || 'Gagal mengubah password.');
+      setErrorMsg(res.error || 'Failed to update password.');
+      addToast('error', res.error || 'Failed to update password.');
     }
   };
 
   const handleLogout = () => {
     logout();
-    addToast('info', 'Sesi admin telah ditutup.');
+    addToast('info', t.admin.sessionClosed);
     if (onLogout) {
       onLogout();
     } else {
@@ -73,10 +75,12 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
     }
   };
 
+  const locale = language === 'en' ? 'en-US' : 'id-ID';
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
       {/* Left: Change Password Form (Requirement #13) */}
-      <div className="card" style={{ padding: '1.75rem' }}>
+      <div className="card" style={{ padding: '1.75rem', backgroundColor: 'var(--bg-card)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
           <div
             style={{
@@ -93,11 +97,11 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
             <KeyRound size={22} />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--gray-900)' }}>
-              Ganti Password Admin
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
+              {t.admin.changePasswordTitle}
             </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--gray-500)', margin: 0 }}>
-              Perbarui kredensial rahasia pengelola website
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+              {t.admin.changePasswordSubtitle}
             </p>
           </div>
         </div>
@@ -144,10 +148,10 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
 
         <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Password Saat Ini</label>
+            <label className="form-label">{t.admin.currentPasswordLabel}</label>
             <input
               type="password"
-              placeholder="Masukkan password saat ini"
+              placeholder={t.admin.currentPasswordPlaceholder}
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               className="form-input"
@@ -157,10 +161,10 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Password Baru</label>
+            <label className="form-label">{t.admin.newPasswordLabel}</label>
             <input
               type="password"
-              placeholder="Minimal 6 karakter"
+              placeholder={t.admin.newPasswordPlaceholder}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="form-input"
@@ -170,10 +174,10 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Konfirmasi Password Baru</label>
+            <label className="form-label">{t.admin.confirmPasswordLabel}</label>
             <input
               type="password"
-              placeholder="Ulangi password baru"
+              placeholder={t.admin.confirmPasswordPlaceholder}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="form-input"
@@ -189,14 +193,14 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
             style={{ marginTop: '0.5rem', height: '44px', fontWeight: 700 }}
           >
             <Lock size={16} />
-            <span>{isSubmitting ? 'Menyimpan...' : 'Simpan Password Baru'}</span>
+            <span>{isSubmitting ? t.common.saving : t.admin.saveNewPasswordBtn}</span>
           </button>
         </form>
       </div>
 
       {/* Right: Security Status & Policy (Requirement #8, #9, #10, #35) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        <div className="card" style={{ padding: '1.75rem' }}>
+        <div className="card" style={{ padding: '1.75rem', backgroundColor: 'var(--bg-card)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
             <div
               style={{
@@ -213,11 +217,11 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
               <ShieldCheck size={22} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--gray-900)' }}>
-                Status Keamanan Sistem
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                {t.admin.securityStatusTitle}
               </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--gray-500)', margin: 0 }}>
-                Arsitektur proteksi server-side aktif
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                {t.admin.securityStatusSubtitle}
               </p>
             </div>
           </div>
@@ -226,51 +230,51 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
             <div
               style={{
                 padding: '0.75rem 1rem',
-                backgroundColor: 'var(--gray-50)',
+                backgroundColor: 'var(--bg-surface)',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--gray-200)',
+                border: '1px solid var(--border-color)',
               }}
             >
-              <span style={{ color: 'var(--gray-500)', fontSize: '0.75rem', display: 'block' }}>Metode Hashing Password</span>
-              <strong style={{ color: 'var(--gray-900)' }}>Bcrypt Salted Hash (Server-side)</strong>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'block' }}>{t.admin.hashMethodLabel}</span>
+              <strong style={{ color: 'var(--text-main)' }}>{t.admin.hashMethodVal}</strong>
             </div>
 
             <div
               style={{
                 padding: '0.75rem 1rem',
-                backgroundColor: 'var(--gray-50)',
+                backgroundColor: 'var(--bg-surface)',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--gray-200)',
+                border: '1px solid var(--border-color)',
               }}
             >
-              <span style={{ color: 'var(--gray-500)', fontSize: '0.75rem', display: 'block' }}>Kebijakan Keamanan Kredensial</span>
-              <strong style={{ color: 'var(--gray-900)' }}>Audit Log Realtime & Proteksi Akses Server-Side</strong>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'block' }}>{t.admin.policyLabel}</span>
+              <strong style={{ color: 'var(--text-main)' }}>{t.admin.policyVal}</strong>
             </div>
 
             <div
               style={{
                 padding: '0.75rem 1rem',
-                backgroundColor: 'var(--gray-50)',
+                backgroundColor: 'var(--bg-surface)',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--gray-200)',
+                border: '1px solid var(--border-color)',
               }}
             >
-              <span style={{ color: 'var(--gray-500)', fontSize: '0.75rem', display: 'block' }}>Sesi Otentikasi Admin</span>
-              <strong style={{ color: 'var(--gray-900)' }}>JWT Token Terenkripsi (Kedaluwarsa 8 Jam)</strong>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'block' }}>{t.admin.sessionLabel}</span>
+              <strong style={{ color: 'var(--text-main)' }}>{t.admin.sessionVal}</strong>
             </div>
 
             {lastPasswordChange && (
               <div
                 style={{
                   padding: '0.75rem 1rem',
-                  backgroundColor: 'var(--gray-50)',
+                  backgroundColor: 'var(--bg-surface)',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--gray-200)',
+                  border: '1px solid var(--border-color)',
                 }}
               >
-                <span style={{ color: 'var(--gray-500)', fontSize: '0.75rem', display: 'block' }}>Terakhir Diperbarui</span>
-                <strong style={{ color: 'var(--gray-900)' }}>
-                  {new Date(lastPasswordChange).toLocaleDateString('id-ID', {
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'block' }}>{t.admin.lastUpdatedLabel}</span>
+                <strong style={{ color: 'var(--text-main)' }}>
+                  {new Date(lastPasswordChange).toLocaleDateString(locale, {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric',
@@ -284,12 +288,12 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
         </div>
 
         {/* Session Termination Card */}
-        <div className="card" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary-600)' }}>
-          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--gray-900)', marginBottom: '0.35rem' }}>
-            Tutup Sesi Admin
+        <div className="card" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary-600)', backgroundColor: 'var(--bg-card)' }}>
+          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.35rem' }}>
+            {t.admin.terminateSessionTitle}
           </h4>
-          <p style={{ fontSize: '0.85rem', color: 'var(--gray-600)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-            Keluar dari Secret Admin Panel dan hancurkan sesi token aktif. Password rahasia akan diminta kembali saat masuk.
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+            {t.admin.terminateSessionDesc}
           </p>
           <button
             onClick={handleLogout}
@@ -297,7 +301,7 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
             style={{ width: '100%', height: '42px', fontWeight: 700 }}
           >
             <LogOut size={16} />
-            <span>Logout dari Admin Panel</span>
+            <span>{t.admin.logoutAdminBtn}</span>
           </button>
         </div>
       </div>

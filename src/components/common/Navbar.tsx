@@ -3,12 +3,17 @@ import { Menu, X, ArrowUpRight } from 'lucide-react';
 import { BRANDING } from '../../config/branding';
 import { lockScroll, unlockScroll } from '../../utils/scrollLock';
 
+import { useLanguage } from '../../context/LanguageContext';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeToggle } from './ThemeToggle';
+
 interface NavbarProps {
   currentRoute: string;
   onNavigate: (route: string) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
+  const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -72,12 +77,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
     onNavigate(routeOrPath);
   };
 
-  // Requirement: Main website has ONLY Beranda, Galeri, Anggota, Contact with proper paths
+  // Dynamic translated nav items
   const navItems = [
-    { id: 'beranda', path: '/beranda', label: 'Beranda' },
-    { id: 'galeri', path: '/galeri', label: 'Galeri' },
-    { id: 'anggota', path: '/anggota', label: 'Anggota' },
-    { id: 'contact', path: '/contact', label: 'Contact' },
+    { id: 'beranda', path: '/beranda', label: t.nav.home },
+    { id: 'galeri', path: '/galeri', label: t.nav.gallery },
+    { id: 'anggota', path: '/anggota', label: t.nav.members },
+    { id: 'contact', path: '/contact', label: t.nav.contact },
+    { id: 'portal', path: '/portal', label: t.nav.portal },
   ];
 
   return (
@@ -187,8 +193,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
             </ul>
           </nav>
 
-          {/* Desktop CTA Action Button */}
+          {/* Desktop CTA & Controls Action Bar */}
           <div className="navbar-desktop-actions">
+            <ThemeToggle />
+            <LanguageSwitcher />
             <a
               href="/contact"
               onClick={(e) => {
@@ -205,31 +213,35 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
                 textDecoration: 'none',
               }}
             >
-              <span>Hubungi Kami</span>
+              <span>{t.nav.contactUs}</span>
               <ArrowUpRight size={15} />
             </a>
           </div>
 
           {/* ========================================================= */}
           {/* MOBILE HAMBURGER BUTTON: Visible ONLY on Mobile (< 992px) */}
-          {/* Requirement #8 & #9: Sembunyikan desktop sepenuhnya       */}
           {/* ========================================================= */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="navbar-mobile-toggle btn-icon"
-            aria-label={mobileMenuOpen ? 'Tutup navigasi' : 'Buka navigasi'}
-            aria-expanded={mobileMenuOpen}
-            style={{
-              color: 'var(--gray-800)',
-              padding: '0.5rem',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: mobileMenuOpen ? 'var(--gray-100)' : 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div className="navbar-mobile-toggle">
+              <ThemeToggle />
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="navbar-mobile-toggle btn-icon"
+              aria-label={mobileMenuOpen ? t.nav.closeNavigation : t.nav.openNavigation}
+              aria-expanded={mobileMenuOpen}
+              style={{
+                color: 'var(--gray-800)',
+                padding: '0.5rem',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: mobileMenuOpen ? 'var(--gray-100)' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -262,8 +274,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
               right: isScrolled ? '0.75rem' : 0,
               maxWidth: isScrolled ? '540px' : '100%',
               margin: isScrolled ? '0 auto' : '0',
-              backgroundColor: '#ffffff',
-              boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.22)',
+              backgroundColor: 'var(--white)',
+              boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.35)',
               border: '1px solid var(--gray-200)',
               borderBottom: '2px solid var(--primary-600)',
               borderRadius: isScrolled ? 'var(--radius-lg)' : '0 0 var(--radius-lg) var(--radius-lg)',
@@ -276,6 +288,26 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
               pointerEvents: 'auto',
             }}
           >
+            {/* Mobile Controls Header Bar */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingBottom: '0.75rem',
+                borderBottom: '1px solid var(--gray-200)',
+                marginBottom: '0.25rem',
+              }}
+            >
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--gray-500)', textTransform: 'uppercase' }}>
+                Preferences
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <ThemeToggle />
+                <LanguageSwitcher />
+              </div>
+            </div>
+
             {navItems.map((item) => {
               const isActive = currentRoute === item.id;
               return (
@@ -338,7 +370,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
                   boxSizing: 'border-box',
                 }}
               >
-                <span>Hubungi Kami</span>
+                <span>{t.nav.contactUs}</span>
                 <ArrowUpRight size={16} />
               </a>
             </div>

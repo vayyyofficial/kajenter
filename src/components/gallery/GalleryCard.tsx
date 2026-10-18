@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Tag, ZoomIn, Camera } from 'lucide-react';
 import { GalleryItem } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface GalleryCardProps {
   item: GalleryItem;
@@ -8,6 +9,7 @@ interface GalleryCardProps {
 }
 
 export const GalleryCard: React.FC<GalleryCardProps> = ({ item, onClick }) => {
+  const { t, language } = useLanguage();
   const [imageLoaded, setImageLoaded] = useState(false);
 
   return (
@@ -88,7 +90,7 @@ export const GalleryCard: React.FC<GalleryCardProps> = ({ item, onClick }) => {
                 boxShadow: 'var(--shadow-sm)',
               }}
             >
-              <span>{item.photos.length} Foto</span>
+              <span>{item.photos.length} {t.gallery.photoCount}</span>
             </span>
           </div>
         )}
@@ -178,7 +180,7 @@ export const GalleryCard: React.FC<GalleryCardProps> = ({ item, onClick }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Calendar size={13} color="var(--primary-600)" />
             <span>
-              {new Date(item.event_date).toLocaleDateString('id-ID', {
+              {new Date(item.event_date).toLocaleDateString(language === 'en' ? 'en-US' : 'id-ID', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric',
@@ -194,7 +196,7 @@ export const GalleryCard: React.FC<GalleryCardProps> = ({ item, onClick }) => {
               fontWeight: 600,
               color: 'var(--gray-700)',
             }}
-            title={`Dokumentator: ${item.created_by}`}
+            title={`${t.galleryViewer.photographer} ${item.created_by}`}
           >
             <Camera size={13} color="var(--primary-600)" />
             <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -12,13 +12,15 @@ import { GaleriPage } from './pages/GaleriPage';
 import { AnggotaPage } from './pages/AnggotaPage';
 import { ContactPage } from './pages/ContactPage';
 import { AdminPage } from './pages/AdminPage';
+import { PortalPage } from './pages/PortalPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { MemberAuthProvider } from './context/MemberAuthContext';
 
 import './styles/index.css';
 import './styles/components.css';
 
 export interface ResolvedRoute {
-  id: string; // 'beranda' | 'galeri' | 'anggota' | 'contact' | 'admin' | 'notfound'
+  id: string; // 'beranda' | 'galeri' | 'anggota' | 'contact' | 'admin' | 'portal' | 'notfound'
   path: string;
 }
 
@@ -40,6 +42,9 @@ export function parsePath(pathname: string): ResolvedRoute {
   if (clean === 'admin' || clean.startsWith('admin/')) {
     return { id: 'admin', path: '/admin' };
   }
+  if (clean === 'portal' || clean.startsWith('portal/')) {
+    return { id: 'portal', path: pathname };
+  }
 
   return { id: 'notfound', path: pathname };
 }
@@ -48,7 +53,7 @@ function getInitialPath(): string {
   if (typeof window === 'undefined') return '/beranda';
   if (window.location.hash) {
     const hashClean = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-    if (['beranda', 'galeri', 'anggota', 'contact', 'admin'].includes(hashClean)) {
+    if (['beranda', 'galeri', 'anggota', 'contact', 'admin', 'portal'].includes(hashClean)) {
       const target = `/${hashClean}`;
       window.history.replaceState(null, '', target);
       return target;
@@ -56,6 +61,8 @@ function getInitialPath(): string {
   }
   return window.location.pathname || '/beranda';
 }
+
+import { DueTomorrowNotification } from './components/common/DueTomorrowNotification';
 
 export function AppContent() {
   const [currentPath, setCurrentPath] = useState<string>(getInitialPath);
@@ -91,6 +98,10 @@ export function AppContent() {
     <>
       <Navbar currentRoute={resolved.id} onNavigate={navigateTo} />
 
+      {resolved.id !== 'portal' && (
+        <DueTomorrowNotification onNavigateToTasks={() => navigateTo('/portal/tugas')} />
+      )}
+
       <main className="page-wrapper container">
         <div key={resolved.id} className="page-enter">
           {resolved.id === 'beranda' && <BerandaPage onNavigate={navigateTo} />}
@@ -98,6 +109,7 @@ export function AppContent() {
           {resolved.id === 'anggota' && <AnggotaPage />}
           {resolved.id === 'contact' && <ContactPage onNavigate={navigateTo} />}
           {resolved.id === 'admin' && <AdminPage onNavigate={navigateTo} />}
+          {resolved.id === 'portal' && <PortalPage onNavigate={navigateTo} />}
           {resolved.id === 'notfound' && <NotFoundPage onNavigate={navigateTo} />}
         </div>
       </main>
@@ -109,15 +121,24 @@ export function AppContent() {
   );
 }
 
+import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
+
 export function App() {
   return (
-    <AdminProvider>
-      <NotificationProvider>
-        <SyncProvider>
-          <AppContent />
-        </SyncProvider>
-      </NotificationProvider>
-    </AdminProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AdminProvider>
+          <MemberAuthProvider>
+            <NotificationProvider>
+              <SyncProvider>
+                <AppContent />
+              </SyncProvider>
+            </NotificationProvider>
+          </MemberAuthProvider>
+        </AdminProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }
 

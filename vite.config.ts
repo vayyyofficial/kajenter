@@ -32,6 +32,9 @@ export default defineConfig({
           if (id.includes('node_modules/lucide-react') || id.includes('node_modules/simple-icons')) {
             return 'vendor-icons';
           }
+          if (id.includes('node_modules/jspdf')) {
+            return 'vendor-pdf';
+          }
         },
       },
     },

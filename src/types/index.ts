@@ -78,3 +78,73 @@ export interface AdminStatusResponse {
   error?: string;
   attemptsLeft?: number;
 }
+
+export interface ClassKasRecord {
+  id: number;
+  member_id: number;
+  member_name?: string;
+  member_attendance?: number;
+  member_role?: string;
+  year: number;
+  week_number: number;
+  amount: number;
+  is_paid: number | boolean;
+  paid_date?: string | null;
+  notes?: string | null;
+  recorded_by_name?: string | null;
+  recorded_by_member_id?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ClassTask {
+  id: number;
+  title: string;
+  subject: string;
+  teacher_name?: string | null;
+  description?: string | null;
+  notes?: string | null;
+  deadline_date: string;
+  created_by_name?: string | null;
+  created_by_member_id?: number | null;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ClassSchedule {
+  id: number;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  subject: string;
+  teacher_name: string;
+  room?: string | null;
+  order_index: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PiketSchedule {
+  id: number;
+  day_of_week: string;
+  member_id?: number | null;
+  member_name: string;
+  tasks?: string | null;
+  order_index: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AuthMember extends Member {
+  first_login?: number;
+  last_login?: string | null;
+  permissions?: {
+    canManageKas: boolean;
+    canManageTasks: boolean;
+    canManageSchedules: boolean;
+    canManagePiket: boolean;
+    canManageUsers: boolean;
+    isDeveloper: boolean;
+  };
+}

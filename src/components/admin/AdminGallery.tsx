@@ -19,10 +19,12 @@ import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useNotifications } from '../../context/NotificationContext';
 import { useRealtimeSync } from '../../context/SyncContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const STANDARD_CATEGORIES = ['Kegiatan', 'Dokumentasi', 'Prestasi', 'Event Sekolah'];
 
 export const AdminGallery: React.FC = () => {
+  const { t, language } = useLanguage();
   const { addToast } = useNotifications();
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -284,15 +286,19 @@ export const AdminGallery: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--gray-900)' }}>Kelola Galeri Foto Kegiatan</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)', margin: 0 }}>
-            Publikasikan foto kegiatan, dokumentasi, prestasi, dan event resmi kelas (1 Kegiatan dapat memiliki banyak foto)
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            {language === 'en' ? 'Manage Activity Gallery Photos' : 'Kelola Galeri Foto Kegiatan'}
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+            {language === 'en'
+              ? 'Publish photos of activities, documentation, achievements, and events (Multi-photo supported)'
+              : 'Publikasikan foto kegiatan, dokumentasi, prestasi, dan event resmi kelas (1 Kegiatan dapat memiliki banyak foto)'}
           </p>
         </div>
 
         <button onClick={handleOpenAdd} className="btn btn-primary btn-sm">
           <Plus size={16} />
-          <span>Tambah Dokumentasi Baru</span>
+          <span>{t.admin.addGalleryBtn}</span>
         </button>
       </div>
 
@@ -301,23 +307,23 @@ export const AdminGallery: React.FC = () => {
           <table className="table">
             <thead>
               <tr>
-                <th style={{ width: '90px' }}>Foto</th>
-                <th>Judul & Identitas Kegiatan</th>
-                <th>Kategori</th>
-                <th>Tanggal</th>
-                <th>Dokumentator</th>
-                <th style={{ textAlign: 'center' }}>Aksi</th>
+                <th style={{ width: '90px' }}>{t.admin.colPhoto}</th>
+                <th>{t.admin.colTitle}</th>
+                <th>{t.admin.colCategory}</th>
+                <th>{t.admin.colEventDate}</th>
+                <th>{t.admin.colDoc}</th>
+                <th style={{ textAlign: 'center' }}>{t.admin.colActions}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Memuat data galeri...</td>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>{t.common.loading}</td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>
-                    Belum ada foto dokumentasi.
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                    {t.gallery.noPhotosDesc}
                   </td>
                 </tr>
               ) : (
@@ -425,37 +431,37 @@ export const AdminGallery: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingItem ? 'Edit Dokumentasi Kegiatan' : 'Tambah Dokumentasi Baru'}
+        title={editingItem ? (language === 'en' ? 'Edit Activity Documentation' : 'Edit Dokumentasi Kegiatan') : (language === 'en' ? 'Add Activity Documentation' : 'Tambah Dokumentasi Baru')}
         size="lg"
       >
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="form-group">
-            <label className="form-label">Judul Dokumentasi *</label>
+            <label className="form-label">{language === 'en' ? 'Activity Title *' : 'Judul Dokumentasi *'}</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="form-input"
-              placeholder="Contoh: Praktikum Konfigurasi Server Rack & Switch Cisco"
+              placeholder={language === 'en' ? 'e.g., Server Configuration & Switch Practical Exam' : 'Contoh: Praktikum Konfigurasi Server Rack & Switch Cisco'}
               required
             />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
             <div className="form-group">
-              <label className="form-label">Identitas Kegiatan / Lokasi *</label>
+              <label className="form-label">{language === 'en' ? 'Event Identity / Location *' : 'Identitas Kegiatan / Lokasi *'}</label>
               <input
                 type="text"
                 value={formData.eventIdentity}
                 onChange={(e) => setFormData({ ...formData, eventIdentity: e.target.value })}
                 className="form-input"
-                placeholder="Contoh: Lab Komputer Jaringan 1"
+                placeholder={language === 'en' ? 'e.g., Network Computer Lab 1' : 'Contoh: Lab Komputer Jaringan 1'}
                 required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Kategori Galeri *</label>
+              <label className="form-label">{language === 'en' ? 'Gallery Category *' : 'Kategori Galeri *'}</label>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -473,7 +479,7 @@ export const AdminGallery: React.FC = () => {
           {/* Dokumentator Galeri */}
           <div className="form-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <label className="form-label" style={{ margin: 0 }}>Dokumentator *</label>
+              <label className="form-label" style={{ margin: 0 }}>{language === 'en' ? 'Photographer / Contributor *' : 'Dokumentator *'}</label>
               <button
                 type="button"
                 onClick={() => setIsCustomDokumentator(!isCustomDokumentator)}
@@ -488,7 +494,7 @@ export const AdminGallery: React.FC = () => {
                   padding: 0,
                 }}
               >
-                {isCustomDokumentator ? 'Pilih dari Daftar Anggota' : 'Ketik Manual / Nama Kustom'}
+                {isCustomDokumentator ? (language === 'en' ? 'Select from Member List' : 'Pilih dari Daftar Anggota') : (language === 'en' ? 'Type Custom Name' : 'Ketik Manual / Nama Kustom')}
               </button>
             </div>
 
@@ -505,10 +511,10 @@ export const AdminGallery: React.FC = () => {
                 className="form-select"
                 required
               >
-                <option value="" disabled>-- Pilih Dokumentator dari Anggota Kelas --</option>
+                <option value="" disabled>{language === 'en' ? '-- Select Contributor from Class Members --' : '-- Pilih Dokumentator dari Anggota Kelas --'}</option>
 
                 {membersList.siswa.length > 0 && (
-                  <optgroup label="Siswa Kelas X ICP TKJ">
+                  <optgroup label={language === 'en' ? 'Students of X ICP TKJ' : 'Siswa Kelas X ICP TKJ'}>
                     {membersList.siswa.map((s) => (
                       <option key={s.id} value={s.full_name}>
                         {s.attendance_number !== null && s.attendance_number !== undefined
@@ -520,7 +526,7 @@ export const AdminGallery: React.FC = () => {
                 )}
 
                 {membersList.guru.length > 0 && (
-                  <optgroup label="Dewan Guru & Tenaga Pendidik">
+                  <optgroup label={language === 'en' ? 'Faculty Teachers & Staff' : 'Dewan Guru & Tenaga Pendidik'}>
                     {membersList.guru.map((g) => (
                       <option key={g.id} value={g.full_name}>
                         {g.full_name} ({g.role})
@@ -529,17 +535,17 @@ export const AdminGallery: React.FC = () => {
                   </optgroup>
                 )}
 
-                <optgroup label="Lainnya">
-                  <option value="Tim Dokumentasi Kelas">Tim Dokumentasi Kelas</option>
+                <optgroup label={language === 'en' ? 'Other' : 'Lainnya'}>
+                  <option value="Tim Dokumentasi Kelas">{language === 'en' ? 'Class Documentation Team' : 'Tim Dokumentasi Kelas'}</option>
                   {Boolean(formData.dokumentator &&
                     !membersList.siswa.some((s) => s.full_name === formData.dokumentator) &&
                     !membersList.guru.some((g) => g.full_name === formData.dokumentator) &&
                     formData.dokumentator !== 'Tim Dokumentasi Kelas') && (
                     <option value={formData.dokumentator}>
-                      {formData.dokumentator} (Tersimpan)
+                      {formData.dokumentator} ({language === 'en' ? 'Saved' : 'Tersimpan'})
                     </option>
                   )}
-                  <option value="__CUSTOM__">✍️ Ketik Nama Kustom / Lainnya...</option>
+                  <option value="__CUSTOM__">✍️ {language === 'en' ? 'Type Custom Name / Other...' : 'Ketik Nama Kustom / Lainnya...'}</option>
                 </optgroup>
               </select>
             ) : (
@@ -549,7 +555,7 @@ export const AdminGallery: React.FC = () => {
                   value={formData.dokumentator}
                   onChange={(e) => setFormData({ ...formData, dokumentator: e.target.value })}
                   className="form-input"
-                  placeholder="Ketik nama lengkap dokumentator..."
+                  placeholder={language === 'en' ? 'Type contributor full name...' : 'Ketik nama lengkap dokumentator...'}
                   required
                 />
                 <button
@@ -558,19 +564,17 @@ export const AdminGallery: React.FC = () => {
                   className="btn btn-secondary btn-sm"
                   style={{ flexShrink: 0 }}
                 >
-                  Batal
+                  {t.common.cancel}
                 </button>
               </div>
             )}
           </div>
 
-          {/* ========================================================= */}
-          {/* MULTI-PHOTO MANAGEMENT SECTION                            */}
-          {/* ========================================================= */}
+          {/* MULTI-PHOTO MANAGEMENT SECTION */}
           <div
             style={{
-              backgroundColor: 'var(--gray-50)',
-              border: '1px solid var(--gray-200)',
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-lg)',
               padding: '1.25rem',
               display: 'flex',
@@ -580,12 +584,18 @@ export const AdminGallery: React.FC = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 800, color: 'var(--gray-900)', fontSize: '0.95rem' }}>
-                  <Layers size={18} color="var(--primary-600)" />
-                  <span>Foto Dokumentasi Kegiatan ({formData.photos.length} Foto)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>
+                  <Layers size={18} color="var(--primary-500)" />
+                  <span>
+                    {language === 'en'
+                      ? `Activity Documentation Photos (${formData.photos.length} Photos)`
+                      : `Foto Dokumentasi Kegiatan (${formData.photos.length} Foto)`}
+                  </span>
                 </div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--gray-500)', margin: '0.2rem 0 0 0' }}>
-                  Satu kegiatan dapat memiliki banyak foto dokumentasi. Foto pertama (#1) menjadi sampul utama.
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0' }}>
+                  {language === 'en'
+                    ? 'One activity can hold multiple documentation photos. The first photo (#1) serves as the main cover.'
+                    : 'Satu kegiatan dapat memiliki banyak foto dokumentasi. Foto pertama (#1) menjadi sampul utama.'}
                 </p>
               </div>
 
@@ -602,7 +612,7 @@ export const AdminGallery: React.FC = () => {
                   }}
                 >
                   {isUploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
-                  <span>{isUploading ? 'Mengunggah...' : '+ Unggah Foto dari Perangkat'}</span>
+                  <span>{isUploading ? t.common.loading : (language === 'en' ? '+ Upload Photos from Device' : '+ Unggah Foto dari Perangkat')}</span>
                   <input
                     type="file"
                     multiple
@@ -620,7 +630,7 @@ export const AdminGallery: React.FC = () => {
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                 >
                   <Plus size={15} />
-                  <span>Tambah URL Manual</span>
+                  <span>{language === 'en' ? 'Add Manual URL' : 'Tambah URL Manual'}</span>
                 </button>
               </div>
             </div>
@@ -631,21 +641,23 @@ export const AdminGallery: React.FC = () => {
                 style={{
                   padding: '2rem 1rem',
                   textAlign: 'center',
-                  backgroundColor: '#ffffff',
+                  backgroundColor: 'var(--bg-card)',
                   borderRadius: 'var(--radius-md)',
-                  border: '2px dashed var(--gray-300)',
+                  border: '2px dashed var(--border-color)',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: '0.5rem',
                 }}
               >
-                <ImageIcon size={36} color="var(--gray-400)" />
-                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--gray-700)' }}>
-                  Belum Ada Foto dalam Kegiatan Ini
+                <ImageIcon size={36} color="var(--text-muted)" />
+                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  {language === 'en' ? 'No Photos in This Activity Yet' : 'Belum Ada Foto dalam Kegiatan Ini'}
                 </span>
-                <span style={{ fontSize: '0.78rem', color: 'var(--gray-500)' }}>
-                  Klik tombol <strong>+ Unggah Foto dari Perangkat</strong> di atas untuk memilih foto dokumentasi.
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  {language === 'en'
+                    ? 'Click "+ Upload Photos from Device" above to add documentation images.'
+                    : 'Klik tombol + Unggah Foto dari Perangkat di atas untuk memilih foto dokumentasi.'}
                 </span>
               </div>
             ) : (
@@ -659,8 +671,8 @@ export const AdminGallery: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.85rem',
-                        backgroundColor: '#ffffff',
-                        border: isPrimary ? '2px solid var(--primary-500)' : '1px solid var(--gray-200)',
+                        backgroundColor: 'var(--bg-card)',
+                        border: isPrimary ? '2px solid var(--primary-500)' : '1px solid var(--border-color)',
                         borderRadius: 'var(--radius-md)',
                         padding: '0.75rem',
                         boxShadow: 'var(--shadow-sm)',
@@ -674,9 +686,9 @@ export const AdminGallery: React.FC = () => {
                           height: 56,
                           borderRadius: 'var(--radius-sm)',
                           overflow: 'hidden',
-                          backgroundColor: 'var(--gray-100)',
+                          backgroundColor: 'var(--bg-surface)',
                           flexShrink: 0,
-                          border: '1px solid var(--gray-200)',
+                          border: '1px solid var(--border-color)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -692,7 +704,7 @@ export const AdminGallery: React.FC = () => {
                             }}
                           />
                         ) : (
-                          <ImageIcon size={24} color="var(--gray-400)" />
+                          <ImageIcon size={24} color="var(--text-muted)" />
                         )}
                       </div>
 
@@ -702,7 +714,7 @@ export const AdminGallery: React.FC = () => {
                           <span
                             style={{
                               backgroundColor: 'rgba(220, 38, 38, 0.12)',
-                              color: 'var(--primary-700)',
+                              color: 'var(--primary-500)',
                               border: '1px solid rgba(220, 38, 38, 0.3)',
                               borderRadius: 'var(--radius-full)',
                               padding: '0.2rem 0.55rem',
@@ -713,20 +725,21 @@ export const AdminGallery: React.FC = () => {
                               gap: '0.25rem',
                             }}
                           >
-                            <Star size={11} fill="currentColor" /> Sampul #1
+                            <Star size={11} fill="currentColor" /> {language === 'en' ? 'Cover #1' : 'Sampul #1'}
                           </span>
                         ) : (
                           <span
                             style={{
-                              backgroundColor: 'var(--gray-100)',
-                              color: 'var(--gray-700)',
+                              backgroundColor: 'var(--bg-surface)',
+                              color: 'var(--text-muted)',
                               borderRadius: 'var(--radius-full)',
                               padding: '0.2rem 0.55rem',
                               fontSize: '0.725rem',
                               fontWeight: 700,
+                              border: '1px solid var(--border-color)',
                             }}
                           >
-                            Foto #{idx + 1}
+                            {language === 'en' ? `Photo #${idx + 1}` : `Foto #${idx + 1}`}
                           </span>
                         )}
                       </div>
@@ -739,7 +752,7 @@ export const AdminGallery: React.FC = () => {
                           onChange={(e) => handlePhotoUrlChange(idx, e.target.value)}
                           className="form-input"
                           style={{ height: '36px', fontSize: '0.8125rem' }}
-                          placeholder="Path storage atau URL foto..."
+                          placeholder="Storage path or image URL..."
                           required
                         />
                       </div>
@@ -752,10 +765,10 @@ export const AdminGallery: React.FC = () => {
                             onClick={() => handleSetPrimary(idx)}
                             className="btn btn-secondary btn-sm"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.725rem' }}
-                            title="Jadikan Foto Sampul Utama"
+                            title={language === 'en' ? 'Make Cover Photo' : 'Jadikan Foto Sampul Utama'}
                           >
                             <Star size={13} />
-                            <span>Jadikan Sampul</span>
+                            <span>{language === 'en' ? 'Make Cover' : 'Jadikan Sampul'}</span>
                           </button>
                         )}
 
@@ -765,7 +778,7 @@ export const AdminGallery: React.FC = () => {
                           disabled={idx === 0}
                           className="btn-icon"
                           style={{ padding: '0.35rem', opacity: idx === 0 ? 0.3 : 1 }}
-                          title="Geser ke Atas"
+                          title={language === 'en' ? 'Move Up' : 'Geser ke Atas'}
                         >
                           <ArrowUp size={15} />
                         </button>
@@ -776,7 +789,7 @@ export const AdminGallery: React.FC = () => {
                           disabled={idx === formData.photos.length - 1}
                           className="btn-icon"
                           style={{ padding: '0.35rem', opacity: idx === formData.photos.length - 1 ? 0.3 : 1 }}
-                          title="Geser ke Bawah"
+                          title={language === 'en' ? 'Move Down' : 'Geser ke Bawah'}
                         >
                           <ArrowDown size={15} />
                         </button>
@@ -786,7 +799,7 @@ export const AdminGallery: React.FC = () => {
                           onClick={() => handleRemovePhoto(idx)}
                           className="btn-icon"
                           style={{ color: 'var(--danger-main)', padding: '0.35rem' }}
-                          title="Hapus Foto Ini"
+                          title={language === 'en' ? 'Delete This Photo' : 'Hapus Foto Ini'}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -799,7 +812,7 @@ export const AdminGallery: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Tanggal Pelaksanaan *</label>
+            <label className="form-label">{language === 'en' ? 'Event Date *' : 'Tanggal Pelaksanaan *'}</label>
             <input
               type="date"
               value={formData.eventDate}
@@ -810,23 +823,25 @@ export const AdminGallery: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Deskripsi Foto / Cerita Kegiatan *</label>
+            <label className="form-label">{language === 'en' ? 'Photo Description / Story *' : 'Deskripsi Foto / Cerita Kegiatan *'}</label>
             <textarea
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="form-textarea"
-              placeholder="Ceritakan ringkasan aktivitas yang berlangsung pada dokumentasi ini..."
+              placeholder={language === 'en' ? 'Brief summary of the activity captured in this documentation...' : 'Ceritakan ringkasan aktivitas yang berlangsung pada dokumentasi ini...'}
               required
             />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
             <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">
-              Batal
+              {t.common.cancel}
             </button>
             <button type="submit" className="btn btn-primary" disabled={isUploading}>
-              {editingItem ? 'Simpan Perubahan' : 'Publikasikan Dokumentasi'}
+              {editingItem
+                ? (language === 'en' ? 'Save Changes' : 'Simpan Perubahan')
+                : (language === 'en' ? 'Publish Documentation' : 'Publikasikan Dokumentasi')}
             </button>
           </div>
         </form>
@@ -836,8 +851,9 @@ export const AdminGallery: React.FC = () => {
         isOpen={deleteId !== null}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title="Hapus Dokumentasi Kegiatan"
-        message="Apakah Anda yakin ingin menghapus kegiatan ini dan seluruh foto terkait dari galeri kelas?"
+        title={t.admin.confirmDeleteTitle}
+        message={t.admin.confirmDeleteGalleryMsg}
+        confirmLabel={t.admin.yesDelete}
         isLoading={isDeleting}
       />
     </div>

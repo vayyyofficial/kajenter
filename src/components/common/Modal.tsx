@@ -108,9 +108,10 @@ export const Modal: React.FC<ModalProps> = ({
           className={`modal-dialog ${sizeClasses[size] || 'modal-size-md'}`}
           onClick={(e) => e.stopPropagation()}
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--bg-card)',
             borderRadius: 'var(--radius-xl, 20px)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+            border: '1px solid var(--border-color)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08)',
             width: '100%',
             maxHeight: '90vh',
             display: 'flex',
@@ -125,15 +126,15 @@ export const Modal: React.FC<ModalProps> = ({
               className="modal-header"
               style={{
                 padding: '1.25rem 1.5rem',
-                borderBottom: '1px solid var(--gray-100)',
+                borderBottom: '1px solid var(--border-color)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                backgroundColor: '#ffffff',
+                backgroundColor: 'var(--bg-card)',
                 flexShrink: 0,
               }}
             >
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--gray-900)', margin: 0 }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
                 {title}
               </h3>
               <button
@@ -141,7 +142,7 @@ export const Modal: React.FC<ModalProps> = ({
                 className="btn-icon"
                 aria-label="Tutup Modal"
                 style={{
-                  color: 'var(--gray-500)',
+                  color: 'var(--text-muted)',
                   padding: '0.4rem',
                   borderRadius: 'var(--radius-md)',
                   border: 'none',
@@ -163,6 +164,7 @@ export const Modal: React.FC<ModalProps> = ({
               padding: '1.5rem',
               overflowY: 'auto',
               flex: 1,
+              color: 'var(--text-main)',
             }}
           >
             {children}
@@ -173,8 +175,8 @@ export const Modal: React.FC<ModalProps> = ({
               className="modal-footer"
               style={{
                 padding: '1rem 1.5rem',
-                borderTop: '1px solid var(--gray-100)',
-                backgroundColor: 'var(--gray-50)',
+                borderTop: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-surface)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'flex-end',

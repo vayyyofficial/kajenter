@@ -14,4 +14,5 @@ export const BRANDING = {
   logoUrl: bundledLogo || '/assets/Logo-Kelas.png',
   fallbackLogoUrl: '/assets/Logo-Kelas.png',
   faviconUrl: '/assets/favicon.png',
+  svgFaviconUrl: '/favicon.svg',
 };

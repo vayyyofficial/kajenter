@@ -9,16 +9,17 @@ import {
 import { siInstagram, siTiktok, siDiscord } from 'simple-icons';
 import type { SocialMedia } from '../types';
 import { dataCache } from '../services/dataCache';
-import { BRANDING } from '../config/branding';
 import { ScrollReveal } from '../components/common/ScrollReveal';
 import { Skeleton } from '../components/common/Skeleton';
 import { useRealtimeSync } from '../context/SyncContext';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ContactPageProps {
   onNavigate: (route: string) => void;
 }
 
 export const ContactPage: React.FC<ContactPageProps> = () => {
+  const { t } = useLanguage();
   const cached = dataCache.getSocial();
   const [socials, setSocials] = useState<SocialMedia[]>(() => {
     if (!cached) return [];
@@ -73,7 +74,7 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
           width="26"
           height="26"
           fill="currentColor"
-          style={{ color: 'var(--primary-600)', display: 'block' }}
+          style={{ color: 'var(--primary-500)', display: 'block' }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <title>{iconData.title}</title>
@@ -83,18 +84,18 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
     }
 
     if (p.includes('email') || p.includes('surat')) {
-      return <Mail size={24} color="var(--primary-600)" />;
+      return <Mail size={24} color="var(--primary-500)" />;
     }
 
-    return <Globe size={24} color="var(--primary-600)" />;
+    return <Globe size={24} color="var(--primary-500)" />;
   };
 
   const getPlatformSubtitle = (platform: string) => {
     const p = platform.toLowerCase();
-    if (p.includes('instagram')) return 'Dokumentasi, Story & Reels';
-    if (p.includes('tiktok')) return 'Video Kreatif & Edukasi';
-    if (p.includes('discord')) return 'Tech Lounge & Diskusi Kelas';
-    return 'Kanal Informasi Resmi';
+    if (p.includes('instagram')) return t.contact.instagramSubtitle;
+    if (p.includes('tiktok')) return t.contact.tiktokSubtitle;
+    if (p.includes('discord')) return t.contact.discordSubtitle;
+    return t.contact.defaultSubtitle;
   };
 
   return (
@@ -103,11 +104,11 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
       <div className="section-header" style={{ textAlign: 'center' }}>
         <div className="section-tag" style={{ margin: '0 auto 1rem auto' }}>
           <Sparkles size={14} />
-          <span>Komunikasi Terpadu</span>
+          <span>{t.contact.pageTag}</span>
         </div>
-        <h1 className="section-title">Media Sosial Resmi Kelas</h1>
+        <h1 className="section-title">{t.contact.pageTitle}</h1>
         <p className="section-subtitle" style={{ margin: '0 auto', maxWidth: '640px' }}>
-          Hubungi pengurus kelas, ikuti dokumentasi kegiatan terkini, dan jalin komunikasi kejuruan melalui kanal digital resmi {BRANDING.name} {BRANDING.school}.
+          {t.contact.pageSubtitle}
         </p>
       </div>
 
@@ -126,8 +127,8 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
           <div className="card" style={{ padding: '2rem', height: '140px' }}><Skeleton height="50px" width="70%" /></div>
         </div>
       ) : socials.length === 0 ? (
-        <div className="card" style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--gray-500)' }}>
-          Belum ada media sosial yang dipublikasikan.
+        <div className="card" style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          {t.contact.noSocialTitle}
         </div>
       ) : (
         <div
@@ -150,9 +151,9 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '1.5rem 1.75rem',
-                  backgroundColor: '#ffffff',
+                  backgroundColor: 'var(--bg-surface)',
                   borderRadius: 'var(--radius-lg)',
-                  border: '1px solid var(--gray-200)',
+                  border: '1px solid var(--border-color)',
                   boxShadow: 'var(--shadow-sm)',
                   textDecoration: 'none',
                   color: 'inherit',
@@ -189,7 +190,7 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         letterSpacing: '0.04em',
-                        color: 'var(--primary-600)',
+                        color: 'var(--primary-500)',
                       }}
                     >
                       {item.platform}
@@ -199,7 +200,7 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
                       style={{
                         fontSize: '1.15rem',
                         fontWeight: 800,
-                        color: 'var(--gray-900)',
+                        color: 'var(--text-main)',
                         letterSpacing: '-0.01em',
                         lineHeight: 1.2,
                       }}
@@ -207,7 +208,7 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
                       {item.username}
                     </div>
 
-                    <div style={{ fontSize: '0.78rem', color: 'var(--gray-500)', fontWeight: 500 }}>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 500 }}>
                       {getPlatformSubtitle(item.platform)}
                     </div>
                   </div>
@@ -220,8 +221,8 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
                     width: 38,
                     height: 38,
                     borderRadius: '50%',
-                    backgroundColor: 'var(--primary-50)',
-                    color: 'var(--primary-600)',
+                    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+                    color: 'var(--primary-500)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -241,9 +242,9 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
       <ScrollReveal delay={180}>
         <div
           style={{
-            backgroundColor: 'var(--gray-50)',
+            backgroundColor: 'var(--bg-surface)',
             borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--gray-200)',
+            border: '1px solid var(--border-color)',
             padding: '1.75rem',
             display: 'flex',
             alignItems: 'flex-start',
@@ -255,8 +256,8 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
               width: 44,
               height: 44,
               borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--primary-100)',
-              color: 'var(--primary-700)',
+              backgroundColor: 'rgba(220, 38, 38, 0.15)',
+              color: 'var(--primary-500)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -265,11 +266,11 @@ export const ContactPage: React.FC<ContactPageProps> = () => {
           >
             <ShieldCheck size={24} />
           </div>
-          <div style={{ fontSize: '0.875rem', color: 'var(--gray-700)', lineHeight: 1.6 }}>
-            <strong style={{ color: 'var(--gray-900)', display: 'block', marginBottom: '0.2rem' }}>
-              Kanal Komunikasi Terverifikasi Kelas
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '0.2rem' }}>
+              {t.contact.verifiedTitle}
             </strong>
-            Seluruh tautan resmi di atas dikelola langsung oleh Sekretaris dan Pengurus Kelas <strong>{BRANDING.name} — {BRANDING.school}</strong>. Segala informasi resmi mengenai kegiatan akademik kejuruan, dokumentasi, dan pengumuman kelas disiarkan melalui portal digital ini serta kanal resmi tertera.
+            {t.contact.verifiedDesc}
           </div>
         </div>
       </ScrollReveal>

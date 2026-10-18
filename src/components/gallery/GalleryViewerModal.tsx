@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { GalleryItem } from '../../types';
 import { lockScroll, unlockScroll } from '../../utils/scrollLock';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface GalleryViewerModalProps {
   item: GalleryItem | null;
@@ -35,6 +36,7 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { language, t } = useLanguage();
   const [scale, setScale] = useState<number>(1);
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -318,7 +320,7 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                   }}
                 >
                   <Layers size={12} />
-                  <span>{totalPhotos} Foto</span>
+                  <span>{totalPhotos} {t.galleryViewer.photos}</span>
                 </span>
               )}
 
@@ -354,8 +356,8 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
               }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.8)')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.12)')}
-              title="Tutup (ESC)"
-              aria-label="Tutup Galeri"
+              title={`${t.galleryViewer.close} (ESC)`}
+              aria-label={t.galleryViewer.close}
             >
               <X size={20} />
             </button>
@@ -411,7 +413,7 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                 <img
                   key={currentPhotoUrl}
                   src={currentPhotoUrl}
-                  alt={`${item.title} - Foto ke-${currentIndex + 1}`}
+                  alt={`${item.title} - ${t.galleryViewer.photoOf(currentIndex + 1, totalPhotos || 1)}`}
                   style={{
                     maxWidth: '100%',
                     maxHeight: '100%',
@@ -458,8 +460,8 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                         e.currentTarget.style.backgroundColor = 'rgba(15, 23, 42, 0.75)';
                         e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
                       }}
-                      title="Foto Sebelumnya (Arrow Left)"
-                      aria-label="Foto Sebelumnya"
+                      title={`${t.galleryViewer.prev} (Arrow Left)`}
+                      aria-label={t.galleryViewer.prev}
                     >
                       <ChevronLeft size={24} />
                     </button>
@@ -496,8 +498,8 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                         e.currentTarget.style.backgroundColor = 'rgba(15, 23, 42, 0.75)';
                         e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
                       }}
-                      title="Foto Selanjutnya (Arrow Right)"
-                      aria-label="Foto Selanjutnya"
+                      title={`${t.galleryViewer.next} (Arrow Right)`}
+                      aria-label={t.galleryViewer.next}
                     >
                       <ChevronRight size={24} />
                     </button>
@@ -547,10 +549,10 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                         backgroundColor: 'rgba(220, 38, 38, 0.2)',
                         border: 'none',
                       }}
-                      title="Kembalikan ukuran normal"
+                      title={t.galleryViewer.reset}
                     >
                       <RotateCcw size={12} />
-                      <span>Reset</span>
+                      <span>{t.galleryViewer.reset}</span>
                     </button>
                   </div>
                 )}
@@ -591,7 +593,7 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
                   >
                     <ChevronLeft size={18} />
-                    <span>Sebelumnya</span>
+                    <span>{t.galleryViewer.prev}</span>
                   </button>
 
                   {/* Prominent Counter e.g. "1 / 5" */}
@@ -635,7 +637,7 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)')}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
                   >
-                    <span>Selanjutnya</span>
+                    <span>{t.galleryViewer.next}</span>
                     <ChevronRight size={18} />
                   </button>
                 </div>
@@ -701,8 +703,8 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
               className="gallery-metadata-column"
               style={{
                 flex: '1 1 35%',
-                backgroundColor: '#ffffff',
-                color: 'var(--gray-900)',
+                backgroundColor: 'var(--bg-surface)',
+                color: 'var(--text-main)',
                 display: 'flex',
                 flexDirection: 'column',
                 overflowY: 'auto',
@@ -725,7 +727,7 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                     style={{
                       fontSize: 'clamp(1.1rem, 2vw, 1.35rem)',
                       fontWeight: 800,
-                      color: 'var(--gray-900)',
+                      color: 'var(--text-main)',
                       lineHeight: 1.35,
                       margin: '0 0 0.5rem 0',
                     }}
@@ -738,7 +740,7 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                       alignItems: 'center',
                       gap: '0.4rem',
                       fontSize: '0.85rem',
-                      color: 'var(--primary-600)',
+                      color: 'var(--primary-500)',
                       fontWeight: 700,
                     }}
                   >
@@ -747,24 +749,24 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                   </div>
                 </div>
 
-                {/* Metadata Card: Tanggal & Dokumentator */}
+                {/* Metadata Card: Date & Photographer */}
                 <div
                   style={{
-                    backgroundColor: 'var(--gray-50)',
+                    backgroundColor: 'var(--bg-card)',
                     padding: '1rem',
                     borderRadius: 'var(--radius-md)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '0.65rem',
                     fontSize: '0.8125rem',
-                    border: '1px solid var(--gray-200)',
+                    border: '1px solid var(--border-color)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--gray-600)' }}>
-                    <Calendar size={16} color="var(--primary-600)" />
-                    <span>Tanggal:</span>
-                    <strong style={{ color: 'var(--gray-900)' }}>
-                      {new Date(item.event_date).toLocaleDateString('id-ID', {
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)' }}>
+                    <Calendar size={16} color="var(--primary-500)" />
+                    <span>{t.galleryViewer.date}:</span>
+                    <strong style={{ color: 'var(--text-main)' }}>
+                      {new Date(item.event_date).toLocaleDateString(language === 'en' ? 'en-US' : 'id-ID', {
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric',
@@ -772,20 +774,20 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                     </strong>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--gray-600)' }}>
-                    <Camera size={16} color="var(--primary-600)" />
-                    <span>Dokumentator:</span>
-                    <strong style={{ color: 'var(--gray-900)' }}>
-                      {item.dokumentator || item.created_by || 'Tim Dokumentasi'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)' }}>
+                    <Camera size={16} color="var(--primary-500)" />
+                    <span>{t.galleryViewer.photographer}:</span>
+                    <strong style={{ color: 'var(--text-main)' }}>
+                      {item.dokumentator || item.created_by || (language === 'en' ? 'Documentation Team' : 'Tim Dokumentasi')}
                     </strong>
                   </div>
 
                   {totalPhotos > 1 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--gray-600)' }}>
-                      <Layers size={16} color="var(--primary-600)" />
-                      <span>Sedang Melihat:</span>
-                      <strong style={{ color: 'var(--primary-600)' }}>
-                        Foto ke-{currentIndex + 1} dari {totalPhotos}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)' }}>
+                      <Layers size={16} color="var(--primary-500)" />
+                      <span>{t.galleryViewer.viewing}:</span>
+                      <strong style={{ color: 'var(--primary-500)' }}>
+                        {t.galleryViewer.photoOf(currentIndex + 1, totalPhotos)}
                       </strong>
                     </div>
                   )}
@@ -797,16 +799,16 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                     style={{
                       fontSize: '0.9375rem',
                       fontWeight: 700,
-                      color: 'var(--gray-800)',
+                      color: 'var(--text-main)',
                       margin: '0 0 0.5rem 0',
                     }}
                   >
-                    Deskripsi Kegiatan
+                    {t.galleryViewer.description}
                   </h4>
                   <p
                     style={{
                       fontSize: '0.9rem',
-                      color: 'var(--gray-600)',
+                      color: 'var(--text-muted)',
                       lineHeight: 1.65,
                       whiteSpace: 'pre-line',
                       margin: 0,

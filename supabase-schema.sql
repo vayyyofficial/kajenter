@@ -95,6 +95,83 @@ CREATE TABLE IF NOT EXISTS activity_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Portal: Member Accounts for Student/Teacher Login
+CREATE TABLE IF NOT EXISTS member_accounts (
+  id BIGSERIAL PRIMARY KEY,
+  member_id BIGINT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  has_changed_password INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Portal: Kas Records (Weekly payments)
+CREATE TABLE IF NOT EXISTS class_kas_records (
+  id BIGSERIAL PRIMARY KEY,
+  member_id BIGINT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  week_number INTEGER NOT NULL,
+  month_year TEXT NOT NULL,
+  amount INTEGER NOT NULL DEFAULT 3000,
+  status TEXT NOT NULL DEFAULT 'paid', -- 'paid' | 'unpaid'
+  paid_at TIMESTAMPTZ,
+  recorded_by TEXT NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Portal: Tugas (Class assignments with deadline dates)
+CREATE TABLE IF NOT EXISTS class_tasks (
+  id BIGSERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  teacher_name TEXT,
+  deadline TEXT NOT NULL,
+  description TEXT,
+  notes TEXT,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Portal: Jadwal Pelajaran (Subject schedules)
+CREATE TABLE IF NOT EXISTS class_schedules (
+  id BIGSERIAL PRIMARY KEY,
+  day TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  teacher_name TEXT NOT NULL,
+  room TEXT,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Portal: Jadwal Piket (Duty rosters)
+CREATE TABLE IF NOT EXISTS piket_schedules (
+  id BIGSERIAL PRIMARY KEY,
+  day TEXT NOT NULL,
+  member_id BIGINT NULL REFERENCES members(id) ON DELETE SET NULL,
+  member_name TEXT NOT NULL,
+  tasks TEXT NOT NULL DEFAULT 'Membersihkan kelas dan merapikan perlengkapan',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Portal: 6-digit Verification Codes (Password and Email changes)
+CREATE TABLE IF NOT EXISTS verification_codes (
+  id BIGSERIAL PRIMARY KEY,
+  email TEXT NOT NULL,
+  code TEXT NOT NULL,
+  purpose TEXT NOT NULL, -- 'change_password' | 'change_email'
+  new_email TEXT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- 2. Indexes for Performance
 -- ==============================================================================
 
@@ -102,6 +179,14 @@ CREATE INDEX IF NOT EXISTS idx_members_type ON members(member_type);
 CREATE INDEX IF NOT EXISTS idx_members_attendance ON members(attendance_number);
 CREATE INDEX IF NOT EXISTS idx_gallery_date ON gallery(event_date DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_date ON activity_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_member_accounts_email ON member_accounts(email);
+CREATE INDEX IF NOT EXISTS idx_member_accounts_member ON member_accounts(member_id);
+CREATE INDEX IF NOT EXISTS idx_kas_member ON class_kas_records(member_id);
+CREATE INDEX IF NOT EXISTS idx_kas_period ON class_kas_records(month_year, week_number);
+CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON class_tasks(deadline);
+CREATE INDEX IF NOT EXISTS idx_schedules_day ON class_schedules(day);
+CREATE INDEX IF NOT EXISTS idx_piket_day ON piket_schedules(day);
+CREATE INDEX IF NOT EXISTS idx_verification_email ON verification_codes(email, code);
 
 -- 3. Row Level Security (RLS)
 -- ==============================================================================
@@ -114,6 +199,12 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE roles_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_auth_state ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE class_kas_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE class_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE class_schedules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE piket_schedules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE verification_codes ENABLE ROW LEVEL SECURITY;
 
 -- Public Read Policies
 DROP POLICY IF EXISTS "Public can view members" ON members;
@@ -152,6 +243,25 @@ CREATE POLICY "Service role full access on users" ON users FOR ALL USING (true) 
 
 DROP POLICY IF EXISTS "Service role full access on roles_permissions" ON roles_permissions;
 CREATE POLICY "Service role full access on roles_permissions" ON roles_permissions FOR ALL USING (true) WITH CHECK (true);
+
+-- Portal Tables Access Policies (Permit authenticated API operations and Anon key fallback)
+DROP POLICY IF EXISTS "Full access on member_accounts" ON member_accounts;
+CREATE POLICY "Full access on member_accounts" ON member_accounts FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Full access on class_kas_records" ON class_kas_records;
+CREATE POLICY "Full access on class_kas_records" ON class_kas_records FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Full access on class_tasks" ON class_tasks;
+CREATE POLICY "Full access on class_tasks" ON class_tasks FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Full access on class_schedules" ON class_schedules;
+CREATE POLICY "Full access on class_schedules" ON class_schedules FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Full access on piket_schedules" ON piket_schedules;
+CREATE POLICY "Full access on piket_schedules" ON piket_schedules FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Full access on verification_codes" ON verification_codes;
+CREATE POLICY "Full access on verification_codes" ON verification_codes FOR ALL USING (true) WITH CHECK (true);
 
 -- 4. Supabase Storage Bucket Setup
 -- ==============================================================================

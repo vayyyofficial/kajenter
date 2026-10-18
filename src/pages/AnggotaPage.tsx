@@ -8,8 +8,10 @@ import { MemberDetailModal } from '../components/members/MemberDetailModal';
 import { ScrollReveal } from '../components/common/ScrollReveal';
 import { Skeleton } from '../components/common/Skeleton';
 import { useRealtimeSync } from '../context/SyncContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export const AnggotaPage: React.FC = () => {
+  const { t } = useLanguage();
   const cached = dataCache.getMembers();
   const [guruList, setGuruList] = useState<Member[]>(() => cached?.guru || []);
   const [siswaList, setSiswaList] = useState<Member[]>(() => cached?.siswa || []);
@@ -79,10 +81,10 @@ export const AnggotaPage: React.FC = () => {
         }}
       >
         <div className="section-header" style={{ marginBottom: 0 }}>
-          <div className="section-tag">Direktori Resmi</div>
-          <h1 className="section-title">Direktori Guru & Siswa Kelas</h1>
+          <div className="section-tag">{t.members.tag}</div>
+          <h1 className="section-title">{t.members.title}</h1>
           <p className="section-subtitle">
-            Daftar lengkap tenaga pendidik dan seluruh siswa kelas {BRANDING.name} {BRANDING.school} terurut sesuai nomor absen resmi.
+            {t.members.subtitle(BRANDING.name, BRANDING.school)}
           </p>
         </div>
 
@@ -94,12 +96,12 @@ export const AnggotaPage: React.FC = () => {
               left: '0.85rem',
               top: '50%',
               transform: 'translateY(-50%)',
-              color: 'var(--gray-400)',
+              color: 'var(--text-muted)',
             }}
           />
           <input
             type="text"
-            placeholder="Cari nama, absen, atau role..."
+            placeholder={t.members.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="form-input"
@@ -141,17 +143,17 @@ export const AnggotaPage: React.FC = () => {
                 }}
               >
                 <GraduationCap size={22} color="var(--primary-600)" />
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--gray-900)' }}>
-                  Dewan Guru & Tenaga Pendidik
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                  {t.members.teachersTitle}
                 </h2>
                 <span className="badge badge-primary" style={{ marginLeft: '0.5rem' }}>
-                  {filteredGuru.length} Pendidik
+                  {t.members.teachersCount(filteredGuru.length)}
                 </span>
               </div>
 
               {filteredGuru.length === 0 ? (
-                <p style={{ color: 'var(--gray-500)', fontSize: '0.9rem' }}>
-                  Tidak ada data guru yang cocok dengan pencarian.
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  {t.members.noTeachersFound}
                 </p>
               ) : (
                 <div
@@ -179,23 +181,23 @@ export const AnggotaPage: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.6rem',
-                  borderBottom: '2px solid var(--gray-200)',
+                  borderBottom: '2px solid var(--border-color)',
                   paddingBottom: '0.75rem',
                   marginBottom: '1.5rem',
                 }}
               >
                 <Users size={22} color="var(--primary-600)" />
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--gray-900)' }}>
-                  Daftar Siswa {BRANDING.name}
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                  {t.members.studentsTitle(BRANDING.name)}
                 </h2>
                 <span className="badge badge-neutral" style={{ marginLeft: '0.5rem' }}>
-                  {filteredSiswa.length} Siswa
+                  {t.members.studentsCount(filteredSiswa.length)}
                 </span>
               </div>
 
               {filteredSiswa.length === 0 ? (
-                <p style={{ color: 'var(--gray-500)', fontSize: '0.9rem' }}>
-                  Tidak ada siswa yang cocok dengan kriteria pencarian "{search}".
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  {t.members.noStudentsFound(search)}
                 </p>
               ) : (
                 <div

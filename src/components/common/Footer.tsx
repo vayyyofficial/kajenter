@@ -6,28 +6,36 @@ import { useAdmin } from '../../context/AdminContext';
 import { dataCache } from '../../services/dataCache';
 import { SocialMedia } from '../../types';
 
+import { useLanguage } from '../../context/LanguageContext';
+
 interface FooterProps {
   onNavigate?: (route: string) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const { t } = useLanguage();
   const { openSecretModal } = useAdmin();
-  const [socials, setSocials] = useState<SocialMedia[]>(() => dataCache.getSocial() || []);
+  const [socials, setSocials] = useState<SocialMedia[]>(() => {
+    const cached = dataCache.getSocial();
+    if (!cached) return [];
+    return cached.filter((s) => !s.platform.toLowerCase().includes('youtube'));
+  });
 
   useEffect(() => {
     dataCache.getOrFetchSocial().then((data) => {
       if (data && data.length > 0) {
-        setSocials(data);
+        setSocials(data.filter((s) => !s.platform.toLowerCase().includes('youtube')));
       }
     });
   }, []);
 
-  // Clean routing paths: /beranda, /galeri, /anggota, /contact
+  // Clean routing paths with dynamic translation
   const navItems = [
-    { id: 'beranda', path: '/beranda', label: 'Beranda' },
-    { id: 'galeri', path: '/galeri', label: 'Galeri' },
-    { id: 'anggota', path: '/anggota', label: 'Anggota' },
-    { id: 'contact', path: '/contact', label: 'Contact' },
+    { id: 'beranda', path: '/beranda', label: t.nav.home },
+    { id: 'galeri', path: '/galeri', label: t.nav.gallery },
+    { id: 'anggota', path: '/anggota', label: t.nav.members },
+    { id: 'contact', path: '/contact', label: t.nav.contact },
+    { id: 'portal', path: '/portal', label: 'Portal Kelas' },
   ];
 
   const handleNavClick = (path: string) => {
@@ -127,7 +135,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </div>
 
             <p style={{ fontSize: '0.875rem', color: 'var(--gray-400)', lineHeight: 1.6, margin: 0, maxWidth: '340px' }}>
-              Portal resmi dokumentasi kegiatan, direktori pendidik dan siswa, serta arsip prestasi kelas {BRANDING.name}.
+              {t.footer.brandDesc}
             </p>
           </div>
 
@@ -143,7 +151,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 marginBottom: '1rem',
               }}
             >
-              Navigasi Cepat
+              {t.footer.quickNavTitle}
             </h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.65rem', padding: 0, margin: 0 }}>
               {navItems.map((item) => (
@@ -175,7 +183,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </ul>
           </div>
 
-          {/* 3. Media Sosial & Hubungi Kami (Balancing the right column per Requirement #4) */}
+          {/* 3. Media Sosial & Hubungi Kami */}
           <div>
             <h4
               style={{
@@ -187,7 +195,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 marginBottom: '1rem',
               }}
             >
-              Kanal Sosial Resmi
+              {t.footer.socialTitle}
             </h4>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
@@ -308,8 +316,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             {/* SECRET ACCESS TRIGGER (Subtle portal button with comfortable touch target) */}
             <button
               onClick={openSecretModal}
-              title="Portal"
-              aria-label="Akses Sistem Pengelolaan"
+              title={t.footer.secretPortalTooltip}
+              aria-label={t.footer.secretPortalTooltip}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -344,11 +352,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>•</span>
             </button>
 
-            <span>Portal Resmi Kelas.</span>
+            <span>{t.footer.officialPortal}</span>
           </div>
 
           <div style={{ fontSize: '0.78rem', color: 'var(--gray-500)' }}>
-            International Class Program • SMK Telkom Malang
+            {t.footer.programSubtitle}
           </div>
         </div>
       </div>
