@@ -143,13 +143,54 @@ export function getMemberPermissions(roleName?: string | null) {
     canManageMembers: isDev,
     canManageUsers: isDev,
     canManageRoles: isDev,
-    canManageKas: isDev || isBendahara,
-    canViewAllKas: isDev || isBendahara || isKetua || isWakil,
+    canManageKas: isDev || isBendahara || isKetua || isWakil,
+    canManageWeeks: isDev || isBendahara || isKetua || isWakil,
+    canViewAllKas: true,
     canManageTasks: isDev || isKetua || isWakil || isSekretaris,
     canManageSchedules: isDev || isKetua || isWakil || isSekretaris,
     canManagePiket: isDev || isKetua || isWakil || isSekretaris,
     canViewPortal: true,
   };
+}
+
+/**
+ * Combined guard: Allows Secret Admin OR Member with Developer role
+ */
+export function requireAdminOrDeveloper(req: Request, res: Response, next: NextFunction): void {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+  if (!token) {
+    res.status(401).json({
+      success: false,
+      error: 'Akses ditolak. Sesi otentikasi admin atau developer diperlukan.',
+      code: 'UNAUTHORIZED'
+    });
+    return;
+  }
+
+  try {
+    const decoded: any = jwt.verify(token, CONFIG.JWT_SECRET);
+    const roleLower = String(decoded.role || '').toLowerCase();
+    if ((decoded.role === 'admin' && decoded.type === 'secret_admin') || (decoded.type === 'member' && roleLower === 'developer')) {
+      (req as any).admin = decoded;
+      (req as any).memberUser = decoded;
+      next();
+      return;
+    }
+
+    res.status(403).json({
+      success: false,
+      error: 'Aksi ini hanya dapat dilakukan oleh Admin atau Developer.',
+      code: 'FORBIDDEN'
+    });
+  } catch {
+    res.status(401).json({
+      success: false,
+      error: 'Sesi telah kedaluwarsa atau tidak sah. Silakan login kembali.',
+      code: 'INVALID_TOKEN'
+    });
+  }
 }
 
 /**

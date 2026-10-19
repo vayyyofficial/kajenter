@@ -11,6 +11,8 @@ import {
   AlertCircle,
   KeyRound,
   RefreshCw,
+  RotateCcw,
+  Plus,
 } from 'lucide-react';
 import { useMemberAuth } from '../../context/MemberAuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -101,6 +103,24 @@ export const PortalProfileTab: React.FC = () => {
   const [selectedRoleUser, setSelectedRoleUser] = useState<Member | null>(null);
   const [newAssignedRole, setNewAssignedRole] = useState('');
 
+  // Reset PP Confirmation Modal states
+  const [isResetPhotoModalOpen, setIsResetPhotoModalOpen] = useState(false);
+  const [resettingPhoto, setResettingPhoto] = useState(false);
+
+  // Developer Add Member states
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [newMemberFullName, setNewMemberFullName] = useState('');
+  const [newMemberNickname, setNewMemberNickname] = useState('');
+  const [newMemberAttendance, setNewMemberAttendance] = useState<string>('01');
+  const [newMemberRole, setNewMemberRole] = useState('Siswa');
+  const [newMemberType, setNewMemberType] = useState<'siswa' | 'guru'>('siswa');
+  const [newMemberBirthPlace, setNewMemberBirthPlace] = useState('Malang');
+  const [newMemberBirthDate, setNewMemberBirthDate] = useState('2008-01-01');
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberPhone, setNewMemberPhone] = useState('');
+  const [addingMember, setAddingMember] = useState(false);
+  const [addMemberError, setAddMemberError] = useState<string | null>(null);
+
   if (!member) return null;
 
   const isDeveloper = Boolean(
@@ -108,7 +128,7 @@ export const PortalProfileTab: React.FC = () => {
     member.role?.toLowerCase() === 'developer'
   );
 
-  const { src: photoSrc } = getMemberPhotoUrl(member);
+  const { src: photoSrc, isCustom } = getMemberPhotoUrl(member);
 
   // 1. Photo Upload Handler
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,6 +152,24 @@ export const PortalProfileTab: React.FC = () => {
     } finally {
       setUploadingPhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Reset Profile Picture Handler
+  const handleResetProfilePicture = async () => {
+    try {
+      setResettingPhoto(true);
+      const res = await updateProfile({ photo_number: '', photoNumber: '', customPhotoNumber: '' });
+      if (res.success) {
+        setProfileMsg({ type: 'success', text: 'Foto profile Anda berhasil dikembalikan ke gambar default.' });
+        setIsResetPhotoModalOpen(false);
+      } else {
+        setProfileMsg({ type: 'error', text: res.error || 'Gagal mereset foto profil.' });
+      }
+    } catch (err: any) {
+      setProfileMsg({ type: 'error', text: err.message || 'Gagal mereset foto profil.' });
+    } finally {
+      setResettingPhoto(false);
     }
   };
 
@@ -372,6 +410,59 @@ export const PortalProfileTab: React.FC = () => {
     }
   };
 
+  const handleOpenAddUserModal = () => {
+    const studentUsers = userList.filter((u) => u.member_type === 'siswa');
+    const nextAbsen = studentUsers.length > 0
+      ? Math.max(...studentUsers.map((s) => Number(s.attendance_number) || 0)) + 1
+      : 1;
+    const padAbsen = String(nextAbsen).padStart(2, '0');
+    setNewMemberAttendance(padAbsen);
+    setNewMemberFullName('');
+    setNewMemberNickname('');
+    setNewMemberBirthPlace('Malang'); // Default per Requirement #2
+    setNewMemberBirthDate('2008-01-01');
+    setNewMemberEmail(`absen${padAbsen}@icptkj35.local`);
+    setNewMemberRole('Siswa');
+    setNewMemberType('siswa');
+    setNewMemberPhone('');
+    setAddMemberError(null);
+    setIsAddUserModalOpen(true);
+  };
+
+  const handleSaveNewMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMemberFullName.trim()) {
+      setAddMemberError('Nama lengkap anggota wajib diisi.');
+      return;
+    }
+    try {
+      setAddingMember(true);
+      setAddMemberError(null);
+      const res = await api.members.create({
+        fullName: newMemberFullName.trim(),
+        nickname: newMemberNickname.trim() || undefined,
+        birthPlace: newMemberBirthPlace.trim() || 'Malang',
+        birthDate: newMemberBirthDate || undefined,
+        email: newMemberEmail.trim() || undefined,
+        role: newMemberRole.trim(),
+        memberType: newMemberType,
+        attendanceNumber: newMemberType === 'siswa' ? String(newMemberAttendance) : undefined,
+        phone: newMemberPhone.trim() || undefined,
+      });
+
+      if (res.success) {
+        setIsAddUserModalOpen(false);
+        openUserManagement();
+      } else {
+        setAddMemberError((res as any).error || (res as any).message || 'Gagal menambahkan anggota.');
+      }
+    } catch (err: any) {
+      setAddMemberError(err.message || 'Gagal menambahkan anggota.');
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
   const filteredUsers = userList.filter((u) => {
     const q = userSearch.toLowerCase();
     return (
@@ -499,6 +590,32 @@ export const PortalProfileTab: React.FC = () => {
         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
           {member.email}
         </div>
+
+        {isCustom && (
+          <div style={{ marginTop: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={() => setIsResetPhotoModalOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.35rem 0.85rem',
+                borderRadius: '9999px',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--danger-border, #fca5a5)',
+                color: 'var(--danger-main, #dc2626)',
+                fontSize: '0.725rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <RotateCcw size={13} />
+              <span>Reset Profile Picture</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 2. Personal Information Card */}
@@ -1271,34 +1388,59 @@ export const PortalProfileTab: React.FC = () => {
         size="md"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          {/* Search bar */}
-          <div style={{ position: 'relative' }}>
-            <Search
-              size={16}
+          {/* Action bar: Search + Tambah Anggota */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search
+                size={16}
+                style={{
+                  position: 'absolute',
+                  left: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted)',
+                }}
+              />
+              <input
+                type="text"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Cari nama, absen, role..."
+                className="form-input"
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.85rem 0.6rem 2.25rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-input)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.825rem',
+                }}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleOpenAddUserModal}
               style={{
-                position: 'absolute',
-                left: '0.75rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--text-muted)',
-              }}
-            />
-            <input
-              type="text"
-              value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
-              placeholder="Cari berdasarkan nama, absen, role, email..."
-              className="form-input"
-              style={{
-                width: '100%',
-                padding: '0.6rem 0.85rem 0.6rem 2.25rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.6rem 0.85rem',
                 borderRadius: '10px',
-                border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-input)',
-                color: 'var(--text-main)',
-                fontSize: '0.825rem',
+                backgroundColor: 'var(--primary-600)',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: '0.775rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
-            />
+            >
+              <Plus size={15} />
+              <span>Tambah Anggota</span>
+            </button>
           </div>
 
           {mgmtLoading ? (
@@ -1693,6 +1835,394 @@ export const PortalProfileTab: React.FC = () => {
                 }}
               >
                 {savingUserEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ========================================================= */}
+      {/* RESET PROFILE PICTURE CONFIRMATION MODAL                  */}
+      {/* ========================================================= */}
+      <Modal
+        isOpen={isResetPhotoModalOpen}
+        onClose={() => setIsResetPhotoModalOpen(false)}
+        title="Reset profile picture?"
+        size="sm"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'center', padding: '0.5rem 0' }}>
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              color: 'var(--danger-main)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto',
+            }}
+          >
+            <RotateCcw size={24} />
+          </div>
+
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.35rem 0' }}>
+              Reset profile picture?
+            </h3>
+            <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+              Foto profile Anda akan dikembalikan ke gambar default.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.65rem', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setIsResetPhotoModalOpen(false)}
+              style={{
+                flex: 1,
+                padding: '0.7rem',
+                borderRadius: '12px',
+                backgroundColor: 'var(--bg-subtle)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-main)',
+                fontSize: '0.825rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={resettingPhoto}
+              onClick={handleResetProfilePicture}
+              style={{
+                flex: 1,
+                padding: '0.7rem',
+                borderRadius: '12px',
+                backgroundColor: 'var(--danger-main, #dc2626)',
+                border: 'none',
+                color: '#ffffff',
+                fontSize: '0.825rem',
+                fontWeight: 800,
+                cursor: resettingPhoto ? 'not-allowed' : 'pointer',
+                opacity: resettingPhoto ? 0.7 : 1,
+              }}
+            >
+              {resettingPhoto ? 'Mereset...' : 'Reset Profile Picture'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ========================================================= */}
+      {/* DEVELOPER ADD MEMBER MODAL                                */}
+      {/* ========================================================= */}
+      {isAddUserModalOpen && (
+        <Modal
+          isOpen={isAddUserModalOpen}
+          onClose={() => setIsAddUserModalOpen(false)}
+          title="Tambah Anggota Baru"
+          size="md"
+        >
+          <form onSubmit={handleSaveNewMember} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            {addMemberError && (
+              <div
+                style={{
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  color: 'var(--danger-main)',
+                  fontSize: '0.775rem',
+                }}
+              >
+                {addMemberError}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                  Jenis Anggota
+                </label>
+                <select
+                  value={newMemberType}
+                  onChange={(e) => setNewMemberType(e.target.value as 'siswa' | 'guru')}
+                  className="form-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-input)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.825rem',
+                  }}
+                >
+                  <option value="siswa">Siswa</option>
+                  <option value="guru">Guru</option>
+                </select>
+              </div>
+
+              {newMemberType === 'siswa' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                    Nomor Absen
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    value={newMemberAttendance}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewMemberAttendance(val);
+                      if (val) {
+                        const pad = String(val).padStart(2, '0');
+                        setNewMemberEmail(`absen${pad}@icptkj35.local`);
+                      }
+                    }}
+                    required
+                    className="form-input"
+                    style={{
+                      width: '100%',
+                      padding: '0.65rem',
+                      borderRadius: '10px',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-input)',
+                      color: 'var(--text-main)',
+                      fontSize: '0.825rem',
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                Nama Lengkap *
+              </label>
+              <input
+                type="text"
+                required
+                value={newMemberFullName}
+                onChange={(e) => setNewMemberFullName(e.target.value)}
+                placeholder="Contoh: Ahmad Fauzan"
+                className="form-input"
+                style={{
+                  width: '100%',
+                  padding: '0.65rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-input)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.825rem',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                  Nama Panggilan
+                </label>
+                <input
+                  type="text"
+                  value={newMemberNickname}
+                  onChange={(e) => setNewMemberNickname(e.target.value)}
+                  placeholder="Contoh: Fauzan"
+                  className="form-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-input)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.825rem',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                  Role / Jabatan
+                </label>
+                <select
+                  value={newMemberRole}
+                  onChange={(e) => setNewMemberRole(e.target.value)}
+                  className="form-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-input)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.825rem',
+                  }}
+                >
+                  <option value="Siswa">Siswa</option>
+                  <option value="Ketua Kelas">Ketua Kelas</option>
+                  <option value="Wakil Ketua">Wakil Ketua</option>
+                  <option value="Sekretaris">Sekretaris</option>
+                  <option value="Bendahara">Bendahara</option>
+                  <option value="Developer">Developer</option>
+                  {newMemberType === 'guru' && <option value="Wali Kelas">Wali Kelas</option>}
+                  {newMemberType === 'guru' && <option value="Guru">Guru</option>}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                  Tempat Lahir (Default: Malang)
+                </label>
+                <input
+                  type="text"
+                  value={newMemberBirthPlace}
+                  onChange={(e) => setNewMemberBirthPlace(e.target.value)}
+                  placeholder="Malang"
+                  className="form-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-input)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.825rem',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                  Tanggal Lahir
+                </label>
+                <input
+                  type="date"
+                  value={newMemberBirthDate}
+                  onChange={(e) => setNewMemberBirthDate(e.target.value)}
+                  className="form-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-input)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.825rem',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                  Email Login
+                </label>
+                <input
+                  type="email"
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  placeholder="absen01@icptkj35.local"
+                  className="form-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-input)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.825rem',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                  No. Telepon / WhatsApp
+                </label>
+                <input
+                  type="tel"
+                  value={newMemberPhone}
+                  onChange={(e) => setNewMemberPhone(e.target.value)}
+                  placeholder="+62812345678"
+                  className="form-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-input)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.825rem',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Default Password Info Box */}
+            <div
+              style={{
+                padding: '0.7rem 0.85rem',
+                borderRadius: '12px',
+                backgroundColor: 'var(--primary-50)',
+                border: '1px solid var(--primary-200)',
+                fontSize: '0.775rem',
+                color: 'var(--primary-700)',
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: '2px' }}>Default Password Akun:</div>
+              <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.9rem' }}>
+                {newMemberType === 'siswa'
+                  ? `icptkj35_${String(newMemberAttendance || '01').padStart(2, '0')}`
+                  : 'icptkj35_guru'}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Password ini langsung otomatis di-hash dengan aman dan dapat digunakan siswa untuk login ke Portal Kelas.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+              <button
+                type="button"
+                onClick={() => setIsAddUserModalOpen(false)}
+                style={{
+                  flex: 1,
+                  padding: '0.65rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-color)',
+                  background: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.8rem',
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={addingMember}
+                style={{
+                  flex: 1,
+                  padding: '0.65rem',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: 'var(--primary-600)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: addingMember ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {addingMember ? 'Menyimpan...' : 'Tambah Anggota'}
               </button>
             </div>
           </form>

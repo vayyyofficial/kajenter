@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Download, Plus, Trash2, Edit3, AlertTriangle } from 'lucide-react';
+import { Download, Plus, Trash2, Edit3, AlertTriangle, X } from 'lucide-react';
 import { useMemberAuth } from '../../context/MemberAuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
@@ -42,6 +42,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states for schedule create
+  const [schedDay, setSchedDay] = useState('Senin');
   const [schedStartTime, setSchedStartTime] = useState('07:00');
   const [schedEndTime, setSchedEndTime] = useState('08:30');
   const [schedSubject, setSchedSubject] = useState('');
@@ -56,12 +57,21 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
   const [editSchedTeacher, setEditSchedTeacher] = useState('');
 
   // Form states for piket create
+  const [piketDay, setPiketDay] = useState('Senin');
   const [piketMemberName, setPiketMemberName] = useState('');
 
   // Form states for piket edit
   const [editingPiket, setEditingPiket] = useState<PiketSchedule | null>(null);
   const [editPiketDay, setEditPiketDay] = useState('Senin');
   const [editPiketMemberName, setEditPiketMemberName] = useState('');
+
+  // Toast notification state
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 5000);
+  };
 
   const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
 
@@ -71,6 +81,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
     roleLower.includes('sekretaris') ||
     roleLower.includes('ketua') ||
     roleLower.includes('wakil') ||
+    roleLower.includes('bendahara') ||
     roleLower.includes('developer')
   );
 
@@ -84,8 +95,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
         const res = await api.portal.piket.getAll(selectedDay);
         if (res.success) setPiketList(res.data);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load schedules:', err);
+      showToast('Jadwal belum dapat dimuat dari database. Silakan coba lagi.', 'error');
     } finally {
       setLoading(false);
     }
@@ -106,7 +118,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
         downloadSchedulePdf(res.data, BRANDING.name);
       }
     } catch {
-      alert('Gagal mendownload PDF Jadwal.');
+      showToast('Gagal mengunduh PDF Jadwal Pelajaran.', 'error');
     }
   };
 
@@ -117,7 +129,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
         downloadPiketPdf(res.data, BRANDING.name);
       }
     } catch {
-      alert('Gagal mendownload PDF Piket.');
+      showToast('Gagal mengunduh PDF Jadwal Piket.', 'error');
     }
   };
 
@@ -125,9 +137,15 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
   const handleCreateSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!schedSubject.trim() || !schedTeacher.trim()) return;
+
+    if (schedStartTime >= schedEndTime) {
+      showToast('Jam mulai harus lebih awal dari jam selesai.', 'error');
+      return;
+    }
+
     try {
       await api.portal.schedules.create({
-        day_of_week: selectedDay,
+        day_of_week: schedDay || selectedDay,
         start_time: schedStartTime,
         end_time: schedEndTime,
         subject: schedSubject.trim(),
@@ -137,9 +155,14 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       setIsAddScheduleModalOpen(false);
       setSchedSubject('');
       setSchedTeacher('');
+      showToast('Jadwal pelajaran berhasil ditambahkan dan disimpan di database!', 'success');
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Gagal menambahkan jadwal.');
+      console.error('Create schedule error:', err);
+      const friendlyErr = err.message?.includes('schema cache')
+        ? 'Tabel Jadwal belum tersedia di database. Silakan jalankan script migrasi supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
+        : err.message || 'Gagal menambahkan jadwal.';
+      showToast(friendlyErr, 'error');
     }
   };
 
@@ -158,6 +181,12 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
   const handleUpdateSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSchedule || !editSchedSubject.trim() || !editSchedTeacher.trim()) return;
+
+    if (editSchedStartTime >= editSchedEndTime) {
+      showToast('Jam mulai harus lebih awal dari jam selesai.', 'error');
+      return;
+    }
+
     try {
       await api.portal.schedules.update(editingSchedule.id, {
         day_of_week: editSchedDay,
@@ -168,9 +197,14 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       });
       setIsEditScheduleModalOpen(false);
       setEditingSchedule(null);
+      showToast('Jadwal pelajaran berhasil diperbarui!', 'success');
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Gagal memperbarui jadwal.');
+      console.error('Update schedule error:', err);
+      const friendlyErr = err.message?.includes('schema cache')
+        ? 'Tabel Jadwal belum tersedia di database. Silakan jalankan script migrasi supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
+        : err.message || 'Gagal memperbarui jadwal.';
+      showToast(friendlyErr, 'error');
     }
   };
 
@@ -181,9 +215,11 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       setIsDeleting(true);
       await api.portal.schedules.delete(scheduleToDelete.id);
       setScheduleToDelete(null);
+      showToast('Jadwal pelajaran berhasil dihapus.', 'success');
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Gagal menghapus jadwal.');
+      console.error('Delete schedule error:', err);
+      showToast(err.message || 'Gagal menghapus jadwal.', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -195,15 +231,20 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
     if (!piketMemberName.trim()) return;
     try {
       await api.portal.piket.create({
-        day_of_week: selectedDay,
+        day_of_week: piketDay || selectedDay,
         member_name: piketMemberName.trim(),
         order_index: piketList.length + 1,
       });
       setIsAddPiketModalOpen(false);
       setPiketMemberName('');
+      showToast('Petugas piket berhasil ditambahkan dan disimpan di database!', 'success');
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Gagal menambahkan piket.');
+      console.error('Create piket error:', err);
+      const friendlyErr = err.message?.includes('schema cache')
+        ? 'Tabel Jadwal Piket belum tersedia di database. Silakan jalankan script migrasi supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
+        : err.message || 'Gagal menambahkan piket.';
+      showToast(friendlyErr, 'error');
     }
   };
 
@@ -226,9 +267,14 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       });
       setIsEditPiketModalOpen(false);
       setEditingPiket(null);
+      showToast('Jadwal piket berhasil diperbarui!', 'success');
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Gagal memperbarui piket.');
+      console.error('Update piket error:', err);
+      const friendlyErr = err.message?.includes('schema cache')
+        ? 'Tabel Jadwal Piket belum tersedia di database. Silakan jalankan script migrasi supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
+        : err.message || 'Gagal memperbarui piket.';
+      showToast(friendlyErr, 'error');
     }
   };
 
@@ -239,9 +285,11 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       setIsDeleting(true);
       await api.portal.piket.delete(piketToDelete.id);
       setPiketToDelete(null);
+      showToast('Petugas piket berhasil dihapus.', 'success');
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Gagal menghapus piket.');
+      console.error('Delete piket error:', err);
+      showToast(err.message || 'Gagal menghapus piket.', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -249,6 +297,36 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.25rem' }}>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          style={{
+            position: 'sticky',
+            top: '0.75rem',
+            zIndex: 100,
+            padding: '0.75rem 1rem',
+            borderRadius: '12px',
+            backgroundColor: toastMessage.type === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(34, 197, 94, 0.95)',
+            color: '#ffffff',
+            boxShadow: 'var(--shadow-lg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+          }}
+        >
+          <span>{toastMessage.text}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '0.2rem' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {/* 1. Header Banner & Segmented Toggle */}
       <div
         style={{
@@ -602,6 +680,32 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
         <form onSubmit={handleCreateSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+              Hari
+            </label>
+            <select
+              value={schedDay || selectedDay}
+              onChange={(e) => setSchedDay(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.65rem 0.8rem',
+                borderRadius: '10px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                color: 'var(--text-main)',
+                fontSize: '0.85rem',
+                boxSizing: 'border-box',
+              }}
+            >
+              {days.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
               Mata Pelajaran *
             </label>
             <input
@@ -940,6 +1044,32 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
         size="sm"
       >
         <form onSubmit={handleCreatePiket} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+              Hari
+            </label>
+            <select
+              value={piketDay || selectedDay}
+              onChange={(e) => setPiketDay(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.65rem 0.8rem',
+                borderRadius: '10px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                color: 'var(--text-main)',
+                fontSize: '0.85rem',
+                boxSizing: 'border-box',
+              }}
+            >
+              {days.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
               Nama Anggota *

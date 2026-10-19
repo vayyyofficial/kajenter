@@ -117,6 +117,18 @@ export function initializeDatabase() {
       updated_at TEXT NOT NULL
     );
 
+    -- Portal: Kas Weeks (Configurable weeks: W1, W2, etc.)
+    CREATE TABLE IF NOT EXISTS class_kas_weeks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      week_number INTEGER NOT NULL UNIQUE,
+      label TEXT NOT NULL,
+      date_range TEXT NOT NULL,
+      year INTEGER NOT NULL DEFAULT 2026,
+      order_index INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     -- Portal: Tugas (Class assignments with deadline dates)
     CREATE TABLE IF NOT EXISTS class_tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -211,6 +223,35 @@ export function initializeDatabase() {
         now,
         now
       );
+    }
+  } catch {
+    // ignore
+  }
+
+  // 3. Ensure initial Kas weeks exist if class_kas_weeks is empty
+  try {
+    const existingWeekCount = query.get<any>('SELECT COUNT(*) as count FROM class_kas_weeks');
+    if (!existingWeekCount || Number(existingWeekCount.count) === 0) {
+      const now = new Date().toISOString();
+      const initialWeeks = [
+        { week_number: 1, label: 'W1', date_range: '1–7 Oktober', order_index: 1 },
+        { week_number: 2, label: 'W2', date_range: '8–14 Oktober', order_index: 2 },
+        { week_number: 3, label: 'W3', date_range: '15–21 Oktober', order_index: 3 },
+        { week_number: 4, label: 'W4', date_range: '22–28 Oktober', order_index: 4 },
+        { week_number: 5, label: 'W5', date_range: '29–31 Oktober', order_index: 5 },
+      ];
+      for (const w of initialWeeks) {
+        query.run(
+          `INSERT OR IGNORE INTO class_kas_weeks (week_number, label, date_range, year, order_index, created_at, updated_at)
+           VALUES (?, ?, ?, 2026, ?, ?, ?)`,
+          w.week_number,
+          w.label,
+          w.date_range,
+          w.order_index,
+          now,
+          now
+        );
+      }
     }
   } catch {
     // ignore

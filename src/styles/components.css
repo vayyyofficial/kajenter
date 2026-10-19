@@ -995,18 +995,21 @@ textarea::placeholder {
 
 .portal-mobile-chassis {
   width: 100%;
-  max-width: 440px;
+  max-width: 418px;
   background-color: var(--bg-card);
-  border-radius: 36px;
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--gray-200);
+  border-radius: 40px;
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.28), 0 0 0 1px var(--gray-200);
   overflow-x: hidden;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  min-height: min(640px, calc(100vh - 100px));
-  max-height: calc(100vh - 80px);
+  height: clamp(740px, 86vh, 890px);
   position: relative;
   transition: all var(--transition-normal);
+}
+
+[data-theme="dark"] .portal-mobile-chassis {
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 /* Explicit Form Input styling for Light & Dark mode consistency */
@@ -1042,6 +1045,7 @@ textarea::placeholder {
     max-width: 100%;
     border-radius: 0;
     box-shadow: none;
+    height: auto;
     min-height: 100vh;
     max-height: none;
     border: none;

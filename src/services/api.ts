@@ -7,6 +7,7 @@ import {
   AdminSettingsData,
   AdminStatusResponse,
   ClassKasRecord,
+  ClassKasWeek,
   ClassTask,
   ClassSchedule,
   PiketSchedule,
@@ -98,12 +99,26 @@ export const api = {
       }>('/members'),
     getById: (id: number | string) =>
       request<{ success: boolean; data: Member }>(`/members/${id}`),
-    create: (payload: Partial<Member> & { attendanceNumber?: string; memberType: string; fullName: string; customPhotoNumber?: string }) =>
+    create: (payload: Partial<Member> & {
+      attendanceNumber?: string;
+      memberType: string;
+      fullName: string;
+      customPhotoNumber?: string;
+      birthPlace?: string;
+      birthDate?: string;
+    }) =>
       request<{ success: boolean; message: string; data: { id: number; photoNumber: string } }>('/members', {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
-    update: (id: number | string, payload: Partial<Member> & { attendanceNumber?: string; memberType?: string; fullName?: string; customPhotoNumber?: string }) =>
+    update: (id: number | string, payload: Partial<Member> & {
+      attendanceNumber?: string;
+      memberType?: string;
+      fullName?: string;
+      customPhotoNumber?: string;
+      birthPlace?: string;
+      birthDate?: string;
+    }) =>
       request<{ success: boolean; message: string }>(`/members/${id}`, {
         method: 'PUT',
         body: JSON.stringify(payload),
@@ -268,6 +283,40 @@ export const api = {
     },
 
     kas: {
+      weeks: {
+        getAll: () =>
+          request<{ success: boolean; data: ClassKasWeek[] }>('/portal/kas/weeks'),
+        create: (payload: { weekNumber: number; label: string; dateRange?: string; year?: number; orderIndex?: number }) =>
+          request<{ success: boolean; message: string; data: ClassKasWeek }>('/portal/kas/weeks', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          }),
+        update: (id: number | string, payload: Partial<ClassKasWeek>) =>
+          request<{ success: boolean; message: string; data: ClassKasWeek }>(`/portal/kas/weeks/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          }),
+        delete: (id: number | string) =>
+          request<{ success: boolean; message: string }>(`/portal/kas/weeks/${id}`, {
+            method: 'DELETE',
+          }),
+      },
+      setPeriode: (payload: {
+        nominal?: number;
+        startDate?: string;
+        startWeek?: number;
+        weeks?: Array<{
+          weekNumber: number;
+          label: string;
+          dateRange?: string;
+          year?: number;
+          orderIndex?: number;
+        }>;
+      }) =>
+        request<{ success: boolean; message: string; data: any }>('/portal/kas/set-periode', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }),
       getAll: (params?: { year?: number; week?: number; member_id?: number }) => {
         const q = params
           ? '?' +

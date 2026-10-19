@@ -699,6 +699,77 @@ export const sqliteDb = {
   },
 
   // ==========================================
+  // KAS WEEKS (MINGGUAN KAS)
+  // ==========================================
+  kasWeeks: {
+    async getAll(year?: number) {
+      let sql = 'SELECT * FROM class_kas_weeks';
+      const params: any[] = [];
+      if (year) {
+        sql += ' WHERE year = ?';
+        params.push(year);
+      }
+      sql += ' ORDER BY order_index ASC, week_number ASC';
+      return rawQuery.all<any>(sql, ...params);
+    },
+
+    async getById(id: number | string) {
+      return rawQuery.get<any>('SELECT * FROM class_kas_weeks WHERE id = ?', id);
+    },
+
+    async getByWeekNumber(weekNumber: number, year?: number) {
+      return rawQuery.get<any>(
+        'SELECT * FROM class_kas_weeks WHERE week_number = ? AND year = ?',
+        weekNumber,
+        year || 2026
+      );
+    },
+
+    async create(item: { weekNumber: number; label: string; dateRange: string; year?: number; orderIndex?: number }) {
+      const now = new Date().toISOString();
+      const year = item.year || 2026;
+      const orderIndex = item.orderIndex !== undefined ? item.orderIndex : item.weekNumber;
+      rawQuery.run(
+        `INSERT INTO class_kas_weeks (week_number, label, date_range, year, order_index, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        item.weekNumber,
+        item.label.trim(),
+        item.dateRange.trim(),
+        year,
+        orderIndex,
+        now,
+        now
+      );
+      return rawQuery.get<any>('SELECT * FROM class_kas_weeks WHERE week_number = ? AND year = ?', item.weekNumber, year);
+    },
+
+    async update(id: number | string, item: { label?: string; dateRange?: string; weekNumber?: number; orderIndex?: number }) {
+      const existing = await this.getById(id);
+      if (!existing) throw new Error('Minggu kas tidak ditemukan.');
+      const now = new Date().toISOString();
+      rawQuery.run(
+        `UPDATE class_kas_weeks
+         SET label = ?, date_range = ?, week_number = ?, order_index = ?, updated_at = ?
+         WHERE id = ?`,
+        item.label !== undefined ? item.label.trim() : existing.label,
+        item.dateRange !== undefined ? item.dateRange.trim() : existing.date_range,
+        item.weekNumber !== undefined ? item.weekNumber : existing.week_number,
+        item.orderIndex !== undefined ? item.orderIndex : existing.order_index,
+        now,
+        id
+      );
+      return this.getById(id);
+    },
+
+    async delete(id: number | string) {
+      const existing = await this.getById(id);
+      if (!existing) throw new Error('Minggu kas tidak ditemukan.');
+      rawQuery.run('DELETE FROM class_kas_weeks WHERE id = ?', id);
+      return existing;
+    },
+  },
+
+  // ==========================================
   // TUGAS
   // ==========================================
   tasks: {

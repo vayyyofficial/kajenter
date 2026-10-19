@@ -229,10 +229,29 @@ router.post('/auth/request-code', requireMemberAuth, async (req: AuthenticatedMe
     const currentPassword = body.currentPassword;
     const newEmail = body.newEmail || body.targetEmail;
 
-    const account = await dbService.portalAuth.getAccountByMemberId(memberId);
+    let account = await dbService.portalAuth.getAccountByMemberId(memberId);
     if (!account) {
-      res.status(404).json({ success: false, error: 'Akun anggota belum diinisialisasi.' });
-      return;
+      // Auto-initialize account for member who is in `members` table
+      const member = await dbService.members.getById(memberId);
+      if (!member) {
+        res.status(404).json({ success: false, error: 'Data anggota tidak ditemukan.' });
+        return;
+      }
+      const att = member.attendance_number ? String(member.attendance_number).padStart(2, '0') : null;
+      const defaultPassword = att ? `icptkj35_${att}` : 'icptkj35_guru';
+      const passwordHash = await bcrypt.hash(defaultPassword, 10);
+      try {
+        account = await dbService.portalAuth.createAccount(
+          memberId,
+          member.email || req.memberUser!.email,
+          passwordHash
+        );
+      } catch (accErr) {
+        console.warn('Auto createAccount during request-code warning:', accErr);
+      }
+      if (!account) {
+        account = await dbService.portalAuth.getAccountByMemberId(memberId);
+      }
     }
 
     // Validate current password when requesting password change
@@ -241,7 +260,11 @@ router.post('/auth/request-code', requireMemberAuth, async (req: AuthenticatedMe
         res.status(400).json({ success: false, error: 'Password saat ini wajib dimasukkan.' });
         return;
       }
-      const isCurrentValid = await bcrypt.compare(String(currentPassword), account.password_hash);
+      const passwordHashToCompare = account?.password_hash;
+      let isCurrentValid = false;
+      if (passwordHashToCompare) {
+        isCurrentValid = await bcrypt.compare(String(currentPassword), passwordHashToCompare);
+      }
       if (!isCurrentValid) {
         res.status(400).json({ success: false, error: 'Password saat ini yang Anda masukkan salah.' });
         return;
@@ -333,7 +356,16 @@ async function handleChangePassword(req: AuthenticatedMemberRequest, res: Respon
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
-    await dbService.portalAuth.updatePassword(memberId, passwordHash);
+    let account = await dbService.portalAuth.getAccountByMemberId(memberId);
+    if (!account) {
+      await dbService.portalAuth.createAccount(
+        memberId,
+        req.memberUser!.email,
+        passwordHash
+      );
+    } else {
+      await dbService.portalAuth.updatePassword(memberId, passwordHash);
+    }
 
     recordAuditLog(req.memberUser!.email, 'PASSWORD_CHANGED', 'PORTAL_SECURITY', 'Anggota berhasil mengganti password akun.');
 
@@ -387,7 +419,17 @@ async function handleChangeEmail(req: AuthenticatedMemberRequest, res: Response)
       return;
     }
 
-    await dbService.portalAuth.updateEmail(memberId, emailToApply);
+    let account = await dbService.portalAuth.getAccountByMemberId(memberId);
+    if (!account) {
+      const member = await dbService.members.getById(memberId);
+      const att = member?.attendance_number ? String(member.attendance_number).padStart(2, '0') : null;
+      const defaultPassword = att ? `icptkj35_${att}` : 'icptkj35_guru';
+      const passwordHash = await bcrypt.hash(defaultPassword, 10);
+      await dbService.portalAuth.createAccount(memberId, emailToApply, passwordHash);
+    } else {
+      await dbService.portalAuth.updateEmail(memberId, emailToApply);
+    }
+
     broadcastSync('members', 'UPDATE', { id: memberId });
 
     recordAuditLog(
@@ -573,10 +615,198 @@ router.get('/kas', requireMemberAuth, async (req: AuthenticatedMemberRequest, re
 });
 
 /**
- * POST /api/portal/kas
- * Only Bendahara or Developer can record kas payments (Requirement #15)
+ * GET /api/portal/kas/weeks
+ * Returns all configured kas weeks
  */
-router.post('/kas', requireMemberAuth, requireRole(['Bendahara']), async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
+router.get('/kas/weeks', requireMemberAuth, async (_req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
+  try {
+    const weeks = await dbService.kasWeeks.getAll();
+    res.json({ success: true, data: weeks });
+  } catch (err: any) {
+    console.error('Get kas weeks error:', err);
+    res.status(500).json({ success: false, error: err.message || 'Gagal memuat daftar minggu kas.' });
+  }
+});
+
+/**
+ * POST /api/portal/kas/weeks
+ * Allowed: Bendahara, Wakil, Ketua, Developer
+ */
+router.post(
+  '/kas/weeks',
+  requireMemberAuth,
+  requireRole(['Bendahara', 'Wakil', 'Wakil Ketua', 'Ketua', 'Ketua Kelas']),
+  async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
+    try {
+      const { weekNumber, label, dateRange, year, orderIndex } = req.body;
+      if (!weekNumber || !label) {
+        res.status(400).json({ success: false, error: 'Nomor minggu dan nama/label minggu wajib diisi.' });
+        return;
+      }
+      const created = await dbService.kasWeeks.create({
+        weekNumber: Number(weekNumber),
+        label: String(label).trim(),
+        dateRange: dateRange ? String(dateRange).trim() : null,
+        year: year ? Number(year) : new Date().getFullYear(),
+        orderIndex: orderIndex !== undefined ? Number(orderIndex) : Number(weekNumber),
+      });
+
+      broadcastSync('settings', 'UPDATE');
+      recordAuditLog(
+        req.memberUser!.role,
+        'CREATE_KAS_WEEK',
+        'KAS',
+        `Menambahkan minggu kas: ${label} (W${weekNumber})`
+      );
+
+      res.status(201).json({ success: true, message: 'Minggu kas berhasil ditambahkan.', data: created });
+    } catch (err: any) {
+      console.error('Create kas week error:', err);
+      res.status(500).json({ success: false, error: err.message || 'Gagal menambahkan minggu kas.' });
+    }
+  }
+);
+
+/**
+ * PUT /api/portal/kas/weeks/:id
+ * Allowed: Bendahara, Wakil, Ketua, Developer
+ */
+router.put(
+  '/kas/weeks/:id',
+  requireMemberAuth,
+  requireRole(['Bendahara', 'Wakil', 'Wakil Ketua', 'Ketua', 'Ketua Kelas']),
+  async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
+    try {
+      const { weekNumber, label, dateRange, year, orderIndex } = req.body;
+      const updated = await dbService.kasWeeks.update(req.params.id, {
+        weekNumber: weekNumber !== undefined ? Number(weekNumber) : undefined,
+        label: label !== undefined ? String(label).trim() : undefined,
+        dateRange: dateRange !== undefined ? (dateRange ? String(dateRange).trim() : null) : undefined,
+        year: year !== undefined ? Number(year) : undefined,
+        orderIndex: orderIndex !== undefined ? Number(orderIndex) : undefined,
+      });
+
+      broadcastSync('settings', 'UPDATE');
+      res.json({ success: true, message: 'Minggu kas berhasil diperbarui.', data: updated });
+    } catch (err: any) {
+      console.error('Update kas week error:', err);
+      res.status(500).json({ success: false, error: err.message || 'Gagal memperbarui minggu kas.' });
+    }
+  }
+);
+
+/**
+ * DELETE /api/portal/kas/weeks/:id
+ * Allowed: Bendahara, Wakil, Ketua, Developer
+ */
+router.delete(
+  '/kas/weeks/:id',
+  requireMemberAuth,
+  requireRole(['Bendahara', 'Wakil', 'Wakil Ketua', 'Ketua', 'Ketua Kelas']),
+  async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
+    try {
+      const deleted = await dbService.kasWeeks.delete(req.params.id);
+      broadcastSync('settings', 'UPDATE');
+      res.json({ success: true, message: 'Minggu kas berhasil dihapus.', data: deleted });
+    } catch (err: any) {
+      console.error('Delete kas week error:', err);
+      res.status(500).json({ success: false, error: err.message || 'Gagal menghapus minggu kas.' });
+    }
+  }
+);
+
+/**
+ * POST /api/portal/kas/set-periode
+ * Set Periode Kas: Bendahara, Wakil, Ketua, Developer can configure period, start date, weeks, and nominal.
+ */
+router.post(
+  '/kas/set-periode',
+  requireMemberAuth,
+  requireRole(['Bendahara', 'Wakil', 'Wakil Ketua', 'Ketua', 'Ketua Kelas']),
+  async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
+    try {
+      const { nominal, startDate, startWeek, weeks } = req.body;
+
+      // 1. Update nominal in settings if provided
+      if (nominal !== undefined && Number(nominal) > 0) {
+        await dbService.admin.updateSetting('kas_nominal', String(Number(nominal)), 'Nominal kas mingguan');
+      }
+
+      // 2. Update start date & start week in settings if provided
+      if (startDate) {
+        await dbService.admin.updateSetting('kas_start_date', String(startDate).trim(), 'Tanggal mulai kas');
+      }
+      if (startWeek !== undefined) {
+        await dbService.admin.updateSetting('kas_start_week', String(startWeek), 'Minggu awal kas');
+      }
+
+      // 3. Upsert configured weeks if provided
+      if (weeks && Array.isArray(weeks) && weeks.length > 0) {
+        for (const w of weeks) {
+          const wNum = Number(w.weekNumber ?? w.week_number);
+          const wLabel = String(w.label || `Week ${wNum}`).trim();
+          const wDateRange = String(w.dateRange ?? w.date_range ?? '').trim();
+          const wYear = Number(w.year || new Date().getFullYear());
+          const wOrder = Number(w.orderIndex ?? w.order_index ?? wNum);
+
+          const existingWeek = await dbService.kasWeeks.getByWeekNumber(wNum, wYear);
+          if (existingWeek) {
+            await dbService.kasWeeks.update(existingWeek.id, {
+              label: wLabel,
+              dateRange: wDateRange,
+              weekNumber: wNum,
+              orderIndex: wOrder,
+            });
+          } else {
+            await dbService.kasWeeks.create({
+              weekNumber: wNum,
+              label: wLabel,
+              dateRange: wDateRange,
+              year: wYear,
+              orderIndex: wOrder,
+            });
+          }
+        }
+      }
+
+      broadcastSync('settings', 'UPDATE');
+      recordAuditLog(
+        req.memberUser!.role,
+        'SET_PERIODE_KAS',
+        'KAS',
+        `Mengatur periode kas: ${weeks?.length || 0} minggu, nominal Rp${nominal || 3000}`
+      );
+
+      const updatedWeeks = await dbService.kasWeeks.getAll();
+      const updatedSummary = await dbService.kas.getSummary();
+
+      res.json({
+        success: true,
+        message: 'Periode kas berhasil diatur dan disinkronkan.',
+        data: {
+          weeks: updatedWeeks,
+          nominal: updatedSummary.weeklyNominal,
+        },
+      });
+    } catch (err: any) {
+      console.error('Set periode kas error:', err);
+      const friendlyErr = err.message?.includes('schema cache')
+        ? 'Tabel Periode Kas belum tersedia di database. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
+        : err.message || 'Gagal mengatur periode kas.';
+      res.status(500).json({ success: false, error: friendlyErr });
+    }
+  }
+);
+
+/**
+ * POST /api/portal/kas
+ * Bendahara, Wakil, Ketua, or Developer can record kas payments
+ */
+router.post(
+  '/kas',
+  requireMemberAuth,
+  requireRole(['Bendahara', 'Wakil', 'Wakil Ketua', 'Ketua', 'Ketua Kelas']),
+  async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
   try {
     const memberId = req.body.memberId ?? req.body.member_id;
     const weekNumber = req.body.weekNumber ?? req.body.week_number;
@@ -616,9 +846,13 @@ router.post('/kas', requireMemberAuth, requireRole(['Bendahara']), async (req: A
 
 /**
  * DELETE /api/portal/kas/:id
- * Only Bendahara or Developer can delete payment
+ * Bendahara, Wakil, Ketua, or Developer can delete payment
  */
-router.delete('/kas/:id', requireMemberAuth, requireRole(['Bendahara']), async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
+router.delete(
+  '/kas/:id',
+  requireMemberAuth,
+  requireRole(['Bendahara', 'Wakil', 'Wakil Ketua', 'Ketua', 'Ketua Kelas']),
+  async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
   try {
     const deleted = await dbService.kas.deletePayment(req.params.id);
     broadcastSync('settings', 'UPDATE');
@@ -852,7 +1086,7 @@ router.get('/schedules', requireMemberAuth, async (req: AuthenticatedMemberReque
 router.post(
   '/schedules',
   requireMemberAuth,
-  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil', 'Wakil Ketua', 'Sekretaris', 'Bendahara']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const day = req.body.day ?? req.body.day_of_week;
@@ -860,7 +1094,6 @@ router.post(
       const endTime = req.body.endTime ?? req.body.end_time;
       const subject = req.body.subject;
       const teacherName = req.body.teacherName ?? req.body.teacher_name;
-      const room = req.body.room ?? null;
       const orderIndex = req.body.orderIndex ?? req.body.order_index ?? 0;
 
       if (!day || !startTime || !endTime || !subject || !teacherName) {
@@ -868,13 +1101,20 @@ router.post(
         return;
       }
 
+      const cleanStart = String(startTime).trim();
+      const cleanEnd = String(endTime).trim();
+      if (cleanStart >= cleanEnd) {
+        res.status(400).json({ success: false, error: 'Jam mulai harus lebih awal dari jam selesai.' });
+        return;
+      }
+
       const created = await dbService.schedules.create({
         day: String(day).trim(),
-        startTime: String(startTime).trim(),
-        endTime: String(endTime).trim(),
+        startTime: cleanStart,
+        endTime: cleanEnd,
         subject: String(subject).trim(),
         teacherName: String(teacherName).trim(),
-        room: room ? String(room).trim() : undefined,
+        room: undefined,
         orderIndex: Number(orderIndex) || 0,
       });
 
@@ -882,7 +1122,10 @@ router.post(
       res.status(201).json({ success: true, message: 'Jadwal pelajaran berhasil ditambahkan.', data: created });
     } catch (err: any) {
       console.error('Create schedule error:', err);
-      res.status(500).json({ success: false, error: err.message || 'Gagal menambahkan jadwal.' });
+      const friendlyErr = err.message?.includes('schema cache')
+        ? 'Tabel Jadwal belum tersedia di database. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
+        : err.message || 'Gagal menambahkan jadwal.';
+      res.status(500).json({ success: false, error: friendlyErr });
     }
   }
 );
@@ -893,7 +1136,7 @@ router.post(
 router.put(
   '/schedules/:id',
   requireMemberAuth,
-  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil', 'Wakil Ketua', 'Sekretaris', 'Bendahara']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const payload: any = { ...req.body };
@@ -903,12 +1146,20 @@ router.put(
       if (req.body.teacher_name && !payload.teacherName) payload.teacherName = req.body.teacher_name;
       if (req.body.order_index !== undefined && payload.orderIndex === undefined) payload.orderIndex = req.body.order_index;
 
+      if (payload.startTime && payload.endTime && String(payload.startTime).trim() >= String(payload.endTime).trim()) {
+        res.status(400).json({ success: false, error: 'Jam mulai harus lebih awal dari jam selesai.' });
+        return;
+      }
+
       const updated = await dbService.schedules.update(req.params.id, payload);
       broadcastSync('settings', 'UPDATE');
       res.json({ success: true, message: 'Jadwal pelajaran berhasil diperbarui.', data: updated });
     } catch (err: any) {
       console.error('Update schedule error:', err);
-      res.status(500).json({ success: false, error: err.message || 'Gagal memperbarui jadwal.' });
+      const friendlyErr = err.message?.includes('schema cache')
+        ? 'Tabel Jadwal belum tersedia di database. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
+        : err.message || 'Gagal memperbarui jadwal.';
+      res.status(500).json({ success: false, error: friendlyErr });
     }
   }
 );
@@ -919,7 +1170,7 @@ router.put(
 router.delete(
   '/schedules/:id',
   requireMemberAuth,
-  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil', 'Wakil Ketua', 'Sekretaris', 'Bendahara']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const deleted = await dbService.schedules.delete(req.params.id);
@@ -973,7 +1224,7 @@ router.get('/piket', requireMemberAuth, async (req: AuthenticatedMemberRequest, 
 router.post(
   '/piket',
   requireMemberAuth,
-  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil', 'Wakil Ketua', 'Sekretaris', 'Bendahara']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const day = req.body.day ?? req.body.day_of_week;
@@ -997,7 +1248,10 @@ router.post(
       res.status(201).json({ success: true, message: 'Petugas piket berhasil ditambahkan.', data: created });
     } catch (err: any) {
       console.error('Create piket error:', err);
-      res.status(500).json({ success: false, error: err.message || 'Gagal menambahkan piket.' });
+      const friendlyErr = err.message?.includes('schema cache')
+        ? 'Tabel Jadwal Piket belum tersedia di database. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
+        : err.message || 'Gagal menambahkan piket.';
+      res.status(500).json({ success: false, error: friendlyErr });
     }
   }
 );
@@ -1008,7 +1262,7 @@ router.post(
 router.put(
   '/piket/:id',
   requireMemberAuth,
-  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil', 'Wakil Ketua', 'Sekretaris', 'Bendahara']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const updated = await dbService.piket.update(req.params.id, req.body);
@@ -1016,7 +1270,10 @@ router.put(
       res.json({ success: true, message: 'Jadwal piket berhasil diperbarui.', data: updated });
     } catch (err: any) {
       console.error('Update piket error:', err);
-      res.status(500).json({ success: false, error: err.message || 'Gagal memperbarui jadwal piket.' });
+      const friendlyErr = err.message?.includes('schema cache')
+        ? 'Tabel Jadwal Piket belum tersedia di database. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
+        : err.message || 'Gagal memperbarui jadwal piket.';
+      res.status(500).json({ success: false, error: friendlyErr });
     }
   }
 );
@@ -1027,7 +1284,7 @@ router.put(
 router.delete(
   '/piket/:id',
   requireMemberAuth,
-  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil', 'Wakil Ketua', 'Sekretaris', 'Bendahara']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const deleted = await dbService.piket.delete(req.params.id);

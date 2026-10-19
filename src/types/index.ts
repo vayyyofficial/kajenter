@@ -88,11 +88,26 @@ export interface ClassKasRecord {
   year: number;
   week_number: number;
   amount: number;
+  status?: string;
   is_paid: number | boolean;
   paid_date?: string | null;
   notes?: string | null;
   recorded_by_name?: string | null;
   recorded_by_member_id?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ClassKasWeek {
+  id: number | string;
+  week_number: number;
+  weekNumber?: number;
+  label: string;
+  date_range?: string | null;
+  dateRange?: string | null;
+  year?: number;
+  order_index?: number;
+  orderIndex?: number;
   created_at?: string;
   updated_at?: string;
 }

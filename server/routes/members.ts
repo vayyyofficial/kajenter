@@ -1,6 +1,7 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { dbService } from '../db/index.js';
-import { requireAdmin, recordAuditLog } from '../middleware/auth.js';
+import { requireAdminOrDeveloper, recordAuditLog } from '../middleware/auth.js';
 import { broadcastSync } from '../sync.js';
 
 const router = Router();
@@ -35,8 +36,8 @@ router.get('/:id', async (req, res): Promise<void> => {
   }
 });
 
-// 3. POST /api/members (Admin only)
-router.post('/', requireAdmin, async (req, res): Promise<void> => {
+// 3. POST /api/members (Admin or Developer)
+router.post('/', requireAdminOrDeveloper, async (req: any, res): Promise<void> => {
   try {
     const {
       fullName,
@@ -65,7 +66,7 @@ router.post('/', requireAdmin, async (req, res): Promise<void> => {
         return;
       }
       attNum = parseInt(attendanceNumber, 10);
-      photoNumber = customPhotoNumber?.trim() || null;
+      photoNumber = customPhotoNumber?.trim() || String(attNum).padStart(2, '0');
 
       // Check unique attendance number for siswa
       const isDuplicate = await dbService.members.checkDuplicateAttendance(attNum);
@@ -81,24 +82,41 @@ router.post('/', requireAdmin, async (req, res): Promise<void> => {
       photoNumber = customPhotoNumber?.trim() || null;
     }
 
+    const finalBirthPlace = birthPlace?.trim() || 'Malang';
+    const finalEmail = email?.trim() || (attNum ? `absen${String(attNum).padStart(2, '0')}@icptkj35.local` : `guru_${Date.now()}@icptkj35.local`);
+
     const created = await dbService.members.create({
       attendanceNumber: attNum,
       fullName: fullName.trim(),
       nickname: nickname?.trim() || null,
-      birthPlace: birthPlace?.trim() || null,
+      birthPlace: finalBirthPlace,
       birthDate: birthDate || null,
-      email: email?.trim() || null,
+      email: finalEmail,
       role: role.trim(),
       memberType,
       photoNumber,
       phone: phone?.trim() || null,
     });
 
+    // Auto-create member_accounts row with default password format: icptkj35_<absen>
+    const defaultPassword = attNum ? `icptkj35_${String(attNum).padStart(2, '0')}` : 'icptkj35_guru';
+    const passwordHash = await bcrypt.hash(defaultPassword, 10);
+    try {
+      await dbService.portalAuth.createAccount(
+        (created as any).id,
+        finalEmail,
+        passwordHash
+      );
+    } catch (accErr) {
+      console.warn('Auto create member_account warning:', accErr);
+    }
+
+    const actor = req.admin ? 'Admin' : (req.memberUser?.email || 'Developer');
     recordAuditLog(
-      'Admin',
+      actor,
       'CREATE',
       'MEMBER',
-      `Menambahkan anggota baru: ${fullName} (${role}, Absen: ${photoNumber})`
+      `Menambahkan anggota baru: ${fullName} (${role}, Absen: ${photoNumber || '-'})`
     );
 
     // Multi-user real-time broadcast
@@ -110,6 +128,7 @@ router.post('/', requireAdmin, async (req, res): Promise<void> => {
       data: {
         id: (created as any).id,
         photoNumber,
+        defaultPassword,
         mappedPhotoPath: photoNumber
           ? (photoNumber.startsWith('http') || photoNumber.startsWith('/')
             ? photoNumber
@@ -123,8 +142,8 @@ router.post('/', requireAdmin, async (req, res): Promise<void> => {
   }
 });
 
-// 4. PUT /api/members/:id (Admin only)
-router.put('/:id', requireAdmin, async (req, res): Promise<void> => {
+// 4. PUT /api/members/:id (Admin or Developer)
+router.put('/:id', requireAdminOrDeveloper, async (req: any, res): Promise<void> => {
   try {
     const memberId = req.params.id;
     const existing = await dbService.members.getById(memberId);
@@ -185,8 +204,9 @@ router.put('/:id', requireAdmin, async (req, res): Promise<void> => {
       phone: phone !== undefined ? phone?.trim() : existing.phone,
     });
 
+    const actor = req.admin ? 'Admin' : (req.memberUser?.email || 'Developer');
     recordAuditLog(
-      'Admin',
+      actor,
       'UPDATE',
       'MEMBER',
       `Memperbarui profil anggota: ${fullName || existing.full_name}`
@@ -202,13 +222,14 @@ router.put('/:id', requireAdmin, async (req, res): Promise<void> => {
   }
 });
 
-// 5. DELETE /api/members/:id (Admin only)
-router.delete('/:id', requireAdmin, async (req, res): Promise<void> => {
+// 5. DELETE /api/members/:id (Admin or Developer)
+router.delete('/:id', requireAdminOrDeveloper, async (req: any, res): Promise<void> => {
   try {
     const deleted = await dbService.members.delete(req.params.id);
 
+    const actor = req.admin ? 'Admin' : (req.memberUser?.email || 'Developer');
     recordAuditLog(
-      'Admin',
+      actor,
       'DELETE',
       'MEMBER',
       `Menghapus anggota: ${(deleted as any)?.full_name || 'Anggota'}`

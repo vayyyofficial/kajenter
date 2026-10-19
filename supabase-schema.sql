@@ -121,6 +121,18 @@ CREATE TABLE IF NOT EXISTS class_kas_records (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Portal: Kas Weeks (Configurable weeks: W1, W2, etc.)
+CREATE TABLE IF NOT EXISTS class_kas_weeks (
+  id BIGSERIAL PRIMARY KEY,
+  week_number INTEGER NOT NULL UNIQUE,
+  label TEXT NOT NULL,
+  date_range TEXT NOT NULL,
+  year INTEGER NOT NULL DEFAULT 2026,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Portal: Tugas (Class assignments with deadline dates)
 CREATE TABLE IF NOT EXISTS class_tasks (
   id BIGSERIAL PRIMARY KEY,
@@ -201,6 +213,7 @@ ALTER TABLE admin_auth_state ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE class_kas_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE class_kas_weeks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE class_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE class_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE piket_schedules ENABLE ROW LEVEL SECURITY;
@@ -250,6 +263,9 @@ CREATE POLICY "Full access on member_accounts" ON member_accounts FOR ALL USING 
 
 DROP POLICY IF EXISTS "Full access on class_kas_records" ON class_kas_records;
 CREATE POLICY "Full access on class_kas_records" ON class_kas_records FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Full access on class_kas_weeks" ON class_kas_weeks;
+CREATE POLICY "Full access on class_kas_weeks" ON class_kas_weeks FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Full access on class_tasks" ON class_tasks;
 CREATE POLICY "Full access on class_tasks" ON class_tasks FOR ALL USING (true) WITH CHECK (true);
@@ -432,3 +448,6 @@ ON CONFLICT DO NOTHING;
 INSERT INTO activity_logs (user_name, action, entity_type, details, created_at)
 VALUES ('System', 'INITIALIZE', 'SYSTEM', 'Inisialisasi sistem database portal digital X ICP TKJ di Supabase PostgreSQL', NOW())
 ON CONFLICT DO NOTHING;
+
+-- Reload Supabase PostgREST Schema Cache
+NOTIFY pgrst, 'reload schema';

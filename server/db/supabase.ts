@@ -879,40 +879,82 @@ export const supabaseDb = {
   // ==========================================
   kas: {
     async getAll(monthYear?: string) {
-      const client = getSupabaseClient()!;
-      let query = client
-        .from('class_kas_records')
-        .select('*, members(full_name, attendance_number, role)');
+      const client = getSupabaseClient();
+      if (!client) return [];
+      try {
+        let query = client
+          .from('class_kas_records')
+          .select('*, members(full_name, attendance_number, role)');
 
-      if (monthYear) {
-        query = query.eq('month_year', monthYear);
-      }
-      const { data, error } = await query
-        .order('month_year', { ascending: false })
-        .order('week_number', { ascending: true });
+        if (monthYear) {
+          query = query.eq('month_year', monthYear);
+        }
+        let { data, error } = await query
+          .order('month_year', { ascending: false })
+          .order('week_number', { ascending: true });
 
-      if (error) {
-        console.warn('kas.getAll error:', error.message);
+        // Fallback: If foreign key relation isn't defined in PostgREST, query flat and join manually
+        if (error && error.message && (error.message.includes('relationship') || error.message.includes('members'))) {
+          console.warn('kas.getAll fallback to flat query due to relationship:', error.message);
+          const flatRes = await client
+            .from('class_kas_records')
+            .select('*')
+            .order('month_year', { ascending: false })
+            .order('week_number', { ascending: true });
+          data = flatRes.data;
+          error = flatRes.error;
+        }
+
+        if (error) {
+          console.warn('kas.getAll Supabase warning (tabel mungkin belum dibuat):', error.message);
+          return [];
+        }
+
+        if (!data || data.length === 0) return [];
+
+        const hasJoinedMembers = Boolean(data[0]?.members);
+        let membersMap: Record<string, any> = {};
+        if (!hasJoinedMembers) {
+          const { data: mems } = await client.from('members').select('id, full_name, attendance_number, role');
+          (mems || []).forEach((m: any) => {
+            membersMap[String(m.id)] = m;
+          });
+        }
+
+        return data.map((row: any) => {
+          const mem = row.members || membersMap[String(row.member_id)] || {};
+          return {
+            ...row,
+            full_name: mem.full_name || row.full_name || '',
+            attendance_number: mem.attendance_number ?? row.attendance_number ?? null,
+            role: mem.role || row.role || '',
+          };
+        });
+      } catch (err: any) {
+        console.warn('kas.getAll exception:', err.message);
         return [];
       }
-      return (data || []).map((row: any) => ({
-        ...row,
-        full_name: row.members?.full_name || '',
-        attendance_number: row.members?.attendance_number || null,
-        role: row.members?.role || '',
-      }));
     },
 
     async getByMember(memberId: number | string) {
-      const client = getSupabaseClient()!;
-      const { data, error } = await client
-        .from('class_kas_records')
-        .select('*')
-        .eq('member_id', memberId)
-        .order('month_year', { ascending: false })
-        .order('week_number', { ascending: true });
-      if (error) return [];
-      return data || [];
+      const client = getSupabaseClient();
+      if (!client) return [];
+      try {
+        const { data, error } = await client
+          .from('class_kas_records')
+          .select('*')
+          .eq('member_id', memberId)
+          .order('month_year', { ascending: false })
+          .order('week_number', { ascending: true });
+        if (error) {
+          console.warn('kas.getByMember error:', error.message);
+          return [];
+        }
+        return data || [];
+      } catch (err: any) {
+        console.warn('kas.getByMember exception:', err.message);
+        return [];
+      }
     },
 
     async recordPayment(item: {
@@ -924,74 +966,239 @@ export const supabaseDb = {
       recordedBy: string;
       notes?: string;
     }) {
-      const client = getSupabaseClient()!;
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
       const now = new Date().toISOString();
       const amount = item.amount || 3000;
       const status = item.status || 'paid';
       const paidAt = status === 'paid' ? now : null;
 
-      const { data: existing } = await client
-        .from('class_kas_records')
-        .select('id')
-        .eq('member_id', item.memberId)
-        .eq('week_number', item.weekNumber)
-        .eq('month_year', item.monthYear)
-        .maybeSingle();
-
-      if (existing) {
-        const { data, error } = await client
+      try {
+        const { data: existing, error: existErr } = await client
           .from('class_kas_records')
-          .update({
-            amount,
-            status,
-            paid_at: paidAt,
-            recorded_by: item.recordedBy,
-            notes: item.notes || null,
-            updated_at: now,
-          })
-          .eq('id', existing.id)
-          .select()
-          .single();
+          .select('id')
+          .eq('member_id', item.memberId)
+          .eq('week_number', item.weekNumber)
+          .eq('month_year', item.monthYear)
+          .maybeSingle();
+
+        if (existErr) {
+          if (existErr.message.includes('schema cache') || existErr.message.includes('does not exist')) {
+            throw new Error('Tabel Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+          }
+          throw new Error(existErr.message);
+        }
+
+        if (existing) {
+          const { data, error } = await client
+            .from('class_kas_records')
+            .update({
+              amount,
+              status,
+              paid_at: paidAt,
+              recorded_by: item.recordedBy,
+              notes: item.notes || null,
+              updated_at: now,
+            })
+            .eq('id', existing.id)
+            .select()
+            .single();
+          if (error) {
+            if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
+              throw new Error('Tabel Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+            }
+            throw new Error(error.message);
+          }
+          return data;
+        } else {
+          const { data, error } = await client
+            .from('class_kas_records')
+            .insert({
+              member_id: item.memberId,
+              week_number: item.weekNumber,
+              month_year: item.monthYear,
+              amount,
+              status,
+              paid_at: paidAt,
+              recorded_by: item.recordedBy,
+              notes: item.notes || null,
+              created_at: now,
+              updated_at: now,
+            })
+            .select()
+            .single();
+          if (error) {
+            if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
+              throw new Error('Tabel Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+            }
+            throw new Error(error.message);
+          }
+          return data;
+        }
+      } catch (err: any) {
+        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
+          throw new Error('Tabel Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+        }
+        throw err;
+      }
+    },
+
+    async deletePayment(id: number | string) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const { data } = await client.from('class_kas_records').select('*').eq('id', id).maybeSingle();
+        await client.from('class_kas_records').delete().eq('id', id);
+        return data;
+      } catch (err: any) {
+        console.warn('kas.deletePayment exception:', err.message);
+        return null;
+      }
+    },
+
+    async getSummary() {
+      const client = getSupabaseClient();
+      if (!client) {
+        return { totalCollected: 0, weeklyNominal: 3000 };
+      }
+      try {
+        const { data } = await client.from('class_kas_records').select('amount').eq('status', 'paid');
+        const total = (data || []).reduce((acc: number, cur: any) => acc + (cur.amount || 0), 0);
+        const { data: nominalRow } = await client.from('website_settings').select('value').eq('key', 'kas_nominal').maybeSingle();
+        return {
+          totalCollected: total,
+          weeklyNominal: nominalRow?.value ? parseInt(nominalRow.value, 10) : 3000,
+        };
+      } catch (err: any) {
+        console.warn('kas.getSummary exception:', err.message);
+        return { totalCollected: 0, weeklyNominal: 3000 };
+      }
+    },
+  },
+
+  // ==========================================
+  // KAS WEEKS (MINGGUAN KAS)
+  // ==========================================
+  kasWeeks: {
+    async getAll(year?: number) {
+      const client = getSupabaseClient();
+      if (!client) return [];
+      try {
+        let query = client.from('class_kas_weeks').select('*');
+        if (year) {
+          query = query.eq('year', year);
+        }
+        const { data, error } = await query
+          .order('order_index', { ascending: true })
+          .order('week_number', { ascending: true });
+        if (error) {
+          console.warn('kasWeeks.getAll warning:', error.message);
+          return [];
+        }
+        return data || [];
+      } catch (err: any) {
+        console.warn('kasWeeks.getAll exception:', err.message);
+        return [];
+      }
+    },
+
+    async getById(id: number | string) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const { data, error } = await client.from('class_kas_weeks').select('*').eq('id', id).maybeSingle();
         if (error) throw new Error(error.message);
         return data;
-      } else {
+      } catch (err: any) {
+        console.warn('kasWeeks.getById exception:', err.message);
+        return null;
+      }
+    },
+
+    async getByWeekNumber(weekNumber: number, year?: number) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const { data } = await client
+          .from('class_kas_weeks')
+          .select('*')
+          .eq('week_number', weekNumber)
+          .eq('year', year || 2026)
+          .maybeSingle();
+        return data;
+      } catch {
+        return null;
+      }
+    },
+
+    async create(item: { weekNumber: number; label: string; dateRange: string; year?: number; orderIndex?: number }) {
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
+      const now = new Date().toISOString();
+      const year = item.year || 2026;
+      const orderIndex = item.orderIndex !== undefined ? item.orderIndex : item.weekNumber;
+      try {
         const { data, error } = await client
-          .from('class_kas_records')
+          .from('class_kas_weeks')
           .insert({
-            member_id: item.memberId,
             week_number: item.weekNumber,
-            month_year: item.monthYear,
-            amount,
-            status,
-            paid_at: paidAt,
-            recorded_by: item.recordedBy,
-            notes: item.notes || null,
+            label: item.label.trim(),
+            date_range: item.dateRange.trim(),
+            year,
+            order_index: orderIndex,
             created_at: now,
             updated_at: now,
           })
           .select()
           .single();
-        if (error) throw new Error(error.message);
+        if (error) {
+          if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
+            throw new Error('Tabel Periode Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+          }
+          throw new Error(error.message);
+        }
         return data;
+      } catch (err: any) {
+        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
+          throw new Error('Tabel Periode Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+        }
+        throw err;
       }
     },
 
-    async deletePayment(id: number | string) {
-      const client = getSupabaseClient()!;
-      const { data } = await client.from('class_kas_records').select('*').eq('id', id).maybeSingle();
-      await client.from('class_kas_records').delete().eq('id', id);
-      return data;
+    async update(id: number | string, item: { label?: string; dateRange?: string; weekNumber?: number; orderIndex?: number }) {
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
+      const now = new Date().toISOString();
+      const payload: Record<string, any> = { updated_at: now };
+      if (item.label !== undefined) payload.label = item.label.trim();
+      if (item.dateRange !== undefined) payload.date_range = item.dateRange.trim();
+      if (item.weekNumber !== undefined) payload.week_number = item.weekNumber;
+      if (item.orderIndex !== undefined) payload.order_index = item.orderIndex;
+
+      try {
+        const { data, error } = await client.from('class_kas_weeks').update(payload).eq('id', id).select().single();
+        if (error) throw new Error(error.message);
+        return data;
+      } catch (err: any) {
+        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
+          throw new Error('Tabel Periode Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+        }
+        throw err;
+      }
     },
 
-    async getSummary() {
-      const client = getSupabaseClient()!;
-      const { data } = await client.from('class_kas_records').select('amount').eq('status', 'paid');
-      const total = (data || []).reduce((acc: number, cur: any) => acc + (cur.amount || 0), 0);
-      const { data: nominalRow } = await client.from('website_settings').select('value').eq('key', 'kas_nominal').maybeSingle();
-      return {
-        totalCollected: total,
-        weeklyNominal: nominalRow?.value ? parseInt(nominalRow.value, 10) : 3000,
-      };
+    async delete(id: number | string) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const { data } = await client.from('class_kas_weeks').select('*').eq('id', id).maybeSingle();
+        await client.from('class_kas_weeks').delete().eq('id', id);
+        return data;
+      } catch (err: any) {
+        console.warn('kasWeeks.delete exception:', err.message);
+        return null;
+      }
     },
   },
 
@@ -1000,17 +1207,24 @@ export const supabaseDb = {
   // ==========================================
   tasks: {
     async getAll() {
-      const client = getSupabaseClient()!;
-      const { data, error } = await client.from('class_tasks').select('*').order('deadline', { ascending: true });
-      if (error) {
-        console.warn('tasks.getAll error:', error.message);
+      const client = getSupabaseClient();
+      if (!client) return [];
+      try {
+        const { data, error } = await client.from('class_tasks').select('*').order('deadline', { ascending: true });
+        if (error) {
+          console.warn('tasks.getAll error:', error.message);
+          return [];
+        }
+        return data || [];
+      } catch (err: any) {
+        console.warn('tasks.getAll exception:', err.message);
         return [];
       }
-      return data || [];
     },
 
     async getById(id: number | string) {
-      const client = getSupabaseClient()!;
+      const client = getSupabaseClient();
+      if (!client) return null;
       const { data, error } = await client.from('class_tasks').select('*').eq('id', id).maybeSingle();
       if (error) throw new Error(error.message);
       return data;
@@ -1026,7 +1240,8 @@ export const supabaseDb = {
       status?: string;
       createdBy: string;
     }) {
-      const client = getSupabaseClient()!;
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
       const now = new Date().toISOString();
       const { data, error } = await client
         .from('class_tasks')
@@ -1049,7 +1264,8 @@ export const supabaseDb = {
     },
 
     async update(id: number | string, item: Partial<any>) {
-      const client = getSupabaseClient()!;
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
       const now = new Date().toISOString();
       const payload: Record<string, any> = { updated_at: now };
       if (item.title !== undefined) payload.title = item.title.trim();
@@ -1068,7 +1284,8 @@ export const supabaseDb = {
     },
 
     async delete(id: number | string) {
-      const client = getSupabaseClient()!;
+      const client = getSupabaseClient();
+      if (!client) return null;
       const { data } = await client.from('class_tasks').select('*').eq('id', id).maybeSingle();
       await client.from('class_tasks').delete().eq('id', id);
       return data;
@@ -1080,17 +1297,23 @@ export const supabaseDb = {
   // ==========================================
   schedules: {
     async getAll() {
-      const client = getSupabaseClient()!;
-      const { data, error } = await client
-        .from('class_schedules')
-        .select('*')
-        .order('order_index', { ascending: true })
-        .order('start_time', { ascending: true });
-      if (error) {
-        console.warn('schedules.getAll error:', error.message);
+      const client = getSupabaseClient();
+      if (!client) return [];
+      try {
+        const { data, error } = await client
+          .from('class_schedules')
+          .select('*')
+          .order('order_index', { ascending: true })
+          .order('start_time', { ascending: true });
+        if (error) {
+          console.warn('schedules.getAll error:', error.message);
+          return [];
+        }
+        return data || [];
+      } catch (err: any) {
+        console.warn('schedules.getAll exception:', err.message);
         return [];
       }
-      return data || [];
     },
 
     async create(item: {
@@ -1102,29 +1325,43 @@ export const supabaseDb = {
       room?: string;
       orderIndex?: number;
     }) {
-      const client = getSupabaseClient()!;
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
       const now = new Date().toISOString();
-      const { data, error } = await client
-        .from('class_schedules')
-        .insert({
-          day: item.day.trim(),
-          start_time: item.startTime.trim(),
-          end_time: item.endTime.trim(),
-          subject: item.subject.trim(),
-          teacher_name: item.teacherName.trim(),
-          room: item.room?.trim() || null,
-          order_index: item.orderIndex || 0,
-          created_at: now,
-          updated_at: now,
-        })
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-      return data;
+      try {
+        const { data, error } = await client
+          .from('class_schedules')
+          .insert({
+            day: item.day.trim(),
+            start_time: item.startTime.trim(),
+            end_time: item.endTime.trim(),
+            subject: item.subject.trim(),
+            teacher_name: item.teacherName.trim(),
+            room: null,
+            order_index: item.orderIndex || 0,
+            created_at: now,
+            updated_at: now,
+          })
+          .select()
+          .single();
+        if (error) {
+          if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
+            throw new Error('Tabel Jadwal Pelajaran belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+          }
+          throw new Error(error.message);
+        }
+        return data;
+      } catch (err: any) {
+        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
+          throw new Error('Tabel Jadwal Pelajaran belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+        }
+        throw err;
+      }
     },
 
     async update(id: number | string, item: Partial<any>) {
-      const client = getSupabaseClient()!;
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
       const now = new Date().toISOString();
       const payload: Record<string, any> = { updated_at: now };
       if (item.day !== undefined) payload.day = item.day.trim();
@@ -1132,19 +1369,31 @@ export const supabaseDb = {
       if (item.endTime !== undefined) payload.end_time = item.endTime.trim();
       if (item.subject !== undefined) payload.subject = item.subject.trim();
       if (item.teacherName !== undefined) payload.teacher_name = item.teacherName.trim();
-      if (item.room !== undefined) payload.room = item.room?.trim() || null;
       if (item.orderIndex !== undefined) payload.order_index = item.orderIndex;
 
-      const { data, error } = await client.from('class_schedules').update(payload).eq('id', id).select().single();
-      if (error) throw new Error(error.message);
-      return data;
+      try {
+        const { data, error } = await client.from('class_schedules').update(payload).eq('id', id).select().single();
+        if (error) throw new Error(error.message);
+        return data;
+      } catch (err: any) {
+        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
+          throw new Error('Tabel Jadwal Pelajaran belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+        }
+        throw err;
+      }
     },
 
     async delete(id: number | string) {
-      const client = getSupabaseClient()!;
-      const { data } = await client.from('class_schedules').select('*').eq('id', id).maybeSingle();
-      await client.from('class_schedules').delete().eq('id', id);
-      return data;
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const { data } = await client.from('class_schedules').select('*').eq('id', id).maybeSingle();
+        await client.from('class_schedules').delete().eq('id', id);
+        return data;
+      } catch (err: any) {
+        console.warn('schedules.delete exception:', err.message);
+        return null;
+      }
     },
   },
 
@@ -1153,13 +1402,19 @@ export const supabaseDb = {
   // ==========================================
   piket: {
     async getAll() {
-      const client = getSupabaseClient()!;
-      const { data, error } = await client.from('piket_schedules').select('*').order('id', { ascending: true });
-      if (error) {
-        console.warn('piket.getAll error:', error.message);
+      const client = getSupabaseClient();
+      if (!client) return [];
+      try {
+        const { data, error } = await client.from('piket_schedules').select('*').order('id', { ascending: true });
+        if (error) {
+          console.warn('piket.getAll error:', error.message);
+          return [];
+        }
+        return data || [];
+      } catch (err: any) {
+        console.warn('piket.getAll exception:', err.message);
         return [];
       }
-      return data || [];
     },
 
     async create(item: {
@@ -1168,43 +1423,69 @@ export const supabaseDb = {
       memberName: string;
       tasks?: string;
     }) {
-      const client = getSupabaseClient()!;
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
       const now = new Date().toISOString();
-      const { data, error } = await client
-        .from('piket_schedules')
-        .insert({
-          day: item.day.trim(),
-          member_id: item.memberId || null,
-          member_name: item.memberName.trim(),
-          tasks: item.tasks?.trim() || 'Membersihkan kelas dan merapikan perlengkapan',
-          created_at: now,
-          updated_at: now,
-        })
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-      return data;
+      try {
+        const { data, error } = await client
+          .from('piket_schedules')
+          .insert({
+            day: item.day.trim(),
+            member_id: item.memberId || null,
+            member_name: item.memberName.trim(),
+            tasks: 'Piket Kebersihan Kelas',
+            created_at: now,
+            updated_at: now,
+          })
+          .select()
+          .single();
+        if (error) {
+          if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
+            throw new Error('Tabel Jadwal Piket belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+          }
+          throw new Error(error.message);
+        }
+        return data;
+      } catch (err: any) {
+        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
+          throw new Error('Tabel Jadwal Piket belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+        }
+        throw err;
+      }
     },
 
     async update(id: number | string, item: Partial<any>) {
-      const client = getSupabaseClient()!;
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
       const now = new Date().toISOString();
       const payload: Record<string, any> = { updated_at: now };
       if (item.day !== undefined) payload.day = item.day.trim();
       if (item.memberId !== undefined) payload.member_id = item.memberId;
       if (item.memberName !== undefined) payload.member_name = item.memberName.trim();
-      if (item.tasks !== undefined) payload.tasks = item.tasks.trim();
 
-      const { data, error } = await client.from('piket_schedules').update(payload).eq('id', id).select().single();
-      if (error) throw new Error(error.message);
-      return data;
+      try {
+        const { data, error } = await client.from('piket_schedules').update(payload).eq('id', id).select().single();
+        if (error) throw new Error(error.message);
+        return data;
+      } catch (err: any) {
+        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
+          throw new Error('Tabel Jadwal Piket belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+        }
+        throw err;
+      }
     },
 
     async delete(id: number | string) {
-      const client = getSupabaseClient()!;
-      const { data } = await client.from('piket_schedules').select('*').eq('id', id).maybeSingle();
-      await client.from('piket_schedules').delete().eq('id', id);
-      return data;
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const { data } = await client.from('piket_schedules').select('*').eq('id', id).maybeSingle();
+        await client.from('piket_schedules').delete().eq('id', id);
+        return data;
+      } catch (err: any) {
+        console.warn('piket.delete exception:', err.message);
+        return null;
+      }
     },
   },
 };
