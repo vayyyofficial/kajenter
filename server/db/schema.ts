@@ -182,7 +182,14 @@ export function initializeDatabase() {
   `);
 
   // Safe Additive Migrations:
-  // 1. Ensure Developer role exists in roles_permissions
+  // 1. Ensure status column in class_tasks
+  try {
+    db.exec(`ALTER TABLE class_tasks ADD COLUMN status TEXT NOT NULL DEFAULT 'pending';`);
+  } catch {
+    // Column already exists or table freshly created
+  }
+
+  // 2. Ensure Developer role exists in roles_permissions
   try {
     db.exec(`
       INSERT OR IGNORE INTO roles_permissions (role_name, can_manage_gallery, can_manage_members, can_manage_social, can_manage_settings, updated_at)

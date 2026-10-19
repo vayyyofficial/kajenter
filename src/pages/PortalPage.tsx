@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useMemberAuth } from '../context/MemberAuthContext';
 import { PortalHeader } from '../components/portal/PortalHeader';
 import { PortalBottomNav, PortalTabId } from '../components/portal/PortalBottomNav';
@@ -91,7 +91,10 @@ export const PortalPage: React.FC<PortalPageProps> = ({ onNavigate }) => {
         ) : (
           <>
             {/* E-Wallet Top Profile Header */}
-            <PortalHeader onBackToHome={handleBackToHome} />
+            <PortalHeader
+              onBackToHome={handleBackToHome}
+              onGoToDashboard={() => handleTabChange('home')}
+            />
 
             {/* Scrollable Tab Content Area */}
             <main

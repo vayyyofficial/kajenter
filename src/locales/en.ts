@@ -480,6 +480,8 @@ export const en = {
       roleLockedNotice: 'Role cannot be edited directly. Contact Developer or Administrator.',
     },
     security: {
+      changePasswordTitle: 'Change Password',
+      changeEmailTitle: 'Change Email',
       currentPassword: 'Current Password',
       newPassword: 'New Password',
       confirmNewPassword: 'Confirm New Password',
@@ -487,6 +489,8 @@ export const en = {
       codeSentNotice: 'A 6-digit verification code has been generated. Please enter it below.',
       enterCode: '6-Digit Verification Code',
       verifyAndSave: 'Verify & Update Password',
+      verifyAndSavePassword: 'Verify & Update Password',
+      newEmail: 'New Email Address',
       newEmailAddress: 'New Email Address',
       verifyAndSaveEmail: 'Verify & Update Email',
       codeExpiresIn: 'Code expires in 10 minutes.',

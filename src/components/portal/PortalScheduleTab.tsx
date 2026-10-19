@@ -7,6 +7,7 @@ import { ClassSchedule, PiketSchedule } from '../../types';
 import { downloadSchedulePdf, downloadPiketPdf } from '../../utils/pdfGenerator';
 import { BRANDING } from '../../config/branding';
 import { Modal } from '../common/Modal';
+import { useRealtimeSync } from '../../context/SyncContext';
 
 interface PortalScheduleTabProps {
   defaultSubTab?: 'schedule' | 'piket';
@@ -94,6 +95,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
     loadData();
   }, [loadData]);
 
+  // Real-time synchronization
+  useRealtimeSync(['settings'], loadData);
+
   // Download PDF handlers (Requirements #18 & #19)
   const handleDownloadSchedulePdf = async () => {
     try {
@@ -101,7 +105,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       if (res.success && res.data) {
         downloadSchedulePdf(res.data, BRANDING.name);
       }
-    } catch (err) {
+    } catch {
       alert('Gagal mendownload PDF Jadwal.');
     }
   };
@@ -112,7 +116,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       if (res.success && res.data) {
         downloadPiketPdf(res.data, BRANDING.name);
       }
-    } catch (err) {
+    } catch {
       alert('Gagal mendownload PDF Piket.');
     }
   };
@@ -597,7 +601,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       >
         <form onSubmit={handleCreateSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
               Mata Pelajaran *
             </label>
             <input
@@ -610,9 +614,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                 width: '100%',
                 padding: '0.65rem 0.8rem',
                 borderRadius: '10px',
-                border: '1px solid var(--gray-300)',
-                backgroundColor: 'var(--bg-input)',
-                color: 'var(--gray-900)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                color: 'var(--text-main)',
                 fontSize: '0.85rem',
                 boxSizing: 'border-box',
               }}
@@ -620,7 +624,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
               Guru Pengampu *
             </label>
             <input
@@ -633,9 +637,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                 width: '100%',
                 padding: '0.65rem 0.8rem',
                 borderRadius: '10px',
-                border: '1px solid var(--gray-300)',
-                backgroundColor: 'var(--bg-input)',
-                color: 'var(--gray-900)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                color: 'var(--text-main)',
                 fontSize: '0.85rem',
                 boxSizing: 'border-box',
               }}
@@ -644,7 +648,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                 Jam Mulai
               </label>
               <input
@@ -656,9 +660,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                   width: '100%',
                   padding: '0.65rem 0.8rem',
                   borderRadius: '10px',
-                  border: '1px solid var(--gray-300)',
-                  backgroundColor: 'var(--bg-input)',
-                  color: 'var(--gray-900)',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                  color: 'var(--text-main)',
                   fontSize: '0.85rem',
                   boxSizing: 'border-box',
                 }}
@@ -666,7 +670,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                 Jam Selesai
               </label>
               <input
@@ -678,9 +682,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                   width: '100%',
                   padding: '0.65rem 0.8rem',
                   borderRadius: '10px',
-                  border: '1px solid var(--gray-300)',
-                  backgroundColor: 'var(--bg-input)',
-                  color: 'var(--gray-900)',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                  color: 'var(--text-main)',
                   fontSize: '0.85rem',
                   boxSizing: 'border-box',
                 }}
@@ -719,7 +723,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       >
         <form onSubmit={handleUpdateSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
               Hari
             </label>
             <select
@@ -729,9 +733,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                 width: '100%',
                 padding: '0.65rem 0.8rem',
                 borderRadius: '10px',
-                border: '1px solid var(--gray-300)',
-                backgroundColor: 'var(--bg-input)',
-                color: 'var(--gray-900)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                color: 'var(--text-main)',
                 fontSize: '0.85rem',
                 boxSizing: 'border-box',
               }}
@@ -745,7 +749,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
               Mata Pelajaran *
             </label>
             <input
@@ -758,9 +762,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                 width: '100%',
                 padding: '0.65rem 0.8rem',
                 borderRadius: '10px',
-                border: '1px solid var(--gray-300)',
-                backgroundColor: 'var(--bg-input)',
-                color: 'var(--gray-900)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                color: 'var(--text-main)',
                 fontSize: '0.85rem',
                 boxSizing: 'border-box',
               }}
@@ -768,7 +772,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
               Guru Pengampu *
             </label>
             <input
@@ -781,9 +785,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                 width: '100%',
                 padding: '0.65rem 0.8rem',
                 borderRadius: '10px',
-                border: '1px solid var(--gray-300)',
-                backgroundColor: 'var(--bg-input)',
-                color: 'var(--gray-900)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                color: 'var(--text-main)',
                 fontSize: '0.85rem',
                 boxSizing: 'border-box',
               }}
@@ -792,7 +796,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                 Jam Mulai
               </label>
               <input
@@ -804,9 +808,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                   width: '100%',
                   padding: '0.65rem 0.8rem',
                   borderRadius: '10px',
-                  border: '1px solid var(--gray-300)',
-                  backgroundColor: 'var(--bg-input)',
-                  color: 'var(--gray-900)',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                  color: 'var(--text-main)',
                   fontSize: '0.85rem',
                   boxSizing: 'border-box',
                 }}
@@ -814,7 +818,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                 Jam Selesai
               </label>
               <input
@@ -826,9 +830,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                   width: '100%',
                   padding: '0.65rem 0.8rem',
                   borderRadius: '10px',
-                  border: '1px solid var(--gray-300)',
-                  backgroundColor: 'var(--bg-input)',
-                  color: 'var(--gray-900)',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                  color: 'var(--text-main)',
                   fontSize: '0.85rem',
                   boxSizing: 'border-box',
                 }}
@@ -937,7 +941,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       >
         <form onSubmit={handleCreatePiket} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
               Nama Anggota *
             </label>
             <input
@@ -950,9 +954,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                 width: '100%',
                 padding: '0.65rem 0.8rem',
                 borderRadius: '10px',
-                border: '1px solid var(--gray-300)',
-                backgroundColor: 'var(--bg-input)',
-                color: 'var(--gray-900)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                color: 'var(--text-main)',
                 fontSize: '0.85rem',
                 boxSizing: 'border-box',
               }}
@@ -990,7 +994,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       >
         <form onSubmit={handleUpdatePiket} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
               Hari
             </label>
             <select
@@ -1000,9 +1004,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                 width: '100%',
                 padding: '0.65rem 0.8rem',
                 borderRadius: '10px',
-                border: '1px solid var(--gray-300)',
-                backgroundColor: 'var(--bg-input)',
-                color: 'var(--gray-900)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                color: 'var(--text-main)',
                 fontSize: '0.85rem',
                 boxSizing: 'border-box',
               }}
@@ -1016,7 +1020,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
+            <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
               Nama Anggota *
             </label>
             <input
@@ -1029,9 +1033,9 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
                 width: '100%',
                 padding: '0.65rem 0.8rem',
                 borderRadius: '10px',
-                border: '1px solid var(--gray-300)',
-                backgroundColor: 'var(--bg-input)',
-                color: 'var(--gray-900)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-input, var(--bg-surface))',
+                color: 'var(--text-main)',
                 fontSize: '0.85rem',
                 boxSizing: 'border-box',
               }}

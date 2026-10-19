@@ -230,26 +230,38 @@ export const api = {
         }),
       getMe: () =>
         request<{ success: boolean; member: AuthMember }>('/portal/auth/me'),
-      requestCode: (payload: { type: 'password' | 'email'; targetEmail?: string }) =>
-        request<{ success: boolean; message: string; expiryMinutes: number }>('/portal/auth/request-code', {
+      requestCode: (payload: {
+        type?: 'password' | 'email';
+        purpose?: 'password' | 'email' | 'change_password' | 'change_email';
+        currentPassword?: string;
+        newEmail?: string;
+        targetEmail?: string;
+      }) =>
+        request<{
+          success: boolean;
+          message: string;
+          expiryMinutes: number;
+          code?: string;
+          devVerificationCode?: string;
+        }>('/portal/auth/request-code', {
           method: 'POST',
           body: JSON.stringify(payload),
         }),
-      changePassword: (payload: { currentPassword: string; newPassword: string; confirmPassword: string; code: string }) =>
+      changePassword: (payload: { currentPassword?: string; newPassword: string; confirmPassword?: string; code: string }) =>
         request<{ success: boolean; message: string }>('/portal/auth/change-password', {
           method: 'PUT',
           body: JSON.stringify(payload),
         }),
       changeEmail: (payload: { newEmail: string; code: string }) =>
-        request<{ success: boolean; message: string; member: AuthMember; token: string }>('/portal/auth/change-email', {
+        request<{ success: boolean; message: string; member: AuthMember; token: string; newEmail: string }>('/portal/auth/change-email', {
           method: 'PUT',
           body: JSON.stringify(payload),
         }),
     },
 
     profile: {
-      update: (payload: Partial<Member>) =>
-        request<{ success: boolean; message: string; member: AuthMember }>('/portal/profile', {
+      update: (payload: Partial<Member> & { photo_number?: string; photoNumber?: string; customPhotoNumber?: string }) =>
+        request<{ success: boolean; message: string; member: AuthMember; data: AuthMember }>('/portal/profile', {
           method: 'PUT',
           body: JSON.stringify(payload),
         }),
@@ -261,7 +273,7 @@ export const api = {
           ? '?' +
             new URLSearchParams(
               Object.entries(params)
-                .filter(([_, v]) => v !== undefined && v !== null)
+                .filter(([, v]) => v !== undefined && v !== null)
                 .map(([k, v]) => [k, String(v)])
             ).toString()
           : '';
@@ -296,7 +308,7 @@ export const api = {
           ? '?' +
             new URLSearchParams(
               Object.entries(params)
-                .filter(([_, v]) => v !== undefined && v !== null)
+                .filter(([, v]) => v !== undefined && v !== null)
                 .map(([k, v]) => [k, String(v)])
             ).toString()
           : '';
@@ -373,11 +385,16 @@ export const api = {
 
     users: {
       getAll: () =>
-        request<{ success: boolean; data: any[] }>('/portal/users'),
-      updateRole: (id: number, role: string) =>
-        request<{ success: boolean; message: string; data: any }>(`/portal/users/${id}/role`, {
+        request<{ success: boolean; data: Member[] }>('/portal/users'),
+      updateRole: (id: number | string, role: string) =>
+        request<{ success: boolean; message: string; data: Member }>(`/portal/users/${id}/role`, {
           method: 'PUT',
           body: JSON.stringify({ role }),
+        }),
+      updateUser: (id: number | string, payload: Partial<Member>) =>
+        request<{ success: boolean; message: string; data: Member; member: Member }>(`/portal/users/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
         }),
     },
   },

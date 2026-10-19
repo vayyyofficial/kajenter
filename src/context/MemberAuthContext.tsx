@@ -15,15 +15,15 @@ interface MemberAuthContextType {
   }>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
-  updateProfile: (payload: Partial<Member>) => Promise<{
+  updateProfile: (payload: Partial<Member> & { photo_number?: string; photoNumber?: string; customPhotoNumber?: string }) => Promise<{
     success: boolean;
     error?: string;
     message?: string;
   }>;
   changePassword: (payload: {
-    currentPassword: string;
+    currentPassword?: string;
     newPassword: string;
-    confirmPassword: string;
+    confirmPassword?: string;
     code: string;
   }) => Promise<{ success: boolean; error?: string; message?: string }>;
   changeEmail: (payload: {
@@ -32,8 +32,8 @@ interface MemberAuthContextType {
   }) => Promise<{ success: boolean; error?: string; message?: string }>;
   requestVerificationCode: (
     type: 'password' | 'email',
-    targetEmail?: string
-  ) => Promise<{ success: boolean; error?: string; message?: string; expiryMinutes?: number }>;
+    options?: { currentPassword?: string; newEmail?: string }
+  ) => Promise<{ success: boolean; error?: string; message?: string; expiryMinutes?: number; code?: string }>;
 }
 
 const MemberAuthContext = createContext<MemberAuthContextType | undefined>(undefined);
@@ -122,12 +122,13 @@ export const MemberAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setMember(null);
   };
 
-  const updateProfile = async (payload: Partial<Member>) => {
+  const updateProfile = async (payload: Partial<Member> & { photo_number?: string; photoNumber?: string; customPhotoNumber?: string }) => {
     try {
       const res = await api.portal.profile.update(payload);
-      if (res.success && res.member) {
-        setMember(res.member);
-        localStorage.setItem(MEMBER_DATA_KEY, JSON.stringify(res.member));
+      const updated = res.member || res.data;
+      if (res.success && updated) {
+        setMember(updated);
+        localStorage.setItem(MEMBER_DATA_KEY, JSON.stringify(updated));
         return { success: true, message: res.message };
       }
       return { success: false, error: 'Gagal memperbarui profil.' };
@@ -136,13 +137,23 @@ export const MemberAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const requestVerificationCode = async (type: 'password' | 'email', targetEmail?: string) => {
+  const requestVerificationCode = async (
+    type: 'password' | 'email',
+    options?: { currentPassword?: string; newEmail?: string }
+  ) => {
     try {
-      const res = await api.portal.auth.requestCode({ type, targetEmail });
+      const res = await api.portal.auth.requestCode({
+        type,
+        purpose: type === 'password' ? 'change_password' : 'change_email',
+        currentPassword: options?.currentPassword,
+        newEmail: options?.newEmail,
+        targetEmail: member?.email || undefined,
+      });
       return {
         success: res.success,
         message: res.message,
         expiryMinutes: res.expiryMinutes,
+        code: res.devVerificationCode || res.code,
       };
     } catch (err: any) {
       return { success: false, error: err.message || 'Gagal mengirim kode verifikasi.' };
@@ -150,9 +161,9 @@ export const MemberAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const changePassword = async (payload: {
-    currentPassword: string;
+    currentPassword?: string;
     newPassword: string;
-    confirmPassword: string;
+    confirmPassword?: string;
     code: string;
   }) => {
     try {

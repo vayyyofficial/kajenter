@@ -1023,6 +1023,7 @@ export const supabaseDb = {
       deadline: string;
       description?: string;
       notes?: string;
+      status?: string;
       createdBy: string;
     }) {
       const client = getSupabaseClient()!;
@@ -1036,6 +1037,7 @@ export const supabaseDb = {
           deadline: item.deadline.trim(),
           description: item.description?.trim() || null,
           notes: item.notes?.trim() || null,
+          status: item.status || 'pending',
           created_by: item.createdBy,
           created_at: now,
           updated_at: now,
@@ -1053,9 +1055,12 @@ export const supabaseDb = {
       if (item.title !== undefined) payload.title = item.title.trim();
       if (item.subject !== undefined) payload.subject = item.subject.trim();
       if (item.teacherName !== undefined) payload.teacher_name = item.teacherName?.trim() || null;
+      if (item.teacher_name !== undefined) payload.teacher_name = item.teacher_name?.trim() || null;
       if (item.deadline !== undefined) payload.deadline = item.deadline.trim();
+      if (item.deadline_date !== undefined) payload.deadline = item.deadline_date.trim();
       if (item.description !== undefined) payload.description = item.description?.trim() || null;
       if (item.notes !== undefined) payload.notes = item.notes?.trim() || null;
+      if (item.status !== undefined) payload.status = item.status;
 
       const { data, error } = await client.from('class_tasks').update(payload).eq('id', id).select().single();
       if (error) throw new Error(error.message);

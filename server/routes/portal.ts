@@ -7,6 +7,7 @@ import {
   requireMemberAuth,
   requireRole,
   recordAuditLog,
+  getMemberPermissions,
   AuthenticatedMemberRequest,
 } from '../middleware/auth.js';
 import { broadcastSync } from '../sync.js';
@@ -75,7 +76,7 @@ router.post('/auth/login', async (req, res): Promise<void> => {
       if (password !== expectedDefaultPassword) {
         res.status(401).json({
           success: false,
-          error: 'Password salah. Silakan coba lagi.',
+          error: 'Password yang Anda masukkan salah.',
           code: 'INVALID_CREDENTIALS',
         });
         return;
@@ -99,10 +100,16 @@ router.post('/auth/login', async (req, res): Promise<void> => {
 
       recordAuditLog(member.full_name, 'FIRST_LOGIN', 'MEMBER_AUTH', 'Login pertama kali anggota berhasil.');
 
+      const memberWithPermissions = {
+        ...member,
+        permissions: getMemberPermissions(member.role),
+      };
+
       res.json({
         success: true,
         token,
-        member,
+        member: memberWithPermissions,
+        permissions: memberWithPermissions.permissions,
         firstLogin: true,
         hasChangedPassword: false,
         message: 'Selamat datang di Portal Kelas X ICP TKJ - 35.',
@@ -128,7 +135,7 @@ router.post('/auth/login', async (req, res): Promise<void> => {
     if (!isMatch) {
       res.status(401).json({
         success: false,
-        error: 'Password salah. Silakan coba lagi.',
+        error: 'Password yang Anda masukkan salah.',
         code: 'INVALID_CREDENTIALS',
       });
       return;
@@ -148,17 +155,23 @@ router.post('/auth/login', async (req, res): Promise<void> => {
 
     recordAuditLog(member.full_name, 'LOGIN', 'MEMBER_AUTH', 'Login anggota Portal Kelas berhasil.');
 
+    const memberWithPermissions = {
+      ...member,
+      permissions: getMemberPermissions(member.role),
+    };
+
     res.json({
       success: true,
       token,
-      member,
+      member: memberWithPermissions,
+      permissions: memberWithPermissions.permissions,
       firstLogin: false,
       hasChangedPassword: account.has_changed_password === 1,
       message: 'Login berhasil.',
     });
   } catch (err: any) {
     console.error('Portal login error:', err);
-    res.status(500).json({ success: false, error: 'Terjadi masalah saat menghubungkan ke server. Silakan coba lagi.' });
+    res.status(500).json({ success: false, error: 'Terjadi kesalahan pada sistem atau database. Silakan coba beberapa saat lagi.' });
   }
 });
 
@@ -177,9 +190,14 @@ router.get('/auth/me', requireMemberAuth, async (req: AuthenticatedMemberRequest
 
     const account = await dbService.portalAuth.getAccountByMemberId(memberId);
 
+    const memberWithPermissions = {
+      ...member,
+      permissions: getMemberPermissions(member.role),
+    };
+
     res.json({
       success: true,
-      member,
+      member: memberWithPermissions,
       account: {
         email: member.email,
         hasChangedPassword: account ? account.has_changed_password === 1 : false,
@@ -192,7 +210,7 @@ router.get('/auth/me', requireMemberAuth, async (req: AuthenticatedMemberRequest
 });
 
 // ==========================================
-// 2. CHANGE PASSWORD & EMAIL (6-digit code)
+// 2. CHANGE PASSWORD & EMAIL (6-digit OTP verification)
 // ==========================================
 
 /**
@@ -202,12 +220,14 @@ router.get('/auth/me', requireMemberAuth, async (req: AuthenticatedMemberRequest
 router.post('/auth/request-code', requireMemberAuth, async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
   try {
     const memberId = req.memberUser!.memberId;
-    const { purpose, currentPassword, newEmail } = req.body;
-
-    if (!purpose || !currentPassword) {
-      res.status(400).json({ success: false, error: 'Tujuan dan password saat ini wajib diisi.' });
-      return;
-    }
+    const body = req.body || {};
+    const rawPurpose = body.purpose || body.type;
+    const purpose =
+      rawPurpose === 'password' || rawPurpose === 'change_password'
+        ? 'change_password'
+        : 'change_email';
+    const currentPassword = body.currentPassword;
+    const newEmail = body.newEmail || body.targetEmail;
 
     const account = await dbService.portalAuth.getAccountByMemberId(memberId);
     if (!account) {
@@ -215,20 +235,27 @@ router.post('/auth/request-code', requireMemberAuth, async (req: AuthenticatedMe
       return;
     }
 
-    // Validate current password
-    const isCurrentValid = await bcrypt.compare(String(currentPassword), account.password_hash);
-    if (!isCurrentValid) {
-      res.status(401).json({ success: false, error: 'Password saat ini salah.' });
-      return;
+    // Validate current password when requesting password change
+    if (purpose === 'change_password') {
+      if (!currentPassword) {
+        res.status(400).json({ success: false, error: 'Password saat ini wajib dimasukkan.' });
+        return;
+      }
+      const isCurrentValid = await bcrypt.compare(String(currentPassword), account.password_hash);
+      if (!isCurrentValid) {
+        res.status(400).json({ success: false, error: 'Password saat ini yang Anda masukkan salah.' });
+        return;
+      }
     }
 
     // If changing email, validate new email uniqueness
     if (purpose === 'change_email') {
-      if (!newEmail || !newEmail.includes('@')) {
+      if (!newEmail || !String(newEmail).includes('@')) {
         res.status(400).json({ success: false, error: 'Format email baru tidak valid.' });
         return;
       }
-      const existing = await dbService.portalAuth.findMemberByEmail(newEmail);
+      const cleanNew = String(newEmail).trim().toLowerCase();
+      const existing = await dbService.portalAuth.findMemberByEmail(cleanNew);
       if (existing && String(existing.id) !== String(memberId)) {
         res.status(400).json({ success: false, error: 'Email baru sudah digunakan oleh anggota lain.' });
         return;
@@ -239,21 +266,28 @@ router.post('/auth/request-code', requireMemberAuth, async (req: AuthenticatedMe
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const targetEmail = req.memberUser!.email;
 
-    await dbService.portalAuth.saveVerificationCode(targetEmail, code, purpose, newEmail);
+    await dbService.portalAuth.saveVerificationCode(
+      targetEmail,
+      code,
+      purpose,
+      newEmail ? String(newEmail).trim().toLowerCase() : undefined
+    );
 
     recordAuditLog(
       req.memberUser!.email,
       'VERIFICATION_REQUESTED',
       'PORTAL_SECURITY',
-      `Permintaan kode verifikasi 6 digit untuk: ${purpose}`
+      `Permintaan kode OTP 6 digit untuk: ${purpose}`
     );
 
-    // Return friendly response
+    console.log(`🔑 [PORTAL OTP] Kode verifikasi untuk ${targetEmail} (${purpose}): ${code}`);
+
     res.json({
       success: true,
       message: `Kode verifikasi 6 digit telah dikirim ke ${targetEmail}. Berlaku selama 10 menit.`,
-      // For developer/demonstration environment when mailer is not connected:
-      devVerificationCode: process.env.NODE_ENV !== 'production' ? code : undefined,
+      expiryMinutes: 10,
+      code,
+      devVerificationCode: code,
     });
   } catch (err: any) {
     console.error('Request code error:', err);
@@ -262,23 +296,32 @@ router.post('/auth/request-code', requireMemberAuth, async (req: AuthenticatedMe
 });
 
 /**
- * POST /api/portal/auth/verify-code
- * Verifies 6-digit code and applies password or email change
+ * Helper handler for changing password with OTP code
  */
-router.post('/auth/verify-code', requireMemberAuth, async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
+async function handleChangePassword(req: AuthenticatedMemberRequest, res: Response): Promise<void> {
   try {
     const memberId = req.memberUser!.memberId;
-    const { code, purpose, newPassword, newEmail } = req.body;
+    const { code, newPassword, confirmPassword } = req.body;
 
-    if (!code || !purpose) {
-      res.status(400).json({ success: false, error: 'Kode verifikasi dan tujuan wajib diisi.' });
+    if (!code) {
+      res.status(400).json({ success: false, error: 'Kode verifikasi 6 digit wajib diisi.' });
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      res.status(400).json({ success: false, error: 'Password baru minimal 6 karakter.' });
+      return;
+    }
+
+    if (confirmPassword && newPassword !== confirmPassword) {
+      res.status(400).json({ success: false, error: 'Konfirmasi password baru tidak cocok.' });
       return;
     }
 
     const verifiedRecord = await dbService.portalAuth.verifyCode(
       req.memberUser!.email,
       String(code).trim(),
-      purpose
+      'change_password'
     );
 
     if (!verifiedRecord) {
@@ -289,53 +332,123 @@ router.post('/auth/verify-code', requireMemberAuth, async (req: AuthenticatedMem
       return;
     }
 
-    if (purpose === 'change_password') {
-      if (!newPassword || newPassword.length < 6) {
-        res.status(400).json({ success: false, error: 'Password baru minimal 6 karakter.' });
-        return;
-      }
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await dbService.portalAuth.updatePassword(memberId, passwordHash);
 
-      const passwordHash = await bcrypt.hash(newPassword, 10);
-      await dbService.portalAuth.updatePassword(memberId, passwordHash);
+    recordAuditLog(req.memberUser!.email, 'PASSWORD_CHANGED', 'PORTAL_SECURITY', 'Anggota berhasil mengganti password akun.');
 
-      recordAuditLog(req.memberUser!.email, 'PASSWORD_CHANGED', 'PORTAL_SECURITY', 'Anggota berhasil mengganti password akun.');
-
-      res.json({
-        success: true,
-        message: 'Password berhasil diubah. Gunakan password baru Anda pada login berikutnya.',
-      });
-      return;
-    }
-
-    if (purpose === 'change_email') {
-      const emailToApply = newEmail || verifiedRecord.new_email;
-      if (!emailToApply) {
-        res.status(400).json({ success: false, error: 'Alamat email baru tidak ditemukan.' });
-        return;
-      }
-
-      await dbService.portalAuth.updateEmail(memberId, emailToApply);
-      broadcastSync('members', 'UPDATE', { id: memberId });
-
-      recordAuditLog(
-        req.memberUser!.email,
-        'EMAIL_CHANGED',
-        'PORTAL_SECURITY',
-        `Anggota mengubah email login menjadi: ${emailToApply}`
-      );
-
-      res.json({
-        success: true,
-        message: 'Email login berhasil diperbarui dan disinkronkan ke seluruh sistem.',
-        newEmail: emailToApply,
-      });
-      return;
-    }
-
-    res.status(400).json({ success: false, error: 'Tujuan verifikasi tidak dikenal.' });
+    res.json({
+      success: true,
+      message: 'Password berhasil diubah. Gunakan password baru Anda pada login berikutnya.',
+    });
   } catch (err: any) {
-    console.error('Verify code error:', err);
-    res.status(500).json({ success: false, error: err.message || 'Gagal memverifikasi kode.' });
+    console.error('Change password error:', err);
+    res.status(500).json({ success: false, error: err.message || 'Gagal mengubah password.' });
+  }
+}
+
+/**
+ * Helper handler for changing email with OTP code
+ */
+async function handleChangeEmail(req: AuthenticatedMemberRequest, res: Response): Promise<void> {
+  try {
+    const memberId = req.memberUser!.memberId;
+    const { code, newEmail } = req.body;
+
+    if (!code) {
+      res.status(400).json({ success: false, error: 'Kode verifikasi 6 digit wajib diisi.' });
+      return;
+    }
+
+    const verifiedRecord = await dbService.portalAuth.verifyCode(
+      req.memberUser!.email,
+      String(code).trim(),
+      'change_email'
+    );
+
+    if (!verifiedRecord) {
+      res.status(400).json({
+        success: false,
+        error: 'Kode verifikasi email salah atau telah kedaluwarsa. Silakan minta kode baru.',
+      });
+      return;
+    }
+
+    const emailToApply = (newEmail || verifiedRecord.new_email || '').trim().toLowerCase();
+    if (!emailToApply || !emailToApply.includes('@')) {
+      res.status(400).json({ success: false, error: 'Alamat email baru tidak valid.' });
+      return;
+    }
+
+    // Verify uniqueness
+    const existing = await dbService.portalAuth.findMemberByEmail(emailToApply);
+    if (existing && String(existing.id) !== String(memberId)) {
+      res.status(400).json({ success: false, error: 'Email baru sudah digunakan oleh anggota lain.' });
+      return;
+    }
+
+    await dbService.portalAuth.updateEmail(memberId, emailToApply);
+    broadcastSync('members', 'UPDATE', { id: memberId });
+
+    recordAuditLog(
+      req.memberUser!.email,
+      'EMAIL_CHANGED',
+      'PORTAL_SECURITY',
+      `Anggota mengubah email login menjadi: ${emailToApply}`
+    );
+
+    const freshMember = await dbService.members.getById(memberId);
+    const newToken = jwt.sign(
+      {
+        memberId: freshMember.id,
+        email: emailToApply,
+        role: freshMember.role,
+        type: 'member',
+      },
+      CONFIG.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    const freshMemberWithPerms = {
+      ...freshMember,
+      email: emailToApply,
+      permissions: getMemberPermissions(freshMember.role),
+    };
+
+    res.json({
+      success: true,
+      message: 'Email login berhasil diperbarui dan disinkronkan ke seluruh sistem.',
+      newEmail: emailToApply,
+      token: newToken,
+      member: freshMemberWithPerms,
+    });
+  } catch (err: any) {
+    console.error('Change email error:', err);
+    res.status(500).json({ success: false, error: err.message || 'Gagal mengubah email.' });
+  }
+}
+
+/**
+ * Route aliases to support both REST endpoints and multi-method clients
+ */
+router.put('/auth/change-password', requireMemberAuth, handleChangePassword);
+router.post('/auth/change-password', requireMemberAuth, handleChangePassword);
+
+router.put('/auth/change-email', requireMemberAuth, handleChangeEmail);
+router.post('/auth/change-email', requireMemberAuth, handleChangeEmail);
+
+/**
+ * POST /api/portal/auth/verify-code
+ * Verifies 6-digit code and delegates to password or email change
+ */
+router.post('/auth/verify-code', requireMemberAuth, async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
+  const { purpose } = req.body;
+  if (purpose === 'change_password') {
+    return handleChangePassword(req, res);
+  } else if (purpose === 'change_email') {
+    return handleChangeEmail(req, res);
+  } else {
+    res.status(400).json({ success: false, error: 'Tujuan verifikasi tidak dikenal.' });
   }
 });
 
@@ -345,8 +458,8 @@ router.post('/auth/verify-code', requireMemberAuth, async (req: AuthenticatedMem
 
 /**
  * PUT /api/portal/profile
- * Allows member to update personal info and profile picture.
- * Role CANNOT be changed by user (Requirement #26 & #29).
+ * Allows logged-in member to update their personal info and profile picture.
+ * Role CANNOT be changed by user (Requirement #1 & #10).
  */
 router.put('/profile', requireMemberAuth, async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
   try {
@@ -357,24 +470,22 @@ router.put('/profile', requireMemberAuth, async (req: AuthenticatedMemberRequest
       return;
     }
 
-    const {
-      fullName,
-      nickname,
-      birthPlace,
-      birthDate,
-      phone,
-      customPhotoNumber,
-    } = req.body;
+    const fullName = req.body.fullName ?? req.body.full_name;
+    const nickname = req.body.nickname;
+    const birthPlace = req.body.birthPlace ?? req.body.birth_place;
+    const birthDate = req.body.birthDate ?? req.body.birth_date;
+    const phone = req.body.phone;
+    const photoNumber = req.body.photoNumber ?? req.body.photo_number ?? req.body.customPhotoNumber;
 
-    // Notice: role and member_type are strictly ignored from user request!
+    // Notice: role and member_type are strictly retained from existing record!
     const updated = await dbService.members.update(memberId, {
-      fullName: fullName !== undefined ? fullName.trim() : existing.full_name,
-      nickname: nickname !== undefined ? nickname?.trim() : existing.nickname,
-      birthPlace: birthPlace !== undefined ? birthPlace?.trim() : existing.birth_place,
-      birthDate: birthDate !== undefined ? birthDate : existing.birth_date,
-      phone: phone !== undefined ? phone?.trim() : existing.phone,
-      photoNumber: customPhotoNumber !== undefined ? customPhotoNumber?.trim() : existing.photo_number,
-      // Maintain existing role and attendance number unchanged!
+      fullName: fullName !== undefined ? String(fullName).trim() : existing.full_name,
+      nickname: nickname !== undefined ? (nickname ? String(nickname).trim() : null) : existing.nickname,
+      birthPlace: birthPlace !== undefined ? (birthPlace ? String(birthPlace).trim() : null) : existing.birth_place,
+      birthDate: birthDate !== undefined ? (birthDate ? String(birthDate) : null) : existing.birth_date,
+      phone: phone !== undefined ? (phone ? String(phone).trim() : null) : existing.phone,
+      photoNumber: photoNumber !== undefined ? (photoNumber ? String(photoNumber).trim() : null) : existing.photo_number,
+      // Strictly maintain existing role, attendance number, and member type!
       role: existing.role,
       attendanceNumber: existing.attendance_number,
       memberType: existing.member_type,
@@ -385,10 +496,16 @@ router.put('/profile', requireMemberAuth, async (req: AuthenticatedMemberRequest
 
     recordAuditLog(existing.full_name, 'UPDATE_PROFILE', 'PORTAL', 'Memperbarui profil diri dari Portal Kelas.');
 
+    const memberWithPerms = {
+      ...updated,
+      permissions: getMemberPermissions(updated.role),
+    };
+
     res.json({
       success: true,
       message: 'Profil berhasil diperbarui dan disinkronkan.',
-      data: updated,
+      member: memberWithPerms,
+      data: memberWithPerms,
     });
   } catch (err: any) {
     console.error('Portal update profile error:', err);
@@ -607,7 +724,7 @@ router.get('/tasks', requireMemberAuth, async (req: AuthenticatedMemberRequest, 
 router.post(
   '/tasks',
   requireMemberAuth,
-  requireRole(['Sekretaris', 'Ketua Kelas', 'Wakil Ketua']),
+  requireRole(['Sekretaris', 'Ketua', 'Ketua Kelas', 'Wakil Ketua']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const title = req.body.title;
@@ -653,7 +770,7 @@ router.post(
 router.put(
   '/tasks/:id',
   requireMemberAuth,
-  requireRole(['Sekretaris', 'Ketua Kelas', 'Wakil Ketua']),
+  requireRole(['Sekretaris', 'Ketua', 'Ketua Kelas', 'Wakil Ketua']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const payload: any = { ...req.body };
@@ -676,7 +793,7 @@ router.put(
 router.delete(
   '/tasks/:id',
   requireMemberAuth,
-  requireRole(['Sekretaris', 'Ketua Kelas', 'Wakil Ketua']),
+  requireRole(['Sekretaris', 'Ketua', 'Ketua Kelas', 'Wakil Ketua']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const deleted = await dbService.tasks.delete(req.params.id);
@@ -735,7 +852,7 @@ router.get('/schedules', requireMemberAuth, async (req: AuthenticatedMemberReque
 router.post(
   '/schedules',
   requireMemberAuth,
-  requireRole(['Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const day = req.body.day ?? req.body.day_of_week;
@@ -776,7 +893,7 @@ router.post(
 router.put(
   '/schedules/:id',
   requireMemberAuth,
-  requireRole(['Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const payload: any = { ...req.body };
@@ -802,7 +919,7 @@ router.put(
 router.delete(
   '/schedules/:id',
   requireMemberAuth,
-  requireRole(['Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const deleted = await dbService.schedules.delete(req.params.id);
@@ -856,7 +973,7 @@ router.get('/piket', requireMemberAuth, async (req: AuthenticatedMemberRequest, 
 router.post(
   '/piket',
   requireMemberAuth,
-  requireRole(['Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const day = req.body.day ?? req.body.day_of_week;
@@ -891,7 +1008,7 @@ router.post(
 router.put(
   '/piket/:id',
   requireMemberAuth,
-  requireRole(['Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const updated = await dbService.piket.update(req.params.id, req.body);
@@ -910,7 +1027,7 @@ router.put(
 router.delete(
   '/piket/:id',
   requireMemberAuth,
-  requireRole(['Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
+  requireRole(['Ketua', 'Ketua Kelas', 'Wakil Ketua', 'Sekretaris']),
   async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
     try {
       const deleted = await dbService.piket.delete(req.params.id);
@@ -986,6 +1103,76 @@ router.put(
     } catch (err: any) {
       console.error('Update role error:', err);
       res.status(500).json({ success: false, error: err.message || 'Gagal mengubah role.' });
+    }
+  }
+);
+
+/**
+ * PUT /api/portal/users/:id
+ * Only Developer can edit student/teacher data (Requirement #1 & #4)
+ */
+router.put(
+  '/users/:id',
+  requireMemberAuth,
+  requireRole(['Developer']),
+  async (req: AuthenticatedMemberRequest, res: Response): Promise<void> => {
+    try {
+      const memberId = req.params.id;
+      const existing = await dbService.members.getById(memberId);
+      if (!existing) {
+        res.status(404).json({ success: false, error: 'Anggota tidak ditemukan.' });
+        return;
+      }
+
+      const fullName = req.body.fullName ?? req.body.full_name;
+      const nickname = req.body.nickname;
+      const birthPlace = req.body.birthPlace ?? req.body.birth_place;
+      const birthDate = req.body.birthDate ?? req.body.birth_date;
+      const email = req.body.email;
+      const phone = req.body.phone;
+      const photoNumber = req.body.photoNumber ?? req.body.photo_number ?? req.body.customPhotoNumber;
+      const role = req.body.role;
+      const attendanceNumber = req.body.attendanceNumber ?? req.body.attendance_number;
+
+      const updated = await dbService.members.update(memberId, {
+        fullName: fullName !== undefined ? String(fullName).trim() : existing.full_name,
+        nickname: nickname !== undefined ? (nickname ? String(nickname).trim() : null) : existing.nickname,
+        birthPlace: birthPlace !== undefined ? (birthPlace ? String(birthPlace).trim() : null) : existing.birth_place,
+        birthDate: birthDate !== undefined ? (birthDate ? String(birthDate) : null) : existing.birth_date,
+        email: email !== undefined ? (email ? String(email).trim().toLowerCase() : null) : existing.email,
+        phone: phone !== undefined ? (phone ? String(phone).trim() : null) : existing.phone,
+        photoNumber: photoNumber !== undefined ? (photoNumber ? String(photoNumber).trim() : null) : existing.photo_number,
+        role: role !== undefined ? String(role).trim() : existing.role,
+        attendanceNumber: attendanceNumber !== undefined ? (attendanceNumber ? Number(attendanceNumber) : null) : existing.attendance_number,
+        memberType: existing.member_type,
+      });
+
+      // Synchronize email in member_accounts if email was changed
+      if (email && String(email).trim().toLowerCase() !== String(existing.email || '').trim().toLowerCase()) {
+        try {
+          await dbService.portalAuth.updateEmail(memberId, String(email).trim().toLowerCase());
+        } catch {
+          // ignore
+        }
+      }
+
+      broadcastSync('members', 'UPDATE', { id: memberId });
+      recordAuditLog(
+        req.memberUser!.role,
+        'UPDATE_MEMBER',
+        'MEMBERS',
+        `Developer memperbarui data anggota ${existing.full_name}`
+      );
+
+      res.json({
+        success: true,
+        message: `Data ${existing.full_name} berhasil diperbarui.`,
+        member: updated,
+        data: updated,
+      });
+    } catch (err: any) {
+      console.error('Developer update user error:', err);
+      res.status(500).json({ success: false, error: err.message || 'Gagal memperbarui data anggota.' });
     }
   }
 );

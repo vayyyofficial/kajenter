@@ -8,7 +8,6 @@ import {
   Server,
   Network,
   ShieldCheck,
-  GraduationCap,
   Calendar,
 } from 'lucide-react';
 import { dataCache } from '../services/dataCache';

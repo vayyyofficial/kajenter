@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, X, Bell } from 'lucide-react';
 import { api } from '../../services/api';
 import { ClassTask } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { useRealtimeSync } from '../../context/SyncContext';
 
 interface DueTomorrowNotificationProps {
   onNavigateToTasks?: () => void;
@@ -20,30 +21,26 @@ export const DueTomorrowNotification: React.FC<DueTomorrowNotificationProps> = (
 
   const isEn = language === 'en';
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function checkDueTomorrow() {
-      try {
-        const res = await api.portal.tasks.getDueTomorrow();
-        const taskList = res.tasks || (res as any).data || [];
-        if (isMounted && res.success && taskList.length > 0) {
-          // Task deadline is tomorrow - show notification for current view
-          setTasks(taskList);
-        }
-      } catch (err) {
-        // Silent catch to prevent errors on network hiccup
-      } finally {
-        if (isMounted) setLoading(false);
+  const checkDueTomorrow = useCallback(async () => {
+    try {
+      const res = await api.portal.tasks.getDueTomorrow();
+      const taskList = res.tasks || (res as any).data || [];
+      if (res.success) {
+        setTasks(taskList);
       }
+    } catch (err) {
+      // Silent catch to prevent errors on network hiccup
+    } finally {
+      setLoading(false);
     }
-
-    checkDueTomorrow();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  useEffect(() => {
+    checkDueTomorrow();
+  }, [checkDueTomorrow]);
+
+  // Real-time synchronization when tasks are added, modified, or deleted
+  useRealtimeSync(['settings'], checkDueTomorrow);
 
   if (loading || dismissed || tasks.length === 0) {
     return null;

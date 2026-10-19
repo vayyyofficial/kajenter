@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 import { GalleryItem } from '../types';
 import { dataCache } from '../services/dataCache';
-import { BRANDING } from '../config/branding';
 import { GalleryCard } from '../components/gallery/GalleryCard';
 import { GalleryViewerModal } from '../components/gallery/GalleryViewerModal';
 import { EmptyState } from '../components/common/EmptyState';

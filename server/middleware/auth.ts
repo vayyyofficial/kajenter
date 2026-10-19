@@ -57,7 +57,7 @@ export function requireAdmin(req: AuthenticatedAdminRequest, res: Response, next
 
     req.admin = decoded;
     next();
-  } catch (_err) {
+  } catch {
     res.status(401).json({
       success: false,
       error: 'Sesi admin telah kedaluwarsa atau tidak sah. Silakan masukkan password kembali.',
@@ -111,13 +111,45 @@ export async function requireMemberAuth(req: AuthenticatedMemberRequest, res: Re
       role: currentMember.role,
     };
     next();
-  } catch (_err) {
+  } catch {
     res.status(401).json({
       success: false,
       error: 'Sesi login telah kedaluwarsa. Silakan login kembali.',
       code: 'EXPIRED_SESSION'
     });
   }
+}
+
+/**
+ * Centralized Permission Calculator for X ICP TKJ Portal Kelas
+ * Directly derived from live member role stored in members table.
+ * Hierarchy:
+ * - Developer: Supreme access (all permissions, member & user management, role editing, kas, tasks, schedules, piket)
+ * - Ketua / Wakil Ketua: Tasks, Schedules, Piket, Class Overview
+ * - Sekretaris: Tasks, Schedules, Piket
+ * - Bendahara: Kas management & recording
+ * - Siswa: Viewing allowed content only
+ */
+export function getMemberPermissions(roleName?: string | null) {
+  const r = (roleName || '').trim().toLowerCase();
+  const isDev = r === 'developer';
+  const isKetua = r === 'ketua kelas' || r === 'ketua';
+  const isWakil = r === 'wakil ketua' || r === 'wakil ketua kelas' || r === 'wakil';
+  const isSekretaris = r === 'sekretaris';
+  const isBendahara = r === 'bendahara';
+
+  return {
+    isDeveloper: isDev,
+    canManageMembers: isDev,
+    canManageUsers: isDev,
+    canManageRoles: isDev,
+    canManageKas: isDev || isBendahara,
+    canViewAllKas: isDev || isBendahara || isKetua || isWakil,
+    canManageTasks: isDev || isKetua || isWakil || isSekretaris,
+    canManageSchedules: isDev || isKetua || isWakil || isSekretaris,
+    canManagePiket: isDev || isKetua || isWakil || isSekretaris,
+    canViewPortal: true,
+  };
 }
 
 /**
@@ -130,15 +162,20 @@ export function requireRole(allowedRoles: string[]) {
       return;
     }
 
-    const currentRole = req.memberUser.role;
+    const currentRole = (req.memberUser.role || '').trim();
     // 'Developer' always has full class permissions
-    const isAllowed = currentRole === 'Developer' || allowedRoles.includes(currentRole);
+    const isDev = currentRole.toLowerCase() === 'developer';
+    const isAllowed =
+      isDev ||
+      allowedRoles.some(
+        (r) => r.trim().toLowerCase() === currentRole.toLowerCase()
+      );
 
     if (!isAllowed) {
       res.status(403).json({
         success: false,
         error: `Aksi ini hanya dapat dilakukan oleh role: ${allowedRoles.join(', ')} atau Developer.`,
-        code: 'PERMISSION_DENIED'
+        code: 'PERMISSION_DENIED',
       });
       return;
     }

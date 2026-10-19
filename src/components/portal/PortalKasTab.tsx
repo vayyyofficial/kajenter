@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Wallet, CheckCircle, XCircle, Calendar, Plus, RefreshCw, AlertCircle } from 'lucide-react';
+import { Wallet, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
 import { useMemberAuth } from '../../context/MemberAuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
 import { ClassKasRecord, Member } from '../../types';
+import { useRealtimeSync } from '../../context/SyncContext';
 
 export const PortalKasTab: React.FC = () => {
   const { member } = useMemberAuth();
@@ -13,7 +14,7 @@ export const PortalKasTab: React.FC = () => {
   const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
   const currentWeekNumber = Math.ceil(((currentDate.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
 
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const [selectedYear] = useState(currentDate.getFullYear());
   const [selectedWeek, setSelectedWeek] = useState(currentWeekNumber);
   const [records, setRecords] = useState<ClassKasRecord[]>([]);
   const [classList, setClassList] = useState<Member[]>([]);
@@ -61,6 +62,9 @@ export const PortalKasTab: React.FC = () => {
   useEffect(() => {
     loadKasData();
   }, [loadKasData]);
+
+  // Real-time synchronization
+  useRealtimeSync(['settings', 'members'], loadKasData);
 
   // Toggle or record payment (Bendahara / Developer only)
   const handleTogglePayment = async (targetMemberId: number, currentRecord?: ClassKasRecord) => {

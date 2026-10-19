@@ -717,18 +717,21 @@ export const sqliteDb = {
       deadline: string;
       description?: string;
       notes?: string;
+      status?: string;
       createdBy: string;
     }) {
       const now = new Date().toISOString();
+      const status = item.status || 'pending';
       rawQuery.run(
-        `INSERT INTO class_tasks (title, subject, teacher_name, deadline, description, notes, created_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO class_tasks (title, subject, teacher_name, deadline, description, notes, status, created_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         item.title.trim(),
         item.subject.trim(),
         item.teacherName?.trim() || null,
         item.deadline.trim(),
         item.description?.trim() || null,
         item.notes?.trim() || null,
+        status,
         item.createdBy,
         now,
         now
@@ -743,14 +746,15 @@ export const sqliteDb = {
 
       const title = item.title !== undefined ? item.title.trim() : existing.title;
       const subject = item.subject !== undefined ? item.subject.trim() : existing.subject;
-      const teacherName = item.teacherName !== undefined ? item.teacherName?.trim() : existing.teacher_name;
-      const deadline = item.deadline !== undefined ? item.deadline.trim() : existing.deadline;
+      const teacherName = item.teacherName !== undefined ? item.teacherName?.trim() : (item.teacher_name !== undefined ? item.teacher_name?.trim() : existing.teacher_name);
+      const deadline = item.deadline !== undefined ? item.deadline.trim() : (item.deadline_date !== undefined ? item.deadline_date.trim() : existing.deadline);
       const description = item.description !== undefined ? item.description?.trim() : existing.description;
       const notes = item.notes !== undefined ? item.notes?.trim() : existing.notes;
+      const status = item.status !== undefined ? item.status : (existing.status || 'pending');
 
       rawQuery.run(
         `UPDATE class_tasks
-         SET title = ?, subject = ?, teacher_name = ?, deadline = ?, description = ?, notes = ?, updated_at = ?
+         SET title = ?, subject = ?, teacher_name = ?, deadline = ?, description = ?, notes = ?, status = ?, updated_at = ?
          WHERE id = ?`,
         title,
         subject,
@@ -758,6 +762,7 @@ export const sqliteDb = {
         deadline,
         description,
         notes,
+        status,
         now,
         id
       );

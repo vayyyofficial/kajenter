@@ -482,6 +482,8 @@ export const id: TranslationType = {
       roleLockedNotice: 'Role/jabatan tidak dapat diubah sendiri. Hubungi Developer atau Administrator.',
     },
     security: {
+      changePasswordTitle: 'Ubah Password',
+      changeEmailTitle: 'Ubah Email',
       currentPassword: 'Password Saat Ini',
       newPassword: 'Password Baru',
       confirmNewPassword: 'Konfirmasi Password Baru',
@@ -489,6 +491,8 @@ export const id: TranslationType = {
       codeSentNotice: 'Kode verifikasi 6 digit telah dibuat. Masukkan kode tersebut di bawah ini.',
       enterCode: 'Kode Verifikasi 6 Digit',
       verifyAndSave: 'Verifikasi & Ganti Password',
+      verifyAndSavePassword: 'Verifikasi & Ganti Password',
+      newEmail: 'Alamat Email Baru',
       newEmailAddress: 'Alamat Email Baru',
       verifyAndSaveEmail: 'Verifikasi & Ganti Email',
       codeExpiresIn: 'Kode berlaku selama 10 menit.',

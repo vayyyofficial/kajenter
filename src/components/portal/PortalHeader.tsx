@@ -3,25 +3,22 @@ import { LogOut, Globe, Moon, Sun, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { useMemberAuth } from '../../context/MemberAuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
-import { BRANDING } from '../../config/branding';
+import { getMemberPhotoUrl, getDefaultAvatar } from '../../utils/avatar';
 
 interface PortalHeaderProps {
   onBackToHome: () => void;
+  onGoToDashboard?: () => void;
 }
 
-export const PortalHeader: React.FC<PortalHeaderProps> = ({ onBackToHome }) => {
+export const PortalHeader: React.FC<PortalHeaderProps> = ({ onBackToHome, onGoToDashboard }) => {
   const { member, logout } = useMemberAuth();
   const { language, setLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
 
   if (!member) return null;
 
-  const photoSrc = member.photo_number
-    ? (member.photo_number.startsWith('http') || member.photo_number.startsWith('/')
-        ? member.photo_number
-        : `/foto-anggota/${member.photo_number}`)
-    : BRANDING.logoUrl;
-
+  const { src: photoSrc } = getMemberPhotoUrl(member);
+  const fallbackAvatar = getDefaultAvatar(theme === 'dark');
   const roleName = member.role || (member.member_type === 'guru' ? 'Guru' : 'Siswa');
 
   return (
@@ -134,7 +131,16 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onBackToHome }) => {
       </div>
 
       {/* Profile Card Snippet (E-Wallet style) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+      <div
+        onClick={onGoToDashboard}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.9rem',
+          cursor: onGoToDashboard ? 'pointer' : 'default',
+        }}
+        title={onGoToDashboard ? 'Ke Ringkasan Dashboard' : undefined}
+      >
         <div
           style={{
             position: 'relative',
@@ -152,7 +158,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onBackToHome }) => {
             src={photoSrc}
             alt={member.full_name}
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = BRANDING.logoUrl;
+              (e.currentTarget as HTMLImageElement).src = fallbackAvatar;
             }}
             style={{
               width: '100%',

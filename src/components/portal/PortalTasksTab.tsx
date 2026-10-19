@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckSquare, ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, BookOpen, User, X, Check, Trash2, Edit2 } from 'lucide-react';
+import { CheckSquare, ChevronLeft, ChevronRight, Plus, Check, Trash2, Edit2 } from 'lucide-react';
 import { useMemberAuth } from '../../context/MemberAuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
 import { ClassTask } from '../../types';
 import { Modal } from '../common/Modal';
+import { useRealtimeSync } from '../../context/SyncContext';
 
 export const PortalTasksTab: React.FC = () => {
   const { member } = useMemberAuth();
@@ -17,7 +18,6 @@ export const PortalTasksTab: React.FC = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
-  const [loading, setLoading] = useState(true);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -62,7 +62,6 @@ export const PortalTasksTab: React.FC = () => {
 
   const loadTasks = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await api.portal.tasks.getAll({ month: monthStr });
       if (res.success) {
         setTasks(res.data);
@@ -70,14 +69,15 @@ export const PortalTasksTab: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load tasks:', err);
-    } finally {
-      setLoading(false);
     }
   }, [monthStr]);
 
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
+
+  // Real-time synchronization
+  useRealtimeSync(['settings'], loadTasks);
 
   // Calendar calculations
   const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday

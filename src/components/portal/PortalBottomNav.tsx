@@ -11,14 +11,6 @@ interface PortalBottomNavProps {
 
 export const PortalBottomNav: React.FC<PortalBottomNavProps> = ({ activeTab, onTabChange }) => {
   const { t } = useLanguage();
-
-  const standardTabs: Array<{ id: PortalTabId; label: string; icon: React.ReactNode }> = [
-    { id: 'kas', label: t.portal.tabs.kas, icon: <Wallet size={19} /> },
-    { id: 'schedules', label: 'Jadwal', icon: <Calendar size={19} /> },
-    { id: 'piket', label: 'Piket', icon: <Users size={19} /> },
-    { id: 'profile', label: t.portal.tabs.profile, icon: <User size={19} /> },
-  ];
-
   const isTaskActive = activeTab === 'tasks';
 
   return (
