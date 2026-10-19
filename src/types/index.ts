@@ -82,15 +82,20 @@ export interface AdminStatusResponse {
 export interface ClassKasRecord {
   id: number;
   member_id: number;
+  memberId?: number;
   member_name?: string;
   member_attendance?: number;
   member_role?: string;
   year: number;
   week_number: number;
+  weekNumber?: number;
+  month_year?: string;
+  monthYear?: string;
   amount: number;
   status?: string;
   is_paid: number | boolean;
   paid_date?: string | null;
+  paid_at?: string | null;
   notes?: string | null;
   recorded_by_name?: string | null;
   recorded_by_member_id?: number | null;
@@ -151,11 +156,24 @@ export interface PiketSchedule {
   updated_at?: string;
 }
 
+export interface ClassKasExpense {
+  id: number;
+  expense_date: string;
+  description: string;
+  category: string;
+  amount: number;
+  recorded_by?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface AuthMember extends Member {
   first_login?: number;
   last_login?: string | null;
   permissions?: {
     canManageKas: boolean;
+    canManageExpenses?: boolean;
     canManageTasks: boolean;
     canManageSchedules: boolean;
     canManagePiket: boolean;
@@ -163,3 +181,50 @@ export interface AuthMember extends Member {
     isDeveloper: boolean;
   };
 }
+
+export interface StoryMusic {
+  title: string;
+  artist: string;
+  url?: string | null;
+}
+
+export interface MemberStory {
+  id: number;
+  member_id: number;
+  media_url: string;
+  caption?: string | null;
+  raw_caption?: string | null;
+  music?: StoryMusic | null;
+  music_title?: string | null;
+  music_artist?: string | null;
+  music_url?: string | null;
+  expiration_type: '24h' | 'custom' | 'lifetime';
+  expires_at?: string | null;
+  is_active?: boolean;
+  created_at: string;
+  updated_at?: string;
+  member_name?: string;
+  member_nickname?: string;
+  member_role?: string;
+  member_photo?: string;
+}
+
+export interface ActivityLog {
+  id: number;
+  user_name: string;
+  action: string;
+  entity_type: string;
+  created_at: string;
+  wib_date: string;
+  wib_time: string;
+  wib_full: string;
+  wib_short: string;
+  message: string;
+  role: string;
+  identifier: string;
+  target: string;
+  status: 'SUCCESS' | 'FAILED' | 'INFO';
+  device?: string;
+}
+
+

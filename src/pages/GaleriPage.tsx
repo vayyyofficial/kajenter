@@ -23,7 +23,7 @@ export const GaleriPage: React.FC = () => {
   const [items, setItems] = useState<GalleryItem[]>(() => cachedInitial || []);
   const [loading, setLoading] = useState<boolean>(() => !cachedInitial);
 
-  const fetchGallery = useCallback(async (category: string) => {
+  const fetchGallery = useCallback(async (category: string, force = false) => {
     try {
       const cached = dataCache.getGallery(category);
       if (!cached) {
@@ -32,8 +32,8 @@ export const GaleriPage: React.FC = () => {
         setItems(cached);
       }
 
-      // Fetch fresh data in background or foreground
-      const data = await dataCache.getOrFetchGallery(category, true);
+      // Fetch fresh data if not cached or if forced
+      const data = await dataCache.getOrFetchGallery(category, force);
       setItems(data);
     } catch {
       // Keep displaying existing cached items on error
@@ -43,12 +43,13 @@ export const GaleriPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchGallery(selectedCategory);
+    fetchGallery(selectedCategory, false);
   }, [selectedCategory, fetchGallery]);
 
   // Real-time synchronization: automatically updates when photos are modified
   useRealtimeSync(['gallery'], () => {
-    fetchGallery(selectedCategory);
+    dataCache.invalidate('gallery');
+    fetchGallery(selectedCategory, true);
   });
 
   const handlePhotoClick = (item: GalleryItem) => {
@@ -129,7 +130,7 @@ export const GaleriPage: React.FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
             gap: '1.5rem',
           }}
         >
@@ -154,7 +155,7 @@ export const GaleriPage: React.FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
             gap: '1.5rem',
           }}
         >

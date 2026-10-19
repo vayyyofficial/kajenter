@@ -129,6 +129,19 @@ export function initializeDatabase() {
       updated_at TEXT NOT NULL
     );
 
+    -- Portal: Kas Expenses (Class expenses managed by Bendahara & Developer)
+    CREATE TABLE IF NOT EXISTS class_kas_expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      expense_date TEXT NOT NULL,
+      description TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'Lain-lain',
+      amount INTEGER NOT NULL CHECK (amount > 0),
+      recorded_by TEXT DEFAULT 'Bendahara',
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     -- Portal: Tugas (Class assignments with deadline dates)
     CREATE TABLE IF NOT EXISTS class_tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,6 +193,19 @@ export function initializeDatabase() {
       created_at TEXT NOT NULL
     );
 
+    -- Member Stories (Portal Kelas & Website Utama)
+    CREATE TABLE IF NOT EXISTS member_stories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+      media_url TEXT NOT NULL,
+      caption TEXT,
+      expiration_type TEXT NOT NULL DEFAULT '24h',
+      expires_at TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_members_type ON members(member_type);
     CREATE INDEX IF NOT EXISTS idx_members_attendance ON members(attendance_number);
     CREATE INDEX IF NOT EXISTS idx_gallery_date ON gallery(event_date);
@@ -191,6 +217,8 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_schedules_day ON class_schedules(day);
     CREATE INDEX IF NOT EXISTS idx_piket_day ON piket_schedules(day);
     CREATE INDEX IF NOT EXISTS idx_verification_email ON verification_codes(email, code);
+    CREATE INDEX IF NOT EXISTS idx_member_stories_member ON member_stories(member_id);
+    CREATE INDEX IF NOT EXISTS idx_member_stories_expires ON member_stories(expires_at);
   `);
 
   // Safe Additive Migrations:

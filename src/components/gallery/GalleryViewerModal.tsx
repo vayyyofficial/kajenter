@@ -9,6 +9,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
+  ZoomIn,
+  ZoomOut,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { GalleryItem } from '../../types';
 import { lockScroll, unlockScroll } from '../../utils/scrollLock';
@@ -27,7 +31,9 @@ interface GalleryViewerModalProps {
  * - Prominent 1 / N counter & thumbnail strip
  * - Keyboard navigation (ArrowLeft, ArrowRight, Escape)
  * - Mobile touch swipe (Left/Right)
- * - Desktop mouse-wheel zoom & pan (subtle & intuitive)
+ * - Mobile 2-finger pinch-to-zoom & double-tap to zoom
+ * - Dedicated zoom in / zoom out controls for touch and desktop
+ * - Desktop mouse-wheel zoom & drag pan
  * - Dedicated mobile-optimized layout with vertical scrolling inside popup
  * - Strict background page scroll-locking (lockScroll)
  */
@@ -45,6 +51,9 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
 
   const imageAreaRef = useRef<HTMLDivElement>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const initialPinchDist = useRef<number | null>(null);
+  const initialPinchScale = useRef<number>(1);
+  const lastTapTime = useRef<number>(0);
 
   // Extract all photos from item
   const photos: string[] = item?.photos && item.photos.length > 0
@@ -116,7 +125,7 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
       e.preventDefault();
       e.stopPropagation();
 
-      const step = 0.15;
+      const step = 0.2;
       const zoomChange = e.deltaY < 0 ? step : -step;
 
       setScale((prevScale) => {
@@ -125,7 +134,7 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
           setPosition({ x: 0, y: 0 });
           return 1.0;
         }
-        if (nextScale >= 3.0) return 3.0;
+        if (nextScale >= 3.5) return 3.5;
         return nextScale;
       });
     };
@@ -143,6 +152,24 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
     setPosition({ x: 0, y: 0 });
   };
 
+  const handleZoomIn = () => {
+    setScale((prev) => {
+      const next = Math.min(3.5, Math.round((prev + 0.35) * 100) / 100);
+      return next;
+    });
+  };
+
+  const handleZoomOut = () => {
+    setScale((prev) => {
+      const next = Math.max(1.0, Math.round((prev - 0.35) * 100) / 100);
+      if (next <= 1.05) {
+        setPosition({ x: 0, y: 0 });
+        return 1.0;
+      }
+      return next;
+    });
+  };
+
   // Dragging / Panning when scale > 1
   const handleMouseDown = (e: React.MouseEvent) => {
     if (scale <= 1) return;
@@ -152,9 +179,10 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || scale <= 1) return;
-    const maxBound = (scale - 1) * 320;
-    const newX = Math.max(Math.min(e.clientX - dragStart.x, maxBound), -maxBound);
-    const newY = Math.max(Math.min(e.clientY - dragStart.y, maxBound), -maxBound);
+    const maxBoundX = (scale - 1) * 320;
+    const maxBoundY = (scale - 1) * 240;
+    const newX = Math.max(Math.min(e.clientX - dragStart.x, maxBoundX), -maxBoundX);
+    const newY = Math.max(Math.min(e.clientY - dragStart.y, maxBoundY), -maxBoundY);
     setPosition({ x: newX, y: newY });
   };
 
@@ -162,9 +190,33 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
     setIsDragging(false);
   };
 
-  // Touch Swipe for mobile navigation (when scale === 1)
+  // Mobile Touch Gestures: Pinch-to-zoom, Double-tap zoom, and Single-touch Pan/Swipe
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
+    if (e.touches.length === 2) {
+      // 2-finger Pinch gesture start
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      initialPinchDist.current = dist;
+      initialPinchScale.current = scale;
+      setIsDragging(false);
+    } else if (e.touches.length === 1) {
+      // Double tap check
+      const now = Date.now();
+      if (now - lastTapTime.current < 300) {
+        // Double tapped: toggle 1x <-> 2x
+        if (scale > 1.2) {
+          handleResetZoom();
+        } else {
+          setScale(2.2);
+          setPosition({ x: 0, y: 0 });
+        }
+        lastTapTime.current = 0;
+        return;
+      }
+      lastTapTime.current = now;
+
       touchStartPos.current = {
         x: e.touches[0].clientX,
         y: e.touches[0].clientY,
@@ -180,16 +232,36 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (scale > 1 && isDragging && e.touches.length === 1) {
+    if (e.touches.length === 2 && initialPinchDist.current) {
       e.preventDefault();
-      const maxBound = (scale - 1) * 320;
-      const newX = Math.max(Math.min(e.touches[0].clientX - dragStart.x, maxBound), -maxBound);
-      const newY = Math.max(Math.min(e.touches[0].clientY - dragStart.y, maxBound), -maxBound);
+      const currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const factor = currentDist / initialPinchDist.current;
+      const nextScale = Math.min(3.5, Math.max(1.0, initialPinchScale.current * factor));
+      setScale(Math.round(nextScale * 100) / 100);
+      if (nextScale <= 1.05) {
+        setPosition({ x: 0, y: 0 });
+      }
+    } else if (scale > 1 && isDragging && e.touches.length === 1) {
+      e.preventDefault();
+      const maxBoundX = (scale - 1) * 320;
+      const maxBoundY = (scale - 1) * 240;
+      const newX = Math.max(Math.min(e.touches[0].clientX - dragStart.x, maxBoundX), -maxBoundX);
+      const newY = Math.max(Math.min(e.touches[0].clientY - dragStart.y, maxBoundY), -maxBoundY);
       setPosition({ x: newX, y: newY });
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      initialPinchDist.current = null;
+    }
+    if (scale <= 1.05) {
+      setPosition({ x: 0, y: 0 });
+      setScale(1.0);
+    }
     if (scale === 1 && touchStartPos.current && e.changedTouches.length === 1) {
       const deltaX = e.changedTouches[0].clientX - touchStartPos.current.x;
       const deltaY = e.changedTouches[0].clientY - touchStartPos.current.y;
@@ -506,56 +578,88 @@ export const GalleryViewerModal: React.FC<GalleryViewerModalProps> = ({
                   </>
                 )}
 
-                {/* Floating Zoom Indicator & Reset Control */}
-                {scale > 1 && (
-                  <div
+                {/* Floating Zoom Control Pill (Mobile & Desktop Friendly) */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '0.85rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.18)',
+                    borderRadius: 'var(--radius-full)',
+                    padding: '0.25rem 0.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.75rem',
+                    color: '#ffffff',
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+                    zIndex: 25,
+                    userSelect: 'none',
+                  }}
+                >
+                  <button
+                    onClick={handleZoomOut}
+                    disabled={scale <= 1.05}
                     style={{
-                      position: 'absolute',
-                      top: '1rem',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                      backdropFilter: 'blur(8px)',
-                      WebkitBackdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                      borderRadius: 'var(--radius-full)',
-                      padding: '0.35rem 0.85rem',
+                      background: 'none',
+                      border: 'none',
+                      color: scale <= 1.05 ? 'rgba(255, 255, 255, 0.3)' : '#ffffff',
+                      cursor: scale <= 1.05 ? 'default' : 'pointer',
+                      padding: '0.25rem',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.55rem',
-                      fontSize: '0.75rem',
-                      color: '#ffffff',
-                      boxShadow: '0 8px 20px rgba(0, 0, 0, 0.5)',
-                      zIndex: 20,
-                      whiteSpace: 'nowrap',
+                      borderRadius: '50%',
                     }}
+                    title="Zoom Out"
+                    aria-label="Zoom Out"
                   >
-                    <span style={{ fontWeight: 800, color: 'var(--primary-400)' }}>
-                      {Math.round(scale * 100)}%
-                    </span>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.35)' }}>•</span>
-                    <button
-                      onClick={handleResetZoom}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        color: 'var(--primary-400)',
-                        cursor: 'pointer',
-                        fontWeight: 700,
-                        fontSize: '0.725rem',
-                        padding: '0.15rem 0.45rem',
-                        borderRadius: 'var(--radius-sm)',
-                        backgroundColor: 'rgba(220, 38, 38, 0.2)',
-                        border: 'none',
-                      }}
-                      title={t.galleryViewer.reset}
-                    >
-                      <RotateCcw size={12} />
-                      <span>{t.galleryViewer.reset}</span>
-                    </button>
-                  </div>
-                )}
+                    <Minus size={14} />
+                  </button>
+
+                  <button
+                    onClick={handleResetZoom}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      background: scale > 1 ? 'rgba(220, 38, 38, 0.25)' : 'transparent',
+                      border: 'none',
+                      borderRadius: 'var(--radius-full)',
+                      padding: '0.2rem 0.45rem',
+                      color: scale > 1 ? 'var(--primary-400)' : 'rgba(255, 255, 255, 0.85)',
+                      fontWeight: 800,
+                      fontSize: '0.725rem',
+                      cursor: scale > 1 ? 'pointer' : 'default',
+                    }}
+                    title={scale > 1 ? t.galleryViewer.reset : 'Zoom'}
+                  >
+                    <span>{Math.round(scale * 100)}%</span>
+                    {scale > 1 && <RotateCcw size={11} />}
+                  </button>
+
+                  <button
+                    onClick={handleZoomIn}
+                    disabled={scale >= 3.5}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: scale >= 3.5 ? 'rgba(255, 255, 255, 0.3)' : '#ffffff',
+                      cursor: scale >= 3.5 ? 'default' : 'pointer',
+                      padding: '0.25rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      borderRadius: '50%',
+                    }}
+                    title="Zoom In"
+                    aria-label="Zoom In"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
               </div>
 
               {/* Bottom Multi-Photo Bar: Navigation Arrows + Counter (Mobile & Desktop Friendly) */}

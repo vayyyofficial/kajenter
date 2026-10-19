@@ -1,13 +1,32 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckSquare, ChevronLeft, ChevronRight, Plus, Check, Trash2, Edit2 } from 'lucide-react';
+import {
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Check,
+  Trash2,
+  Edit2,
+  Calendar,
+  BookOpen,
+  User,
+  FileText,
+  ExternalLink,
+} from 'lucide-react';
 import { useMemberAuth } from '../../context/MemberAuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
 import { ClassTask } from '../../types';
 import { Modal } from '../common/Modal';
 import { useRealtimeSync } from '../../context/SyncContext';
+import { formatIndonesianDate, getDeadlineProximity } from '../../utils/dateHelper';
 
-export const PortalTasksTab: React.FC = () => {
+interface PortalTasksTabProps {
+  targetTaskId?: number | null;
+  onClearTargetTask?: () => void;
+}
+
+export const PortalTasksTab: React.FC<PortalTasksTabProps> = ({ targetTaskId, onClearTargetTask }) => {
   const { member } = useMemberAuth();
   const { t } = useLanguage();
 
@@ -78,6 +97,47 @@ export const PortalTasksTab: React.FC = () => {
 
   // Real-time synchronization
   useRealtimeSync(['settings'], loadTasks);
+
+  // Automatically select, focus, and open detail modal if navigated from notification
+  useEffect(() => {
+    if (!targetTaskId) return;
+    const found = tasks.find((t) => Number(t.id) === Number(targetTaskId));
+    if (found) {
+      if (found.deadline_date) {
+        setSelectedDateStr(found.deadline_date);
+        const parts = found.deadline_date.split('-');
+        if (parts.length === 3) {
+          setCurrentDate(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1));
+        }
+      }
+      setSelectedTaskDetail(found);
+      if (onClearTargetTask) {
+        onClearTargetTask();
+      }
+    } else {
+      // Fallback: fetch without month filter in case task is in a different month
+      api.portal.tasks.getAll().then((res) => {
+        if (res.success && res.data) {
+          const item = res.data.find((t) => Number(t.id) === Number(targetTaskId));
+          if (item) {
+            if (item.deadline_date) {
+              setSelectedDateStr(item.deadline_date);
+              const parts = item.deadline_date.split('-');
+              if (parts.length === 3) {
+                setCurrentDate(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1));
+              }
+            }
+            setSelectedTaskDetail(item);
+            if (onClearTargetTask) {
+              onClearTargetTask();
+            }
+          }
+        }
+      }).catch((err) => {
+        console.error('Error finding target task from notification:', err);
+      });
+    }
+  }, [targetTaskId, tasks, onClearTargetTask]);
 
   // Calendar calculations
   const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
@@ -210,7 +270,7 @@ export const PortalTasksTab: React.FC = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.25rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', paddingBottom: '3.5rem' }}>
       {/* 1. Header Banner */}
       <div
         style={{
@@ -488,95 +548,301 @@ export const PortalTasksTab: React.FC = () => {
         )}
       </div>
 
-      {/* 3. Task Details Modal (Requirement #4, #11, #12) */}
-      {selectedTaskDetail && (
-        <Modal
-          isOpen={Boolean(selectedTaskDetail)}
-          onClose={() => setSelectedTaskDetail(null)}
-          title="Detail Tugas"
-          size="sm"
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <span
-                style={{
-                  fontSize: '0.675rem',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  padding: '0.2rem 0.6rem',
-                  borderRadius: '9999px',
-                  backgroundColor: 'var(--primary-50)',
-                  color: 'var(--primary-600)',
-                  display: 'inline-block',
-                  marginBottom: '0.4rem',
-                }}
-              >
-                {selectedTaskDetail.status === 'completed' ? 'Selesai' : 'Aktif'}
-              </span>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.25rem 0' }}>
-                {selectedTaskDetail.title}
-              </h3>
-              <div style={{ fontSize: '0.85rem', color: 'var(--primary-600)', fontWeight: 700 }}>
-                {selectedTaskDetail.subject}
-              </div>
-            </div>
+      {/* 3. Task Details Modal (Requirement #1, #2: Professional, Clean, Structured Popup) */}
+      {selectedTaskDetail && (() => {
+        const proximity = getDeadlineProximity(selectedTaskDetail.deadline_date);
+        const formattedDate = formatIndonesianDate(selectedTaskDetail.deadline_date, true);
+        const isCompleted = selectedTaskDetail.status === 'completed';
 
+        return (
+          <Modal
+            isOpen={Boolean(selectedTaskDetail)}
+            onClose={() => setSelectedTaskDetail(null)}
+            title="Detail Tugas"
+            size="md"
+          >
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '0.75rem',
-                fontSize: '0.825rem',
-                backgroundColor: 'var(--bg-subtle)',
-                padding: '0.9rem',
-                borderRadius: '12px',
-                border: '1px solid var(--border-color)',
+                gap: '1.15rem',
+                maxHeight: 'calc(80vh - 110px)',
+                overflowY: 'auto',
+                paddingRight: '0.2rem',
               }}
             >
-              <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem', fontWeight: 700 }}>
-                  GURU PENGAMPU
-                </span>
-                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{selectedTaskDetail.teacher_name || '-'}</span>
-              </div>
-
-              <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem', fontWeight: 700 }}>
-                  DEADLINE TUGAS
-                </span>
-                <span style={{ fontWeight: 700, color: 'var(--danger-main)' }}>
-                  📅 {selectedTaskDetail.deadline_date}
-                </span>
-              </div>
-
-              {selectedTaskDetail.description && (
-                <div>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem', fontWeight: 700 }}>
-                    DESKRIPSI TUGAS
-                  </span>
-                  <p style={{ margin: '0.2rem 0 0 0', lineHeight: 1.45, color: 'var(--text-main)' }}>
-                    {selectedTaskDetail.description}
-                  </p>
-                </div>
-              )}
-
-              {selectedTaskDetail.notes && (
-                <div>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem', fontWeight: 700 }}>
-                    CATATAN TAMBAHAN
-                  </span>
-                  <p style={{ margin: '0.2rem 0 0 0', lineHeight: 1.45, color: 'var(--text-main)' }}>
-                    {selectedTaskDetail.notes}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {canManageTasks && (
+              {/* 1. Top Badges: Subject Tag + Status & Proximity */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                      color: 'var(--primary-600)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <BookOpen size={15} />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '0.78rem',
+                      fontWeight: 800,
+                      color: 'var(--primary-600)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {selectedTaskDetail.subject}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {proximity.label !== '-' && (
+                    <span
+                      style={{
+                        fontSize: '0.675rem',
+                        fontWeight: 800,
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '9999px',
+                        backgroundColor: proximity.isUrgent
+                          ? 'var(--danger-bg)'
+                          : 'var(--bg-subtle)',
+                        color: proximity.isUrgent
+                          ? 'var(--danger-main)'
+                          : 'var(--text-muted)',
+                        border: `1px solid ${proximity.isUrgent ? 'var(--danger-border)' : 'var(--border-color)'}`,
+                      }}
+                    >
+                      {proximity.label}
+                    </span>
+                  )}
+
+                  <span
+                    style={{
+                      fontSize: '0.675rem',
+                      fontWeight: 800,
+                      padding: '0.2rem 0.55rem',
+                      borderRadius: '9999px',
+                      backgroundColor: isCompleted ? 'var(--success-bg)' : 'var(--primary-50)',
+                      color: isCompleted ? 'var(--success-main)' : 'var(--primary-600)',
+                      border: `1px solid ${isCompleted ? 'var(--success-border)' : 'var(--primary-200)'}`,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        backgroundColor: isCompleted ? 'var(--success-main)' : 'var(--primary-600)',
+                      }}
+                    />
+                    {isCompleted ? 'Selesai' : 'Aktif'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 2. Task Title & Teacher */}
+              <div>
+                <h3
+                  style={{
+                    fontSize: '1.25rem',
+                    fontWeight: 800,
+                    color: 'var(--text-main)',
+                    lineHeight: 1.35,
+                    margin: 0,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {selectedTaskDetail.title}
+                </h3>
+                {selectedTaskDetail.teacher_name && (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      fontSize: '0.8rem',
+                      color: 'var(--text-muted)',
+                      fontWeight: 600,
+                      marginTop: '0.35rem',
+                    }}
+                  >
+                    <User size={14} style={{ color: 'var(--primary-600)' }} />
+                    <span>
+                      Guru Pengampu:{' '}
+                      <strong style={{ color: 'var(--text-main)' }}>
+                        {selectedTaskDetail.teacher_name}
+                      </strong>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Prominent Deadline Card */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.85rem',
+                  padding: '0.85rem 1rem',
+                  borderRadius: '12px',
+                  backgroundColor: 'var(--bg-subtle)',
+                  border: '1px solid var(--border-color)',
+                  borderLeft: '4px solid var(--primary-600)',
+                }}
+              >
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: '10px',
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                    color: 'var(--primary-600)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Calendar size={18} />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div
+                    style={{
+                      fontSize: '0.675rem',
+                      fontWeight: 700,
+                      color: 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    Batas Waktu Pengumpulan (Deadline)
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '0.95rem',
+                      fontWeight: 800,
+                      color: 'var(--text-main)',
+                      marginTop: '0.1rem',
+                    }}
+                  >
+                    {formattedDate}
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Task Description */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.725rem',
+                    fontWeight: 800,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  <FileText size={13} style={{ color: 'var(--primary-600)' }} />
+                  <span>Deskripsi Tugas</span>
+                </div>
+                <div
+                  style={{
+                    padding: '0.85rem 1rem',
+                    borderRadius: '12px',
+                    backgroundColor: 'var(--bg-subtle)',
+                    border: '1px solid var(--border-color)',
+                    fontSize: '0.85rem',
+                    color: selectedTaskDetail.description
+                      ? 'var(--text-main)'
+                      : 'var(--text-muted)',
+                    lineHeight: 1.6,
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {selectedTaskDetail.description || 'Tidak ada deskripsi rincian untuk tugas ini.'}
+                </div>
+              </div>
+
+              {/* 5. Additional Notes / Links (if available) */}
+              {selectedTaskDetail.notes && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      fontSize: '0.725rem',
+                      fontWeight: 800,
+                      color: 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    <ExternalLink size={13} style={{ color: 'var(--primary-600)' }} />
+                    <span>Catatan Tambahan & Tautan</span>
+                  </div>
+                  <div
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: '12px',
+                      backgroundColor: 'var(--bg-subtle)',
+                      border: '1px solid var(--border-color)',
+                      fontSize: '0.825rem',
+                      color: 'var(--text-main)',
+                      lineHeight: 1.5,
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {selectedTaskDetail.notes.startsWith('http://') ||
+                    selectedTaskDetail.notes.startsWith('https://') ? (
+                      <a
+                        href={selectedTaskDetail.notes}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: 'var(--primary-600)',
+                          fontWeight: 700,
+                          textDecoration: 'underline',
+                          wordBreak: 'break-all',
+                        }}
+                      >
+                        {selectedTaskDetail.notes}
+                      </a>
+                    ) : (
+                      selectedTaskDetail.notes
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 6. Action Buttons Bar (Responsive Sticky Footer) */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: '0.5rem',
                   marginTop: '0.5rem',
                   paddingTop: '0.85rem',
@@ -586,73 +852,113 @@ export const PortalTasksTab: React.FC = () => {
               >
                 <button
                   type="button"
-                  onClick={() => handleToggleTaskStatus(selectedTaskDetail)}
+                  onClick={() => setSelectedTaskDetail(null)}
                   style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.35rem',
-                    backgroundColor: selectedTaskDetail.status === 'completed' ? 'var(--bg-subtle)' : 'var(--success-main)',
-                    color: selectedTaskDetail.status === 'completed' ? 'var(--text-main)' : '#ffffff',
+                    padding: '0.55rem 1.15rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    borderRadius: '10px',
                     border: '1px solid var(--border-color)',
-                    borderRadius: '10px',
-                    padding: '0.6rem',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
+                    backgroundColor: 'transparent',
+                    color: 'var(--text-muted)',
                     cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
+                    e.currentTarget.style.color = 'var(--text-main)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = 'var(--text-muted)';
                   }}
                 >
-                  <Check size={15} />
-                  <span>{selectedTaskDetail.status === 'completed' ? 'Tandai Aktif' : 'Tandai Selesai'}</span>
+                  Tutup
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleOpenEditTask(selectedTaskDetail)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.35rem',
-                    backgroundColor: 'var(--primary-50)',
-                    color: 'var(--primary-600)',
-                    border: '1px solid var(--primary-200)',
-                    borderRadius: '10px',
-                    padding: '0.6rem 0.85rem',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                  title="Edit Tugas"
-                >
-                  <Edit2 size={15} />
-                  <span>Edit</span>
-                </button>
+                {canManageTasks && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      marginLeft: 'auto',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTaskStatus(selectedTaskDetail)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        backgroundColor: isCompleted
+                          ? 'var(--bg-subtle)'
+                          : 'var(--success-main)',
+                        color: isCompleted ? 'var(--text-main)' : '#ffffff',
+                        border: isCompleted ? '1px solid var(--border-color)' : 'none',
+                        borderRadius: '10px',
+                        padding: '0.55rem 0.85rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <Check size={14} />
+                      <span>{isCompleted ? 'Tandai Aktif' : 'Tandai Selesai'}</span>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleDeleteTask(selectedTaskDetail)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0.6rem 0.75rem',
-                    backgroundColor: 'var(--danger-bg)',
-                    color: 'var(--danger-main)',
-                    border: 'none',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                  }}
-                  title="Hapus Tugas"
-                >
-                  <Trash2 size={16} />
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditTask(selectedTaskDetail)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        backgroundColor: 'var(--primary-50)',
+                        color: 'var(--primary-600)',
+                        border: '1px solid var(--primary-200)',
+                        borderRadius: '10px',
+                        padding: '0.55rem 0.85rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title="Edit Tugas"
+                    >
+                      <Edit2 size={14} />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTask(selectedTaskDetail)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 34,
+                        height: 34,
+                        backgroundColor: 'var(--danger-bg)',
+                        color: 'var(--danger-main)',
+                        border: '1px solid var(--danger-border)',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title="Hapus Tugas"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </Modal>
-      )}
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* 4. Add Task Modal (Requirement #4, #10) */}
       <Modal

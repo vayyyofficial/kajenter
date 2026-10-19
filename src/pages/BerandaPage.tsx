@@ -107,7 +107,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
           position: 'relative',
           overflow: 'hidden',
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
           alignItems: 'center',
           gap: '3rem',
         }}
@@ -466,7 +466,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
           </div>
 
           {loading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.5rem' }}>
               <div className="card"><Skeleton height="200px" /><div style={{ padding: '1.25rem' }}><Skeleton height="20px" width="70%" /><div style={{ marginTop: '0.5rem' }}><Skeleton height="14px" width="40%" /></div></div></div>
               <div className="card"><Skeleton height="200px" /><div style={{ padding: '1.25rem' }}><Skeleton height="20px" width="70%" /><div style={{ marginTop: '0.5rem' }}><Skeleton height="14px" width="40%" /></div></div></div>
               <div className="card"><Skeleton height="200px" /><div style={{ padding: '1.25rem' }}><Skeleton height="20px" width="70%" /><div style={{ marginTop: '0.5rem' }}><Skeleton height="14px" width="40%" /></div></div></div>
@@ -481,7 +481,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
                 gap: '1.5rem',
               }}
             >

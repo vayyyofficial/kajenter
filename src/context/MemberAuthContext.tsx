@@ -21,14 +21,9 @@ interface MemberAuthContextType {
     message?: string;
   }>;
   changePassword: (payload: {
-    currentPassword?: string;
+    currentPassword: string;
     newPassword: string;
-    confirmPassword?: string;
-    code: string;
-  }) => Promise<{ success: boolean; error?: string; message?: string }>;
-  changeEmail: (payload: {
-    newEmail: string;
-    code: string;
+    confirmPassword: string;
   }) => Promise<{ success: boolean; error?: string; message?: string }>;
   requestVerificationCode: (
     type: 'password' | 'email',
@@ -161,32 +156,15 @@ export const MemberAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const changePassword = async (payload: {
-    currentPassword?: string;
+    currentPassword: string;
     newPassword: string;
-    confirmPassword?: string;
-    code: string;
+    confirmPassword: string;
   }) => {
     try {
       const res = await api.portal.auth.changePassword(payload);
       return { success: res.success, message: res.message };
     } catch (err: any) {
       return { success: false, error: err.message || 'Gagal mengubah password.' };
-    }
-  };
-
-  const changeEmail = async (payload: { newEmail: string; code: string }) => {
-    try {
-      const res = await api.portal.auth.changeEmail(payload);
-      if (res.success && res.member && res.token) {
-        localStorage.setItem(TOKEN_KEY, res.token);
-        localStorage.setItem(MEMBER_DATA_KEY, JSON.stringify(res.member));
-        setMemberToken(res.token);
-        setMember(res.member);
-        return { success: true, message: res.message };
-      }
-      return { success: false, error: 'Gagal memperbarui email.' };
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Gagal memperbarui email.' };
     }
   };
 
@@ -202,7 +180,6 @@ export const MemberAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         refreshProfile,
         updateProfile,
         changePassword,
-        changeEmail,
         requestVerificationCode,
       }}
     >

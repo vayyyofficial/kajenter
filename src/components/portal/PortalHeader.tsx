@@ -22,17 +22,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onBackToHome, onGoTo
   const roleName = member.role || (member.member_type === 'guru' ? 'Guru' : 'Siswa');
 
   return (
-    <header
-      style={{
-        background: 'linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%)',
-        color: '#ffffff',
-        padding: '1.25rem 1.25rem 1.75rem 1.25rem',
-        borderRadius: '0 0 24px 24px',
-        boxShadow: '0 8px 24px rgba(220, 38, 38, 0.25)',
-        position: 'relative',
-        zIndex: 10,
-      }}
-    >
+    <header className="portal-header-banner">
       {/* Top Utility Bar */}
       <div
         style={{

@@ -7,6 +7,7 @@ interface ScrollRevealProps {
   style?: React.CSSProperties;
   direction?: 'up' | 'down' | 'left' | 'right' | 'scale' | 'none';
   duration?: number; // duration in ms, default 500
+  once?: boolean; // once visible, keep visible (default true to prevent invisible cards)
 }
 
 export const ScrollReveal: React.FC<ScrollRevealProps> = ({
@@ -16,13 +17,17 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
   style = {},
   direction = 'up',
   duration = 500,
+  once = true,
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
+  // Mobile devices default to true immediately to prevent invisible card rendering bugs
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const [isVisible, setIsVisible] = useState(isMobile);
   const domRef = useRef<HTMLDivElement>(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
     // Check prefers-reduced-motion for accessibility (Requirement #30)
+    if (typeof window === 'undefined') return;
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setPrefersReducedMotion(mediaQuery.matches);
 
@@ -32,20 +37,30 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
   }, []);
 
   useEffect(() => {
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion || isMobile) {
       setIsVisible(true);
       return;
     }
 
-    // Requirements #23, #24, #25: Intersection Observer with bidirectional trigger
-    // Animates smoothly when scrolling DOWN and replays gracefully when scrolling back UP
+    if (!domRef.current || typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true);
+      return;
+    }
+
+    // Safety timeout: guaranteed to show after 350ms even if observer fails
+    const safetyTimer = setTimeout(() => {
+      setIsVisible(true);
+    }, 350);
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             setIsVisible(true);
-          } else {
-            // Only reset if completely left viewport (avoids flickering near edges)
+            if (once && domRef.current) {
+              observer.unobserve(domRef.current);
+            }
+          } else if (!once) {
             const rect = entry.boundingClientRect;
             const windowHeight = window.innerHeight || document.documentElement.clientHeight;
             if (rect.top > windowHeight || rect.bottom < 0) {
@@ -55,8 +70,8 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
         });
       },
       {
-        threshold: 0.12,
-        rootMargin: '0px 0px -40px 0px',
+        threshold: 0.01,
+        rootMargin: '60px 0px 60px 0px',
       }
     );
 
@@ -66,11 +81,12 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
     }
 
     return () => {
+      clearTimeout(safetyTimer);
       if (currentElem) {
         observer.unobserve(currentElem);
       }
     };
-  }, [prefersReducedMotion]);
+  }, [prefersReducedMotion, once, isMobile]);
 
   const getTransform = () => {
     if (prefersReducedMotion || isVisible) return 'none';

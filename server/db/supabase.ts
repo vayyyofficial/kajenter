@@ -887,7 +887,9 @@ export const supabaseDb = {
           .select('*, members(full_name, attendance_number, role)');
 
         if (monthYear) {
-          query = query.eq('month_year', monthYear);
+          query = String(monthYear).trim().length === 4
+            ? query.like('month_year', `${String(monthYear).trim()}%`)
+            : query.eq('month_year', String(monthYear).trim());
         }
         let { data, error } = await query
           .order('month_year', { ascending: false })
@@ -896,9 +898,13 @@ export const supabaseDb = {
         // Fallback: If foreign key relation isn't defined in PostgREST, query flat and join manually
         if (error && error.message && (error.message.includes('relationship') || error.message.includes('members'))) {
           console.warn('kas.getAll fallback to flat query due to relationship:', error.message);
-          const flatRes = await client
-            .from('class_kas_records')
-            .select('*')
+          let flatQuery = client.from('class_kas_records').select('*');
+          if (monthYear) {
+            flatQuery = String(monthYear).trim().length === 4
+              ? flatQuery.like('month_year', `${String(monthYear).trim()}%`)
+              : flatQuery.eq('month_year', String(monthYear).trim());
+          }
+          const flatRes = await flatQuery
             .order('month_year', { ascending: false })
             .order('week_number', { ascending: true });
           data = flatRes.data;
@@ -972,74 +978,77 @@ export const supabaseDb = {
       const amount = item.amount || 3000;
       const status = item.status || 'paid';
       const paidAt = status === 'paid' ? now : null;
+      const memberIdNum = Number(item.memberId);
+      const weekNum = Number(item.weekNumber);
 
       try {
-        const { data: existing, error: existErr } = await client
+        // Query safely without maybeSingle to prevent PGRST116 when multiple rows exist
+        const { data: existingRows, error: existErr } = await client
           .from('class_kas_records')
-          .select('id')
-          .eq('member_id', item.memberId)
-          .eq('week_number', item.weekNumber)
-          .eq('month_year', item.monthYear)
-          .maybeSingle();
+          .select('*')
+          .eq('member_id', memberIdNum)
+          .eq('week_number', weekNum)
+          .order('id', { ascending: false });
 
         if (existErr) {
-          if (existErr.message.includes('schema cache') || existErr.message.includes('does not exist')) {
-            throw new Error('Tabel Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-          }
-          throw new Error(existErr.message);
+          console.error('kas.recordPayment find existing error:', existErr);
+          throw new Error(`Data pembayaran kas belum dapat diverifikasi: ${existErr.message}`);
         }
 
+        const existing = existingRows && existingRows.length > 0 ? existingRows[0] : null;
+
         if (existing) {
+          const updatePayload: Record<string, any> = {
+            amount,
+            status,
+            paid_at: paidAt,
+            recorded_by: item.recordedBy || 'Bendahara',
+            notes: item.notes || null,
+            updated_at: now,
+          };
+          if (item.monthYear) {
+            updatePayload.month_year = item.monthYear;
+          }
+
           const { data, error } = await client
             .from('class_kas_records')
-            .update({
-              amount,
-              status,
-              paid_at: paidAt,
-              recorded_by: item.recordedBy,
-              notes: item.notes || null,
-              updated_at: now,
-            })
+            .update(updatePayload)
             .eq('id', existing.id)
-            .select()
-            .single();
+            .select();
+
           if (error) {
-            if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
-              throw new Error('Tabel Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-            }
-            throw new Error(error.message);
+            console.error('kas.recordPayment update error:', error);
+            throw new Error(`Data pembayaran kas belum dapat diperbarui: ${error.message}`);
           }
-          return data;
+          return data && data[0] ? data[0] : { ...existing, ...updatePayload };
         } else {
+          const insertPayload = {
+            member_id: memberIdNum,
+            week_number: weekNum,
+            month_year: item.monthYear || String(new Date().getFullYear()),
+            amount,
+            status,
+            paid_at: paidAt,
+            recorded_by: item.recordedBy || 'Bendahara',
+            notes: item.notes || null,
+            created_at: now,
+            updated_at: now,
+          };
+
           const { data, error } = await client
             .from('class_kas_records')
-            .insert({
-              member_id: item.memberId,
-              week_number: item.weekNumber,
-              month_year: item.monthYear,
-              amount,
-              status,
-              paid_at: paidAt,
-              recorded_by: item.recordedBy,
-              notes: item.notes || null,
-              created_at: now,
-              updated_at: now,
-            })
-            .select()
-            .single();
+            .insert(insertPayload)
+            .select();
+
           if (error) {
-            if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
-              throw new Error('Tabel Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-            }
-            throw new Error(error.message);
+            console.error('kas.recordPayment insert error:', error);
+            throw new Error(`Data pembayaran kas belum dapat disimpan: ${error.message}`);
           }
-          return data;
+          return data && data[0] ? data[0] : { id: Date.now(), ...insertPayload };
         }
       } catch (err: any) {
-        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
-          throw new Error('Tabel Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-        }
-        throw err;
+        console.error('kas.recordPayment exception:', err);
+        throw new Error(err.message || 'Data pembayaran kas belum dapat disimpan ke server. Silakan coba beberapa saat lagi.');
       }
     },
 
@@ -1059,19 +1068,35 @@ export const supabaseDb = {
     async getSummary() {
       const client = getSupabaseClient();
       if (!client) {
-        return { totalCollected: 0, weeklyNominal: 3000 };
+        return { initialBalance: 0, totalCollected: 0, totalIncome: 0, totalExpenses: 0, netBalance: 0, weeklyNominal: 3000 };
       }
       try {
-        const { data } = await client.from('class_kas_records').select('amount').eq('status', 'paid');
-        const total = (data || []).reduce((acc: number, cur: any) => acc + (cur.amount || 0), 0);
+        const { data: recordsData } = await client.from('class_kas_records').select('amount').eq('status', 'paid');
+        const totalIncome = (recordsData || []).reduce((acc: number, cur: any) => acc + (cur.amount || 0), 0);
+
+        let totalExpenses = 0;
+        try {
+          const { data: expensesData } = await client.from('class_kas_expenses').select('amount');
+          totalExpenses = (expensesData || []).reduce((acc: number, cur: any) => acc + (cur.amount || 0), 0);
+        } catch {
+          totalExpenses = 0;
+        }
+
         const { data: nominalRow } = await client.from('website_settings').select('value').eq('key', 'kas_nominal').maybeSingle();
+        const { data: initialBalanceRow } = await client.from('website_settings').select('value').eq('key', 'kas_initial_balance').maybeSingle();
+        const initialBalance = initialBalanceRow?.value ? parseInt(initialBalanceRow.value, 10) : 0;
+
         return {
-          totalCollected: total,
+          initialBalance,
+          totalCollected: totalIncome,
+          totalIncome,
+          totalExpenses,
+          netBalance: initialBalance + totalIncome - totalExpenses,
           weeklyNominal: nominalRow?.value ? parseInt(nominalRow.value, 10) : 3000,
         };
       } catch (err: any) {
         console.warn('kas.getSummary exception:', err.message);
-        return { totalCollected: 0, weeklyNominal: 3000 };
+        return { initialBalance: 0, totalCollected: 0, totalIncome: 0, totalExpenses: 0, netBalance: 0, weeklyNominal: 3000 };
       }
     },
   },
@@ -1152,17 +1177,13 @@ export const supabaseDb = {
           .select()
           .single();
         if (error) {
-          if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
-            throw new Error('Tabel Periode Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-          }
-          throw new Error(error.message);
+          console.error('kas_weeks.create Supabase error:', error);
+          throw new Error('Data periode kas belum dapat disimpan ke server. Silakan coba beberapa saat lagi.');
         }
         return data;
       } catch (err: any) {
-        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
-          throw new Error('Tabel Periode Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-        }
-        throw err;
+        console.error('kas_weeks.create exception:', err);
+        throw new Error(err.message?.includes('belum dapat') ? err.message : 'Data periode kas belum dapat disimpan ke server. Silakan coba beberapa saat lagi.');
       }
     },
 
@@ -1178,13 +1199,14 @@ export const supabaseDb = {
 
       try {
         const { data, error } = await client.from('class_kas_weeks').update(payload).eq('id', id).select().single();
-        if (error) throw new Error(error.message);
+        if (error) {
+          console.error('kas_weeks.update Supabase error:', error);
+          throw new Error('Data periode kas belum dapat diperbarui ke server. Silakan coba beberapa saat lagi.');
+        }
         return data;
       } catch (err: any) {
-        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
-          throw new Error('Tabel Periode Kas belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-        }
-        throw err;
+        console.error('kas_weeks.update exception:', err);
+        throw new Error(err.message?.includes('belum dapat') ? err.message : 'Data periode kas belum dapat diperbarui ke server. Silakan coba beberapa saat lagi.');
       }
     },
 
@@ -1198,6 +1220,159 @@ export const supabaseDb = {
       } catch (err: any) {
         console.warn('kasWeeks.delete exception:', err.message);
         return null;
+      }
+    },
+  },
+
+  // ==========================================
+  // PENGELUARAN KAS (EXPENSES - Requirement #4 & #5)
+  // ==========================================
+  kasExpenses: {
+    async getAll() {
+      const client = getSupabaseClient();
+      if (!client) return [];
+      try {
+        const { data, error } = await client
+          .from('class_kas_expenses')
+          .select('*')
+          .order('expense_date', { ascending: false })
+          .order('id', { ascending: false });
+
+        if (error) {
+          console.warn('kasExpenses.getAll error:', error.message);
+          return [];
+        }
+        return data || [];
+      } catch (err: any) {
+        console.warn('kasExpenses.getAll exception:', err.message);
+        return [];
+      }
+    },
+
+    async getById(id: number | string) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const { data, error } = await client
+          .from('class_kas_expenses')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (error) throw error;
+        return data;
+      } catch (err: any) {
+        console.warn('kasExpenses.getById exception:', err.message);
+        return null;
+      }
+    },
+
+    async create(item: {
+      expense_date?: string;
+      description: string;
+      category?: string;
+      amount: number;
+      recorded_by?: string;
+      notes?: string;
+    }) {
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Database Supabase tidak terkonfigurasi.');
+
+      const now = new Date().toISOString();
+      const expenseDate = item.expense_date || now.split('T')[0];
+
+      const payload = {
+        expense_date: expenseDate,
+        description: item.description.trim(),
+        category: item.category || 'Lain-lain',
+        amount: Number(item.amount),
+        recorded_by: item.recorded_by || 'Bendahara',
+        notes: item.notes || null,
+        created_at: now,
+        updated_at: now,
+      };
+
+      const { data, error } = await client
+        .from('class_kas_expenses')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('kasExpenses.create error:', error);
+        throw new Error(error.message || 'Gagal menyimpan pengeluaran kas.');
+      }
+      return data;
+    },
+
+    async update(
+      id: number | string,
+      item: {
+        expense_date?: string;
+        description?: string;
+        category?: string;
+        amount?: number;
+        recorded_by?: string;
+        notes?: string;
+      }
+    ) {
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Database Supabase tidak terkonfigurasi.');
+
+      const payload: any = {
+        updated_at: new Date().toISOString(),
+      };
+      if (item.expense_date !== undefined) payload.expense_date = item.expense_date;
+      if (item.description !== undefined) payload.description = item.description.trim();
+      if (item.category !== undefined) payload.category = item.category;
+      if (item.amount !== undefined) payload.amount = Number(item.amount);
+      if (item.recorded_by !== undefined) payload.recorded_by = item.recorded_by;
+      if (item.notes !== undefined) payload.notes = item.notes;
+
+      const { data, error } = await client
+        .from('class_kas_expenses')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('kasExpenses.update error:', error);
+        throw new Error(error.message || 'Gagal memperbarui pengeluaran kas.');
+      }
+      return data;
+    },
+
+    async delete(id: number | string) {
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Database Supabase tidak terkonfigurasi.');
+
+      const { data: existing } = await client
+        .from('class_kas_expenses')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      const { error } = await client
+        .from('class_kas_expenses')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('kasExpenses.delete error:', error);
+        throw new Error(error.message || 'Gagal menghapus pengeluaran kas.');
+      }
+      return existing;
+    },
+
+    async getTotalExpenses() {
+      const client = getSupabaseClient();
+      if (!client) return 0;
+      try {
+        const { data } = await client.from('class_kas_expenses').select('amount');
+        return (data || []).reduce((acc: number, cur: any) => acc + (cur.amount || 0), 0);
+      } catch {
+        return 0;
       }
     },
   },
@@ -1238,29 +1413,55 @@ export const supabaseDb = {
       description?: string;
       notes?: string;
       status?: string;
-      createdBy: string;
+      createdBy?: string;
     }) {
       const client = getSupabaseClient();
       if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
       const now = new Date().toISOString();
-      const { data, error } = await client
-        .from('class_tasks')
-        .insert({
-          title: item.title.trim(),
-          subject: item.subject.trim(),
-          teacher_name: item.teacherName?.trim() || null,
-          deadline: item.deadline.trim(),
-          description: item.description?.trim() || null,
-          notes: item.notes?.trim() || null,
+      const basePayload: Record<string, any> = {
+        title: item.title.trim(),
+        subject: item.subject.trim(),
+        teacher_name: item.teacherName?.trim() || null,
+        deadline: item.deadline.trim(),
+        description: item.description?.trim() || null,
+        notes: item.notes?.trim() || null,
+        created_by: item.createdBy || 'Sekretaris',
+        created_at: now,
+        updated_at: now,
+      };
+
+      try {
+        // Attempt insert with status column first
+        const payloadWithStatus = {
+          ...basePayload,
           status: item.status || 'pending',
-          created_by: item.createdBy,
-          created_at: now,
-          updated_at: now,
-        })
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-      return data;
+        };
+
+        let { data, error } = await client
+          .from('class_tasks')
+          .insert(payloadWithStatus)
+          .select();
+
+        // If error indicates 'status' column doesn't exist, gracefully fallback without status column
+        if (error && error.message && error.message.toLowerCase().includes('status')) {
+          console.warn('class_tasks has no status column, retrying without status column:', error.message);
+          const fallbackRes = await client
+            .from('class_tasks')
+            .insert(basePayload)
+            .select();
+          data = fallbackRes.data;
+          error = fallbackRes.error;
+        }
+
+        if (error) {
+          console.error('tasks.create Supabase error:', error);
+          throw new Error(`Data tugas belum dapat disimpan: ${error.message}`);
+        }
+        return data && data[0] ? data[0] : { id: Date.now(), ...payloadWithStatus };
+      } catch (err: any) {
+        console.error('tasks.create exception:', err);
+        throw new Error(err.message || 'Data tugas belum dapat disimpan ke server. Silakan coba beberapa saat lagi.');
+      }
     },
 
     async update(id: number | string, item: Partial<any>) {
@@ -1278,17 +1479,40 @@ export const supabaseDb = {
       if (item.notes !== undefined) payload.notes = item.notes?.trim() || null;
       if (item.status !== undefined) payload.status = item.status;
 
-      const { data, error } = await client.from('class_tasks').update(payload).eq('id', id).select().single();
-      if (error) throw new Error(error.message);
-      return data;
+      try {
+        let { data, error } = await client.from('class_tasks').update(payload).eq('id', id).select();
+
+        // If status column doesn't exist in existing schema, retry update without status
+        if (error && error.message && error.message.toLowerCase().includes('status')) {
+          const { status: _s, ...payloadWithoutStatus } = payload;
+          const retryRes = await client.from('class_tasks').update(payloadWithoutStatus).eq('id', id).select();
+          data = retryRes.data;
+          error = retryRes.error;
+        }
+
+        if (error) {
+          console.error('tasks.update Supabase error:', error);
+          throw new Error(`Data tugas belum dapat diperbarui: ${error.message}`);
+        }
+        return data && data[0] ? data[0] : { id, ...payload };
+      } catch (err: any) {
+        console.error('tasks.update exception:', err);
+        throw new Error(err.message || 'Data tugas belum dapat diperbarui ke server. Silakan coba beberapa saat lagi.');
+      }
     },
 
     async delete(id: number | string) {
       const client = getSupabaseClient();
       if (!client) return null;
-      const { data } = await client.from('class_tasks').select('*').eq('id', id).maybeSingle();
-      await client.from('class_tasks').delete().eq('id', id);
-      return data;
+      try {
+        const { data } = await client.from('class_tasks').select('*').eq('id', id);
+        const existing = data && data[0] ? data[0] : null;
+        await client.from('class_tasks').delete().eq('id', id);
+        return existing;
+      } catch (err: any) {
+        console.error('tasks.delete exception:', err);
+        return null;
+      }
     },
   },
 
@@ -1306,8 +1530,9 @@ export const supabaseDb = {
           .order('order_index', { ascending: true })
           .order('start_time', { ascending: true });
         if (error) {
-          console.warn('schedules.getAll error:', error.message);
-          return [];
+          console.warn('schedules.getAll error, trying without order_index:', error.message);
+          const fallbackRes = await client.from('class_schedules').select('*').order('start_time', { ascending: true });
+          return fallbackRes.data || [];
         }
         return data || [];
       } catch (err: any) {
@@ -1321,41 +1546,60 @@ export const supabaseDb = {
       startTime: string;
       endTime: string;
       subject: string;
-      teacherName: string;
+      teacherName?: string;
       room?: string;
       orderIndex?: number;
     }) {
       const client = getSupabaseClient();
       if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
       const now = new Date().toISOString();
+      const cleanTeacher = (item.teacherName || '').trim();
+      const payload: Record<string, any> = {
+        day: item.day.trim(),
+        start_time: item.startTime.trim(),
+        end_time: item.endTime.trim(),
+        subject: item.subject.trim(),
+        teacher_name: cleanTeacher,
+        created_at: now,
+        updated_at: now,
+      };
+
+      if (item.orderIndex !== undefined) {
+        payload.order_index = Number(item.orderIndex);
+      }
+
       try {
-        const { data, error } = await client
+        let { data, error } = await client
           .from('class_schedules')
-          .insert({
-            day: item.day.trim(),
-            start_time: item.startTime.trim(),
-            end_time: item.endTime.trim(),
-            subject: item.subject.trim(),
-            teacher_name: item.teacherName.trim(),
-            room: null,
-            order_index: item.orderIndex || 0,
-            created_at: now,
-            updated_at: now,
-          })
-          .select()
-          .single();
+          .insert(payload)
+          .select();
+
+        // If order_index column doesn't exist, retry without order_index
+        if (error && error.message && error.message.toLowerCase().includes('order_index')) {
+          console.warn('class_schedules has no order_index column, retrying without it:', error.message);
+          const { order_index: _oi, ...payloadNoOrder } = payload;
+          const retryRes = await client.from('class_schedules').insert(payloadNoOrder).select();
+          data = retryRes.data;
+          error = retryRes.error;
+        }
+
+        // If room column has NOT NULL constraint in older schema, retry with room: ''
+        if (error && error.message && error.message.toLowerCase().includes('room')) {
+          console.warn('class_schedules room not-null constraint hit, retrying with empty room string:', error.message);
+          payload.room = '';
+          const retryRes = await client.from('class_schedules').insert(payload).select();
+          data = retryRes.data;
+          error = retryRes.error;
+        }
+
         if (error) {
-          if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
-            throw new Error('Tabel Jadwal Pelajaran belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-          }
-          throw new Error(error.message);
+          console.error('schedules.create Supabase error:', error);
+          throw new Error(`Jadwal pelajaran belum dapat disimpan: ${error.message}`);
         }
-        return data;
+        return data && data[0] ? data[0] : { id: Date.now(), ...payload };
       } catch (err: any) {
-        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
-          throw new Error('Tabel Jadwal Pelajaran belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-        }
-        throw err;
+        console.error('schedules.create exception:', err);
+        throw new Error(err.message || 'Jadwal pelajaran belum dapat disimpan ke server. Silakan coba beberapa saat lagi.');
       }
     },
 
@@ -1366,20 +1610,33 @@ export const supabaseDb = {
       const payload: Record<string, any> = { updated_at: now };
       if (item.day !== undefined) payload.day = item.day.trim();
       if (item.startTime !== undefined) payload.start_time = item.startTime.trim();
+      if (item.start_time !== undefined) payload.start_time = item.start_time.trim();
       if (item.endTime !== undefined) payload.end_time = item.endTime.trim();
+      if (item.end_time !== undefined) payload.end_time = item.end_time.trim();
       if (item.subject !== undefined) payload.subject = item.subject.trim();
       if (item.teacherName !== undefined) payload.teacher_name = item.teacherName.trim();
+      if (item.teacher_name !== undefined) payload.teacher_name = item.teacher_name.trim();
       if (item.orderIndex !== undefined) payload.order_index = item.orderIndex;
+      if (item.order_index !== undefined) payload.order_index = item.order_index;
 
       try {
-        const { data, error } = await client.from('class_schedules').update(payload).eq('id', id).select().single();
-        if (error) throw new Error(error.message);
-        return data;
-      } catch (err: any) {
-        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
-          throw new Error('Tabel Jadwal Pelajaran belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+        let { data, error } = await client.from('class_schedules').update(payload).eq('id', id).select();
+
+        if (error && error.message && error.message.toLowerCase().includes('order_index')) {
+          const { order_index: _oi, ...payloadNoOrder } = payload;
+          const retryRes = await client.from('class_schedules').update(payloadNoOrder).eq('id', id).select();
+          data = retryRes.data;
+          error = retryRes.error;
         }
-        throw err;
+
+        if (error) {
+          console.error('schedules.update Supabase error:', error);
+          throw new Error(`Jadwal pelajaran belum dapat diperbarui: ${error.message}`);
+        }
+        return data && data[0] ? data[0] : { id, ...payload };
+      } catch (err: any) {
+        console.error('schedules.update exception:', err);
+        throw new Error(err.message || 'Jadwal pelajaran belum dapat diperbarui ke server. Silakan coba beberapa saat lagi.');
       }
     },
 
@@ -1387,9 +1644,10 @@ export const supabaseDb = {
       const client = getSupabaseClient();
       if (!client) return null;
       try {
-        const { data } = await client.from('class_schedules').select('*').eq('id', id).maybeSingle();
+        const { data } = await client.from('class_schedules').select('*').eq('id', id);
+        const existing = data && data[0] ? data[0] : null;
         await client.from('class_schedules').delete().eq('id', id);
-        return data;
+        return existing;
       } catch (err: any) {
         console.warn('schedules.delete exception:', err.message);
         return null;
@@ -1426,31 +1684,38 @@ export const supabaseDb = {
       const client = getSupabaseClient();
       if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
       const now = new Date().toISOString();
+      const payload: Record<string, any> = {
+        day: item.day.trim(),
+        member_id: item.memberId ? Number(item.memberId) : null,
+        member_name: item.memberName.trim(),
+        tasks: item.tasks || 'Piket Kebersihan Kelas',
+        created_at: now,
+        updated_at: now,
+      };
+
       try {
-        const { data, error } = await client
+        let { data, error } = await client
           .from('piket_schedules')
-          .insert({
-            day: item.day.trim(),
-            member_id: item.memberId || null,
-            member_name: item.memberName.trim(),
-            tasks: 'Piket Kebersihan Kelas',
-            created_at: now,
-            updated_at: now,
-          })
-          .select()
-          .single();
+          .insert(payload)
+          .select();
+
+        // If member_id foreign key constraint fails, retry with member_id = null
+        if (error && error.message && (error.message.toLowerCase().includes('foreign') || error.message.toLowerCase().includes('violates foreign key'))) {
+          console.warn('piket.create foreign key hit, retrying with member_id null:', error.message);
+          payload.member_id = null;
+          const retryRes = await client.from('piket_schedules').insert(payload).select();
+          data = retryRes.data;
+          error = retryRes.error;
+        }
+
         if (error) {
-          if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
-            throw new Error('Tabel Jadwal Piket belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-          }
-          throw new Error(error.message);
+          console.error('piket.create Supabase error:', error);
+          throw new Error(`Jadwal piket belum dapat disimpan: ${error.message}`);
         }
-        return data;
+        return data && data[0] ? data[0] : { id: Date.now(), ...payload };
       } catch (err: any) {
-        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
-          throw new Error('Tabel Jadwal Piket belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
-        }
-        throw err;
+        console.error('piket.create exception:', err);
+        throw new Error(err.message || 'Jadwal piket belum dapat disimpan ke server. Silakan coba beberapa saat lagi.');
       }
     },
 
@@ -1460,18 +1725,31 @@ export const supabaseDb = {
       const now = new Date().toISOString();
       const payload: Record<string, any> = { updated_at: now };
       if (item.day !== undefined) payload.day = item.day.trim();
-      if (item.memberId !== undefined) payload.member_id = item.memberId;
+      if (item.day_of_week !== undefined) payload.day = item.day_of_week.trim();
+      if (item.memberId !== undefined) payload.member_id = item.memberId ? Number(item.memberId) : null;
+      if (item.member_id !== undefined) payload.member_id = item.member_id ? Number(item.member_id) : null;
       if (item.memberName !== undefined) payload.member_name = item.memberName.trim();
+      if (item.member_name !== undefined) payload.member_name = item.member_name.trim();
+      if (item.tasks !== undefined) payload.tasks = item.tasks;
 
       try {
-        const { data, error } = await client.from('piket_schedules').update(payload).eq('id', id).select().single();
-        if (error) throw new Error(error.message);
-        return data;
-      } catch (err: any) {
-        if (err.message.includes('schema cache') || err.message.includes('does not exist')) {
-          throw new Error('Tabel Jadwal Piket belum tersedia di Supabase. Silakan jalankan script supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.');
+        let { data, error } = await client.from('piket_schedules').update(payload).eq('id', id).select();
+
+        if (error && error.message && (error.message.toLowerCase().includes('foreign') || error.message.toLowerCase().includes('violates foreign key'))) {
+          payload.member_id = null;
+          const retryRes = await client.from('piket_schedules').update(payload).eq('id', id).select();
+          data = retryRes.data;
+          error = retryRes.error;
         }
-        throw err;
+
+        if (error) {
+          console.error('piket.update Supabase error:', error);
+          throw new Error(`Jadwal piket belum dapat diperbarui: ${error.message}`);
+        }
+        return data && data[0] ? data[0] : { id, ...payload };
+      } catch (err: any) {
+        console.error('piket.update exception:', err);
+        throw new Error(err.message || 'Jadwal piket belum dapat diperbarui ke server. Silakan coba beberapa saat lagi.');
       }
     },
 
@@ -1479,11 +1757,229 @@ export const supabaseDb = {
       const client = getSupabaseClient();
       if (!client) return null;
       try {
-        const { data } = await client.from('piket_schedules').select('*').eq('id', id).maybeSingle();
+        const { data } = await client.from('piket_schedules').select('*').eq('id', id);
+        const existing = data && data[0] ? data[0] : null;
         await client.from('piket_schedules').delete().eq('id', id);
-        return data;
+        return existing;
       } catch (err: any) {
         console.warn('piket.delete exception:', err.message);
+        return null;
+      }
+    },
+  },
+
+  // ==========================================
+  // STORIES (MEMBER STORIES)
+  // ==========================================
+  stories: {
+    async getPublicActive() {
+      const client = getSupabaseClient();
+      if (!client) return [];
+      try {
+        const now = new Date().toISOString();
+        let list: any[] = [];
+
+        // Attempt joined query first
+        const joinedRes = await client
+          .from('member_stories')
+          .select(`
+            *,
+            members:member_id (
+              full_name,
+              nickname,
+              role,
+              photo_number
+            )
+          `)
+          .eq('is_active', true)
+          .or(`expires_at.is.null,expires_at.gt.${now}`)
+          .order('created_at', { ascending: true });
+
+        if (!joinedRes.error && Array.isArray(joinedRes.data)) {
+          list = joinedRes.data.map((s: any) => ({
+            ...s,
+            member_name: s.members?.full_name,
+            member_nickname: s.members?.nickname,
+            member_role: s.members?.role,
+            member_photo: s.members?.photo_number,
+          }));
+        } else {
+          // Fallback to flat query if foreign key relationship is not yet indexed in schema cache
+          const flatRes = await client
+            .from('member_stories')
+            .select('*')
+            .eq('is_active', true)
+            .or(`expires_at.is.null,expires_at.gt.${now}`)
+            .order('created_at', { ascending: true });
+
+          if (flatRes.error) {
+            console.warn('stories.getPublicActive flat query warning:', flatRes.error.message);
+            return [];
+          }
+
+          const rawStories = flatRes.data || [];
+          if (rawStories.length === 0) return [];
+
+          const { data: mems } = await client
+            .from('members')
+            .select('id, full_name, nickname, role, photo_number');
+          const memMap: Record<string, any> = {};
+          (mems || []).forEach((m: any) => {
+            memMap[String(m.id)] = m;
+          });
+
+          list = rawStories.map((s: any) => {
+            const m = memMap[String(s.member_id)] || {};
+            return {
+              ...s,
+              member_name: m.full_name || '',
+              member_nickname: m.nickname || '',
+              member_role: m.role || '',
+              member_photo: m.photo_number || null,
+            };
+          });
+        }
+
+        return list;
+      } catch (err: any) {
+        console.warn('stories.getPublicActive exception:', err.message);
+        return [];
+      }
+    },
+
+    async getById(id: number | string) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const { data } = await client.from('member_stories').select('*').eq('id', id).maybeSingle();
+        return data;
+      } catch (err: any) {
+        console.warn('stories.getById exception:', err.message);
+        return null;
+      }
+    },
+
+    async getByMemberId(memberId: number | string) {
+      const client = getSupabaseClient();
+      if (!client) return [];
+      try {
+        const now = new Date().toISOString();
+        const { data, error } = await client
+          .from('member_stories')
+          .select('*')
+          .eq('member_id', memberId)
+          .eq('is_active', true)
+          .or(`expires_at.is.null,expires_at.gt.${now}`)
+          .order('created_at', { ascending: true });
+        if (error) throw new Error(error.message);
+        return data || [];
+      } catch (err: any) {
+        console.warn('stories.getByMemberId exception:', err.message);
+        return [];
+      }
+    },
+
+    async getAllByMemberId(memberId: number | string) {
+      const client = getSupabaseClient();
+      if (!client) return [];
+      try {
+        const { data, error } = await client
+          .from('member_stories')
+          .select('*')
+          .eq('member_id', memberId)
+          .order('created_at', { ascending: false });
+        if (error) throw new Error(error.message);
+        return data || [];
+      } catch (err: any) {
+        console.warn('stories.getAllByMemberId exception:', err.message);
+        return [];
+      }
+    },
+
+    async countActiveByMemberId(memberId: number | string): Promise<number> {
+      const client = getSupabaseClient();
+      if (!client) return 0;
+      try {
+        const now = new Date().toISOString();
+        const { count, error } = await client
+          .from('member_stories')
+          .select('*', { count: 'exact', head: true })
+          .eq('member_id', memberId)
+          .eq('is_active', true)
+          .or(`expires_at.is.null,expires_at.gt.${now}`);
+        if (error) throw new Error(error.message);
+        return count || 0;
+      } catch (err: any) {
+        console.warn('stories.countActiveByMemberId exception:', err.message);
+        return 0;
+      }
+    },
+
+    async create(story: {
+      memberId: number | string;
+      mediaUrl: string;
+      caption?: string | null;
+      expirationType: string;
+      expiresAt?: string | null;
+    }) {
+      const client = getSupabaseClient();
+      if (!client) throw new Error('Koneksi Supabase belum terkonfigurasi.');
+      const now = new Date().toISOString();
+      const payload: Record<string, any> = {
+        member_id: Number(story.memberId),
+        media_url: story.mediaUrl,
+        caption: story.caption || null,
+        expiration_type: story.expirationType,
+        expires_at: story.expiresAt || null,
+        is_active: true,
+        created_at: now,
+        updated_at: now,
+      };
+
+      try {
+        const { data, error } = await client.from('member_stories').insert(payload).select().single();
+        if (error) {
+          console.error('stories.create Supabase error:', error);
+          throw new Error('Story belum dapat disimpan ke server. Silakan coba beberapa saat lagi.');
+        }
+        return data;
+      } catch (err: any) {
+        console.error('stories.create exception:', err);
+        throw new Error(err.message?.includes('belum dapat') ? err.message : 'Story belum dapat disimpan ke server. Silakan coba beberapa saat lagi.');
+      }
+    },
+
+    async update(id: number | string, updates: Partial<{ caption: string | null; expiration_type: string; expires_at: string | null; is_active: boolean }>) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const payload: Record<string, any> = {
+          ...updates,
+          updated_at: new Date().toISOString(),
+        };
+        const { data, error } = await client
+          .from('member_stories')
+          .update(payload)
+          .eq('id', id)
+          .select()
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        return data;
+      } catch (err: any) {
+        console.warn('stories.update exception:', err.message);
+        return null;
+      }
+    },
+
+    async delete(id: number | string) {
+      const client = getSupabaseClient();
+      if (!client) return null;
+      try {
+        const { data } = await client.from('member_stories').select('*').eq('id', id).maybeSingle();
+        await client.from('member_stories').delete().eq('id', id);
+        return data;
+      } catch (err: any) {
+        console.warn('stories.delete exception:', err.message);
         return null;
       }
     },

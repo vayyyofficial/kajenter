@@ -81,8 +81,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
     roleLower.includes('sekretaris') ||
     roleLower.includes('ketua') ||
     roleLower.includes('wakil') ||
-    roleLower.includes('bendahara') ||
-    roleLower.includes('developer')
+    roleLower === 'developer'
   );
 
   const loadData = useCallback(async () => {
@@ -159,10 +158,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       await loadData();
     } catch (err: any) {
       console.error('Create schedule error:', err);
-      const friendlyErr = err.message?.includes('schema cache')
-        ? 'Tabel Jadwal belum tersedia di database. Silakan jalankan script migrasi supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
-        : err.message || 'Gagal menambahkan jadwal.';
-      showToast(friendlyErr, 'error');
+      showToast(err.message || 'Gagal menambahkan jadwal.', 'error');
     }
   };
 
@@ -201,10 +197,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       await loadData();
     } catch (err: any) {
       console.error('Update schedule error:', err);
-      const friendlyErr = err.message?.includes('schema cache')
-        ? 'Tabel Jadwal belum tersedia di database. Silakan jalankan script migrasi supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
-        : err.message || 'Gagal memperbarui jadwal.';
-      showToast(friendlyErr, 'error');
+      showToast(err.message || 'Gagal memperbarui jadwal.', 'error');
     }
   };
 
@@ -241,10 +234,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       await loadData();
     } catch (err: any) {
       console.error('Create piket error:', err);
-      const friendlyErr = err.message?.includes('schema cache')
-        ? 'Tabel Jadwal Piket belum tersedia di database. Silakan jalankan script migrasi supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
-        : err.message || 'Gagal menambahkan piket.';
-      showToast(friendlyErr, 'error');
+      showToast(err.message || 'Gagal menambahkan piket.', 'error');
     }
   };
 
@@ -271,10 +261,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
       await loadData();
     } catch (err: any) {
       console.error('Update piket error:', err);
-      const friendlyErr = err.message?.includes('schema cache')
-        ? 'Tabel Jadwal Piket belum tersedia di database. Silakan jalankan script migrasi supabase-migration-kas-jadwal-piket.sql di SQL Editor Supabase.'
-        : err.message || 'Gagal memperbarui piket.';
-      showToast(friendlyErr, 'error');
+      showToast(err.message || 'Gagal memperbarui piket.', 'error');
     }
   };
 
@@ -296,7 +283,7 @@ export const PortalScheduleTab: React.FC<PortalScheduleTabProps> = ({ defaultSub
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.25rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', paddingBottom: '3.5rem' }}>
       {/* Toast Notification */}
       {toastMessage && (
         <div

@@ -8,12 +8,12 @@ import { ToastContainer } from './components/common/Toast';
 import { SecretAdminModal } from './components/common/SecretAdminModal';
 
 import { BerandaPage } from './pages/BerandaPage';
-import { GaleriPage } from './pages/GaleriPage';
-import { AnggotaPage } from './pages/AnggotaPage';
-import { ContactPage } from './pages/ContactPage';
-import { AdminPage } from './pages/AdminPage';
-import { PortalPage } from './pages/PortalPage';
-import { NotFoundPage } from './pages/NotFoundPage';
+const GaleriPage = React.lazy(() => import('./pages/GaleriPage').then((m) => ({ default: m.GaleriPage })));
+const AnggotaPage = React.lazy(() => import('./pages/AnggotaPage').then((m) => ({ default: m.AnggotaPage })));
+const ContactPage = React.lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })));
+const AdminPage = React.lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
+const PortalPage = React.lazy(() => import('./pages/PortalPage').then((m) => ({ default: m.PortalPage })));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 import { MemberAuthProvider } from './context/MemberAuthContext';
 
 import './styles/index.css';
@@ -62,8 +62,6 @@ function getInitialPath(): string {
   return window.location.pathname || '/beranda';
 }
 
-import { DueTomorrowNotification } from './components/common/DueTomorrowNotification';
-
 export function AppContent() {
   const [currentPath, setCurrentPath] = useState<string>(getInitialPath);
 
@@ -94,23 +92,64 @@ export function AppContent() {
 
   const resolved = parsePath(currentPath);
 
+  // Standalone Portal Kelas App: No Website Navbar, No Website Footer on ANY device
+  if (resolved.id === 'portal') {
+    return (
+      <div className="portal-app-standalone-container">
+        <React.Suspense
+          fallback={
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '60vh',
+                color: 'var(--text-muted)',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+              }}
+            >
+              Memuat Portal Kelas...
+            </div>
+          }
+        >
+          <PortalPage onNavigate={navigateTo} />
+        </React.Suspense>
+        <ToastContainer />
+      </div>
+    );
+  }
+
   return (
     <>
       <Navbar currentRoute={resolved.id} onNavigate={navigateTo} />
 
-      {resolved.id !== 'portal' && (
-        <DueTomorrowNotification onNavigateToTasks={() => navigateTo('/portal/tugas')} />
-      )}
-
       <main className="page-wrapper container">
         <div key={resolved.id} className="page-enter">
-          {resolved.id === 'beranda' && <BerandaPage onNavigate={navigateTo} />}
-          {resolved.id === 'galeri' && <GaleriPage />}
-          {resolved.id === 'anggota' && <AnggotaPage />}
-          {resolved.id === 'contact' && <ContactPage onNavigate={navigateTo} />}
-          {resolved.id === 'admin' && <AdminPage onNavigate={navigateTo} />}
-          {resolved.id === 'portal' && <PortalPage onNavigate={navigateTo} />}
-          {resolved.id === 'notfound' && <NotFoundPage onNavigate={navigateTo} />}
+          <React.Suspense
+            fallback={
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '50vh',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                }}
+              >
+                Memuat halaman...
+              </div>
+            }
+          >
+            {resolved.id === 'beranda' && <BerandaPage onNavigate={navigateTo} />}
+            {resolved.id === 'galeri' && <GaleriPage />}
+            {resolved.id === 'anggota' && <AnggotaPage />}
+            {resolved.id === 'contact' && <ContactPage onNavigate={navigateTo} />}
+            {resolved.id === 'admin' && <AdminPage onNavigate={navigateTo} />}
+            {resolved.id === 'notfound' && <NotFoundPage onNavigate={navigateTo} />}
+          </React.Suspense>
         </div>
       </main>
 

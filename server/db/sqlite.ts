@@ -688,11 +688,27 @@ export const sqliteDb = {
       const totalPaid = rawQuery.get<any>(
         "SELECT SUM(amount) as total FROM class_kas_records WHERE status = 'paid'"
       );
+      let totalExpenses = 0;
+      try {
+        const totalExp = rawQuery.get<any>("SELECT SUM(amount) as total FROM class_kas_expenses");
+        totalExpenses = totalExp?.total || 0;
+      } catch {
+        totalExpenses = 0;
+      }
       const settingNominal = rawQuery.get<any>(
         "SELECT value FROM website_settings WHERE key = 'kas_nominal'"
       );
+      const settingInitialBalance = rawQuery.get<any>(
+        "SELECT value FROM website_settings WHERE key = 'kas_initial_balance'"
+      );
+      const initialBalance = settingInitialBalance?.value ? parseInt(settingInitialBalance.value, 10) : 0;
+      const totalIncome = totalPaid?.total || 0;
       return {
-        totalCollected: totalPaid?.total || 0,
+        initialBalance,
+        totalCollected: totalIncome,
+        totalIncome,
+        totalExpenses,
+        netBalance: initialBalance + totalIncome - totalExpenses,
         weeklyNominal: settingNominal ? parseInt(settingNominal.value, 10) : 3000,
       };
     },
@@ -770,6 +786,95 @@ export const sqliteDb = {
   },
 
   // ==========================================
+  // PENGELUARAN KAS (EXPENSES - Requirement #4 & #5)
+  // ==========================================
+  kasExpenses: {
+    async getAll() {
+      try {
+        return rawQuery.all<any>('SELECT * FROM class_kas_expenses ORDER BY expense_date DESC, id DESC');
+      } catch {
+        return [];
+      }
+    },
+
+    async getById(id: number | string) {
+      return rawQuery.get<any>('SELECT * FROM class_kas_expenses WHERE id = ?', id);
+    },
+
+    async create(item: {
+      expense_date?: string;
+      description: string;
+      category?: string;
+      amount: number;
+      recorded_by?: string;
+      notes?: string;
+    }) {
+      const now = new Date().toISOString();
+      const expenseDate = item.expense_date || now.split('T')[0];
+      const res = rawQuery.run(
+        `INSERT INTO class_kas_expenses (expense_date, description, category, amount, recorded_by, notes, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        expenseDate,
+        item.description.trim(),
+        item.category || 'Lain-lain',
+        Number(item.amount),
+        item.recorded_by || 'Bendahara',
+        item.notes || null,
+        now,
+        now
+      );
+      return this.getById(res.lastInsertRowid);
+    },
+
+    async update(
+      id: number | string,
+      item: {
+        expense_date?: string;
+        description?: string;
+        category?: string;
+        amount?: number;
+        recorded_by?: string;
+        notes?: string;
+      }
+    ) {
+      const existing = await this.getById(id);
+      if (!existing) throw new Error('Catatan pengeluaran kas tidak ditemukan.');
+
+      const now = new Date().toISOString();
+      rawQuery.run(
+        `UPDATE class_kas_expenses
+         SET expense_date = ?, description = ?, category = ?, amount = ?, recorded_by = ?, notes = ?, updated_at = ?
+         WHERE id = ?`,
+        item.expense_date !== undefined ? item.expense_date : existing.expense_date,
+        item.description !== undefined ? item.description.trim() : existing.description,
+        item.category !== undefined ? item.category : existing.category,
+        item.amount !== undefined ? Number(item.amount) : existing.amount,
+        item.recorded_by !== undefined ? item.recorded_by : existing.recorded_by,
+        item.notes !== undefined ? item.notes : existing.notes,
+        now,
+        id
+      );
+      return this.getById(id);
+    },
+
+    async delete(id: number | string) {
+      const existing = await this.getById(id);
+      if (!existing) throw new Error('Catatan pengeluaran kas tidak ditemukan.');
+      rawQuery.run('DELETE FROM class_kas_expenses WHERE id = ?', id);
+      return existing;
+    },
+
+    async getTotalExpenses() {
+      try {
+        const row = rawQuery.get<any>('SELECT SUM(amount) as total FROM class_kas_expenses');
+        return row?.total || 0;
+      } catch {
+        return 0;
+      }
+    },
+  },
+
+  // ==========================================
   // TUGAS
   // ==========================================
   tasks: {
@@ -789,7 +894,7 @@ export const sqliteDb = {
       description?: string;
       notes?: string;
       status?: string;
-      createdBy: string;
+      createdBy?: string;
     }) {
       const now = new Date().toISOString();
       const status = item.status || 'pending';
@@ -803,7 +908,7 @@ export const sqliteDb = {
         item.description?.trim() || null,
         item.notes?.trim() || null,
         status,
-        item.createdBy,
+        item.createdBy || 'Sekretaris',
         now,
         now
       );
@@ -858,23 +963,25 @@ export const sqliteDb = {
     },
 
     async create(item: {
-      day: string;
+      day?: string;
+      dayOfWeek?: string;
       startTime: string;
       endTime: string;
       subject: string;
-      teacherName: string;
+      teacherName?: string;
       room?: string;
       orderIndex?: number;
     }) {
       const now = new Date().toISOString();
+      const dayVal = (item.day || item.dayOfWeek || '').trim();
       rawQuery.run(
         `INSERT INTO class_schedules (day, start_time, end_time, subject, teacher_name, room, order_index, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        item.day.trim(),
+        dayVal,
         item.startTime.trim(),
         item.endTime.trim(),
         item.subject.trim(),
-        item.teacherName.trim(),
+        (item.teacherName || '').trim(),
         item.room?.trim() || null,
         item.orderIndex || 0,
         now,
@@ -892,11 +999,11 @@ export const sqliteDb = {
         `UPDATE class_schedules
          SET day = ?, start_time = ?, end_time = ?, subject = ?, teacher_name = ?, room = ?, order_index = ?, updated_at = ?
          WHERE id = ?`,
-        item.day || existing.day,
+        item.day || item.dayOfWeek || existing.day,
         item.startTime || existing.start_time,
         item.endTime || existing.end_time,
         item.subject || existing.subject,
-        item.teacherName || existing.teacher_name,
+        item.teacherName !== undefined ? item.teacherName : existing.teacher_name,
         item.room !== undefined ? item.room : existing.room,
         item.orderIndex !== undefined ? item.orderIndex : existing.order_index,
         now,
@@ -923,19 +1030,21 @@ export const sqliteDb = {
     },
 
     async create(item: {
-      day: string;
+      day?: string;
+      dayOfWeek?: string;
       memberId?: number | null;
       memberName: string;
       tasks?: string;
     }) {
       const now = new Date().toISOString();
+      const dayVal = (item.day || item.dayOfWeek || '').trim();
       rawQuery.run(
         `INSERT INTO piket_schedules (day, member_id, member_name, tasks, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        item.day.trim(),
+        dayVal,
         item.memberId || null,
         item.memberName.trim(),
-        item.tasks?.trim() || 'Membersihkan kelas dan merapikan perlengkapan',
+        item.tasks?.trim() || 'Piket Kebersihan Kelas',
         now,
         now
       );
@@ -967,4 +1076,108 @@ export const sqliteDb = {
       return existing;
     },
   },
+
+  // ==========================================
+  // STORIES (MEMBER STORIES)
+  // ==========================================
+  stories: {
+    async getPublicActive() {
+      const now = new Date().toISOString();
+      return rawQuery.all<any>(
+        `SELECT s.*, m.full_name as member_name, m.nickname as member_nickname, m.role as member_role, m.photo_number as member_photo
+         FROM member_stories s
+         LEFT JOIN members m ON m.id = s.member_id
+         WHERE s.is_active = 1 AND (s.expires_at IS NULL OR s.expires_at > ?)
+         ORDER BY s.created_at ASC`,
+        now
+      );
+    },
+
+    async getById(id: number | string) {
+      return rawQuery.get<any>('SELECT * FROM member_stories WHERE id = ?', id);
+    },
+
+    async getByMemberId(memberId: number | string) {
+      const now = new Date().toISOString();
+      return rawQuery.all<any>(
+        `SELECT * FROM member_stories
+         WHERE member_id = ? AND is_active = 1 AND (expires_at IS NULL OR expires_at > ?)
+         ORDER BY created_at ASC`,
+        memberId,
+        now
+      );
+    },
+
+    async getAllByMemberId(memberId: number | string) {
+      return rawQuery.all<any>(
+        `SELECT * FROM member_stories
+         WHERE member_id = ?
+         ORDER BY created_at DESC`,
+        memberId
+      );
+    },
+
+    async countActiveByMemberId(memberId: number | string): Promise<number> {
+      const now = new Date().toISOString();
+      const res = rawQuery.get<any>(
+        `SELECT COUNT(*) as count FROM member_stories
+         WHERE member_id = ? AND is_active = 1 AND (expires_at IS NULL OR expires_at > ?)`,
+        memberId,
+        now
+      );
+      return Number(res?.count || 0);
+    },
+
+    async create(story: {
+      memberId: number | string;
+      mediaUrl: string;
+      caption?: string | null;
+      expirationType: string;
+      expiresAt?: string | null;
+    }) {
+      const now = new Date().toISOString();
+      rawQuery.run(
+        `INSERT INTO member_stories (member_id, media_url, caption, expiration_type, expires_at, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+        story.memberId,
+        story.mediaUrl,
+        story.caption || null,
+        story.expirationType,
+        story.expiresAt || null,
+        now,
+        now
+      );
+      return rawQuery.get<any>('SELECT * FROM member_stories ORDER BY id DESC LIMIT 1');
+    },
+
+    async update(id: number | string, updates: Partial<{ caption: string | null; expiration_type: string; expires_at: string | null; is_active: boolean }>) {
+      const now = new Date().toISOString();
+      const existing = rawQuery.get<any>('SELECT * FROM member_stories WHERE id = ?', id);
+      if (!existing) return null;
+      const caption = updates.caption !== undefined ? updates.caption : existing.caption;
+      const expirationType = updates.expiration_type !== undefined ? updates.expiration_type : existing.expiration_type;
+      const expiresAt = updates.expires_at !== undefined ? updates.expires_at : existing.expires_at;
+      const isActive = updates.is_active !== undefined ? (updates.is_active ? 1 : 0) : existing.is_active;
+
+      rawQuery.run(
+        `UPDATE member_stories
+         SET caption = ?, expiration_type = ?, expires_at = ?, is_active = ?, updated_at = ?
+         WHERE id = ?`,
+        caption,
+        expirationType,
+        expiresAt,
+        isActive,
+        now,
+        id
+      );
+      return rawQuery.get<any>('SELECT * FROM member_stories WHERE id = ?', id);
+    },
+
+    async delete(id: number | string) {
+      const existing = rawQuery.get<any>('SELECT * FROM member_stories WHERE id = ?', id);
+      rawQuery.run('DELETE FROM member_stories WHERE id = ?', id);
+      return existing;
+    },
+  },
 };
+

@@ -1,5 +1,5 @@
 import { api } from './api';
-import { Member, GalleryItem, SocialMedia } from '../types';
+import { Member, GalleryItem, SocialMedia, MemberStory } from '../types';
 
 interface MembersData {
   guru: Member[];
@@ -122,18 +122,48 @@ class DataCacheService {
   }
 
   // ==========================================
+  // STORIES CACHE
+  // ==========================================
+  private publicStories: MemberStory[] | null = null;
+  private publicStoriesTimestamp = 0;
+
+  getPublicStories(): MemberStory[] | null {
+    return this.publicStories;
+  }
+
+  isPublicStoriesFresh(): boolean {
+    return this.publicStories !== null && Date.now() - this.publicStoriesTimestamp < this.TTL;
+  }
+
+  async getOrFetchPublicStories(force = false): Promise<MemberStory[]> {
+    if (!force && this.isPublicStoriesFresh() && this.publicStories) {
+      return this.publicStories;
+    }
+
+    const res = await api.stories.getPublic();
+    if (res.success && res.data) {
+      this.publicStories = res.data;
+      this.publicStoriesTimestamp = Date.now();
+      return res.data;
+    }
+    return this.publicStories || [];
+  }
+
+  // ==========================================
   // INVALIDATION
   // ==========================================
-  invalidate(type?: 'members' | 'gallery' | 'social' | 'all'): void {
+  invalidate(type?: 'members' | 'gallery' | 'social' | 'stories' | 'all'): void {
     if (!type || type === 'all') {
       this.membersData = null;
       this.allGalleryItems = null;
       this.galleryData.clear();
       this.socialData = null;
+      this.publicStories = null;
       this.membersTimestamp = 0;
       this.allGalleryTimestamp = 0;
       this.galleryTimestamp.clear();
       this.socialTimestamp = 0;
+      this.publicStoriesTimestamp = 0;
       return;
     }
 
@@ -148,6 +178,9 @@ class DataCacheService {
     } else if (type === 'social') {
       this.socialData = null;
       this.socialTimestamp = 0;
+    } else if (type === 'stories') {
+      this.publicStories = null;
+      this.publicStoriesTimestamp = 0;
     }
   }
 }

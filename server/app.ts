@@ -13,6 +13,7 @@ import adminRouter from './routes/admin.js';
 import syncRouter from './routes/sync.js';
 import uploadRouter from './routes/upload.js';
 import portalRouter from './routes/portal.js';
+import storiesRouter from './routes/stories.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +51,7 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.use('/foto-anggota', express.static(CONFIG.FOTO_ANGGOTA_DIR));
 app.use('/uploads', express.static(uploadsDir));
 app.use('/assets', express.static(path.join(CONFIG.PUBLIC_DIR, 'assets')));
+app.use('/audio', express.static(path.join(CONFIG.PUBLIC_DIR, 'audio')));
 app.use('/public', express.static(CONFIG.PUBLIC_DIR));
 
 // Create combined API Router
@@ -73,6 +75,7 @@ apiRouter.use('/admin', adminRouter);
 apiRouter.use('/sync', syncRouter);
 apiRouter.use('/upload', uploadRouter);
 apiRouter.use('/portal', portalRouter);
+apiRouter.use('/stories', storiesRouter);
 
 // Mount router on BOTH /api and root / to support both standalone Express and Vercel serverless rewrites
 app.use('/api', apiRouter);

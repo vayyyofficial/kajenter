@@ -8,10 +8,12 @@ import {
   AdminStatusResponse,
   ClassKasRecord,
   ClassKasWeek,
+  ClassKasExpense,
   ClassTask,
   ClassSchedule,
   PiketSchedule,
-  AuthMember
+  AuthMember,
+  MemberStory
 } from '../types';
 
 const RAW_API_URL = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim().replace(/\/+$/, '') : '';
@@ -58,9 +60,15 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!res.ok) {
     console.error(`[API Error Response] ${options.method || 'GET'} ${API_BASE}${endpoint} -> status ${res.status}:`, data);
-    const errorMsg = data.error || data.message || (res.status >= 500
+    let errorMsg = data.error || data.message || (res.status >= 500
       ? 'Terjadi masalah saat menghubungkan ke server. Silakan coba lagi.'
       : 'Terjadi kesalahan pada server.');
+
+    // Requirement #2: Never expose raw technical administrative token error to user
+    if (typeof errorMsg === 'string' && (errorMsg.includes('administratif') || errorMsg.includes('hak akses administratif'))) {
+      errorMsg = 'Profile picture hanya dapat diubah oleh Developer.';
+    }
+
     throw new ApiError(errorMsg, res.status, data.code, data);
   }
 
@@ -236,6 +244,11 @@ export const api = {
     },
   },
 
+  stories: {
+    getPublic: () =>
+      request<{ success: boolean; data: MemberStory[]; total: number }>('/stories/public'),
+  },
+
   portal: {
     auth: {
       login: (payload: { email: string; password?: string }) =>
@@ -262,13 +275,8 @@ export const api = {
           method: 'POST',
           body: JSON.stringify(payload),
         }),
-      changePassword: (payload: { currentPassword?: string; newPassword: string; confirmPassword?: string; code: string }) =>
+      changePassword: (payload: { currentPassword: string; newPassword: string; confirmPassword: string }) =>
         request<{ success: boolean; message: string }>('/portal/auth/change-password', {
-          method: 'PUT',
-          body: JSON.stringify(payload),
-        }),
-      changeEmail: (payload: { newEmail: string; code: string }) =>
-        request<{ success: boolean; message: string; member: AuthMember; token: string; newEmail: string }>('/portal/auth/change-email', {
           method: 'PUT',
           body: JSON.stringify(payload),
         }),
@@ -301,6 +309,11 @@ export const api = {
             method: 'DELETE',
           }),
       },
+      setInitialBalance: (amount: number) =>
+        request<{ success: boolean; message: string; data?: { initialBalance: number; netBalance: number } }>('/portal/kas/initial-balance', {
+          method: 'POST',
+          body: JSON.stringify({ amount }),
+        }),
       setPeriode: (payload: {
         nominal?: number;
         startDate?: string;
@@ -313,7 +326,7 @@ export const api = {
           orderIndex?: number;
         }>;
       }) =>
-        request<{ success: boolean; message: string; data: any }>('/portal/kas/set-periode', {
+        request<{ success: boolean; message: string; data?: any; error?: string }>('/portal/kas/set-periode', {
           method: 'POST',
           body: JSON.stringify(payload),
         }),
@@ -330,18 +343,32 @@ export const api = {
           success: boolean;
           data: ClassKasRecord[];
           defaultAmount: number;
-          summary: { totalMembers: number; paidCount: number; unpaidCount: number; totalAmount: number };
+          initialBalance?: number;
+          netBalance?: number;
+          summary: {
+            totalAmount: number;
+            paidCount: number;
+            unpaidCount: number;
+            totalMembers: number;
+            initialBalance?: number;
+            netBalance?: number;
+            totalIncome?: number;
+            totalExpenses?: number;
+          };
         }>(`/portal/kas${q}`);
       },
       record: (payload: {
-        member_id: number;
-        year: number;
-        week_number: number;
+        member_id?: number;
+        memberId?: number;
+        year?: number;
+        month_year?: string;
+        week_number?: number;
+        weekNumber?: number;
         amount?: number;
         is_paid: boolean | number;
         notes?: string;
       }) =>
-        request<{ success: boolean; message: string; data: ClassKasRecord }>('/portal/kas', {
+        request<{ success: boolean; message: string; data?: ClassKasRecord; error?: string }>('/portal/kas', {
           method: 'POST',
           body: JSON.stringify(payload),
         }),
@@ -349,6 +376,39 @@ export const api = {
         request<{ success: boolean; message: string }>(`/portal/kas/${id}`, {
           method: 'DELETE',
         }),
+      getExpenses: () =>
+        request<{ success: boolean; data: ClassKasExpense[]; totalExpenses: number }>('/portal/kas/expenses'),
+      createExpense: (payload: {
+        expense_date?: string;
+        description: string;
+        category?: string;
+        amount: number;
+        recorded_by?: string;
+        notes?: string;
+      }) =>
+        request<{ success: boolean; message: string; data: ClassKasExpense }>('/portal/kas/expenses', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }),
+      updateExpense: (id: number, payload: Partial<ClassKasExpense>) =>
+        request<{ success: boolean; message: string; data: ClassKasExpense }>(`/portal/kas/expenses/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        }),
+      deleteExpense: (id: number) =>
+        request<{ success: boolean; message: string }>(`/portal/kas/expenses/${id}`, {
+          method: 'DELETE',
+        }),
+      getSummary: () =>
+        request<{
+          success: boolean;
+          initialBalance: number;
+          totalCollected: number;
+          totalIncome: number;
+          totalExpenses: number;
+          netBalance: number;
+          weeklyNominal: number;
+        }>('/portal/kas/summary'),
     },
 
     tasks: {
@@ -444,6 +504,68 @@ export const api = {
         request<{ success: boolean; message: string; data: Member; member: Member }>(`/portal/users/${id}`, {
           method: 'PUT',
           body: JSON.stringify(payload),
+        }),
+      updatePassword: (id: number | string, password: string) =>
+        request<{ success: boolean; message: string }>(`/portal/users/${id}/password`, {
+          method: 'PUT',
+          body: JSON.stringify({ password }),
+        }),
+    },
+
+    maintenance: {
+      getStatus: () =>
+        request<{ success: boolean; maintenance: boolean }>('/portal/maintenance'),
+      toggle: (enabled: boolean) =>
+        request<{ success: boolean; maintenance: boolean; message: string }>('/portal/maintenance', {
+          method: 'POST',
+          body: JSON.stringify({ enabled }),
+        }),
+    },
+
+    admin: {
+      getActivityLogs: (limit = 100) =>
+        request<{ success: boolean; data: ActivityLog[]; total: number }>(`/portal/activity-logs?limit=${limit}`),
+    },
+
+    stories: {
+      getMyStories: () =>
+        request<{
+          success: boolean;
+          data: MemberStory[];
+          activeCount: number;
+          maxLimit: number;
+          canAddStory: boolean;
+        }>('/portal/stories/my'),
+      getAllManage: () =>
+        request<{
+          success: boolean;
+          data: MemberStory[];
+          total: number;
+        }>('/portal/stories/manage'),
+      create: (formData: FormData) =>
+        request<{ success: boolean; message: string; data: MemberStory }>('/portal/stories', {
+          method: 'POST',
+          body: formData,
+        }),
+      update: (
+        id: number | string,
+        payload: {
+          caption?: string | null;
+          music_title?: string | null;
+          music_artist?: string | null;
+          music_url?: string | null;
+          remove_music?: boolean;
+          expiration_type?: string;
+          expires_at?: string | null;
+        }
+      ) =>
+        request<{ success: boolean; message: string; data: MemberStory }>(`/portal/stories/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        }),
+      delete: (id: number | string) =>
+        request<{ success: boolean; message: string }>(`/portal/stories/${id}`, {
+          method: 'DELETE',
         }),
     },
   },

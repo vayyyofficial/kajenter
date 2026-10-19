@@ -772,18 +772,29 @@ textarea::placeholder {
 
 /* 9. Responsive Gallery Modal System (Mobile & Desktop) */
 @media (max-width: 768px) {
-  .gallery-modal-body {
-    flex-direction: column !important;
-    overflow-y: auto !important;
-    max-height: calc(92vh - 54px) !important;
-    -webkit-overflow-scrolling: touch !important;
+  .gallery-stage {
+    padding: 0.5rem !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .gallery-dialog-container {
+    width: 100% !important;
+    max-width: 100% !important;
     max-height: 94vh !important;
+    max-height: 94dvh !important;
+    margin: auto !important;
+    border-radius: 18px !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    border-radius: 16px !important;
+  }
+
+  .gallery-modal-body {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    max-height: calc(94vh - 56px) !important;
+    max-height: calc(94dvh - 56px) !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .gallery-image-column {
@@ -792,8 +803,8 @@ textarea::placeholder {
   }
 
   .gallery-image-column > div:first-child {
-    min-height: clamp(200px, 36vh, 280px) !important;
-    max-height: 38vh !important;
+    min-height: clamp(220px, 40vh, 320px) !important;
+    max-height: 42vh !important;
   }
 
   .gallery-metadata-column {
@@ -896,7 +907,8 @@ textarea::placeholder {
 [data-theme="dark"] .form-textarea::placeholder,
 [data-theme="dark"] input::placeholder,
 [data-theme="dark"] textarea::placeholder {
-  color: #71717a !important;
+  color: #94a3b8 !important;
+  opacity: 0.85 !important;
 }
 
 [data-theme="dark"] .form-input:focus,
@@ -983,40 +995,72 @@ textarea::placeholder {
 }
 
 /* ========================================================= */
-/* PORTAL MOBILE-APP CHASSIS (Requirements #9, #31, #32)     */
+/* PORTAL STANDALONE APP & CHASSIS (Requirements #3, #4, #15)*/
 /* ========================================================= */
-.portal-viewport-wrapper {
-  min-height: calc(100vh - 120px);
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 1.5rem 1rem 3rem 1rem;
-}
-
-.portal-mobile-chassis {
+.portal-app-standalone-container {
+  min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
-  max-width: 418px;
-  background-color: var(--bg-card);
-  border-radius: 40px;
-  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.28), 0 0 0 1px var(--gray-200);
-  overflow-x: hidden;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  height: clamp(740px, 86vh, 890px);
+  background-color: var(--bg-page);
+  margin: 0;
+  padding: 0;
   position: relative;
-  transition: all var(--transition-normal);
 }
 
-[data-theme="dark"] .portal-mobile-chassis {
-  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+/* ==============================================================================
+   PORTAL KELAS — RESPONSIVE WEB APPLICATION LAYOUT (DESKTOP & MOBILE)
+   ============================================================================== */
+.portal-viewport-wrapper {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background-color: var(--bg-main, #f8fafc);
+  box-sizing: border-box;
+  position: relative;
+}
+
+[data-theme="dark"] .portal-viewport-wrapper {
+  background-color: var(--bg-page, #0f0f0f);
+}
+
+.portal-app-container {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 1.25rem 1.5rem 110px 1.5rem;
+  box-sizing: border-box;
+}
+
+.portal-main-content {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: 1.25rem;
+}
+
+.portal-header-banner {
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
+  color: #ffffff;
+  padding: 1.25rem 1.5rem;
+  border-radius: 22px;
+  box-shadow: 0 8px 28px rgba(220, 38, 38, 0.22);
+  position: relative;
+  z-index: 10;
 }
 
 /* Explicit Form Input styling for Light & Dark mode consistency */
 .form-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md, 12px);
   border: 1px solid var(--border-color);
   background-color: var(--bg-input);
   color: var(--text-main);
@@ -1036,18 +1080,214 @@ textarea::placeholder {
   opacity: 0.8;
 }
 
-@media (max-width: 640px) {
-  .portal-viewport-wrapper {
-    padding: 0;
-    min-height: 100vh;
+/* Bottom Navigation Bar (Dock on Desktop, Pinned Bar on Mobile) */
+.portal-bottom-nav-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  padding: 0 1rem 0.85rem 1rem;
+}
+
+.portal-bottom-nav-bar {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 780px;
+  background-color: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 22px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0.35rem 0.5rem;
+  height: 64px;
+  box-sizing: border-box;
+  transition: all var(--transition-normal);
+}
+
+[data-theme="dark"] .portal-bottom-nav-bar {
+  background-color: rgba(23, 23, 23, 0.94);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.portal-nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.25rem 0.2rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  text-decoration: none;
+}
+
+.portal-nav-btn:hover {
+  color: var(--primary-600);
+  background-color: var(--primary-50);
+}
+
+.portal-nav-btn.active {
+  color: var(--primary-600);
+  font-weight: 800;
+}
+
+.portal-nav-btn .icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.portal-nav-btn.active .icon-badge {
+  background-color: var(--primary-50);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .portal-nav-btn:hover {
+  background-color: rgba(220, 38, 38, 0.12);
+}
+
+[data-theme="dark"] .portal-nav-btn.active .icon-badge {
+  background-color: rgba(220, 38, 38, 0.18);
+}
+
+/* Tablet adjustments */
+@media (max-width: 1024px) {
+  .portal-app-container {
+    max-width: 100%;
+    padding: 1rem 1rem 100px 1rem;
   }
-  .portal-mobile-chassis {
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .portal-app-container {
+    padding: 0.5rem 0.5rem 90px 0.5rem;
+  }
+  .portal-main-content {
+    padding-top: 0.75rem;
+  }
+  .portal-bottom-nav-container {
+    padding: 0;
+  }
+  .portal-bottom-nav-bar {
     max-width: 100%;
     border-radius: 0;
-    box-shadow: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    border-top: 1px solid var(--border-color);
+    padding: 0.3rem 0.2rem calc(0.35rem + env(safe-area-inset-bottom, 0px)) 0.2rem;
     height: auto;
-    min-height: 100vh;
-    max-height: none;
-    border: none;
+    min-height: 58px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  }
+  .portal-nav-btn {
+    font-size: 0.625rem;
+    padding: 0.15rem 0.1rem;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+  .portal-nav-btn span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .portal-nav-btn .icon-badge {
+    padding: 0.12rem 0.35rem;
+  }
+}
+
+/* ==============================================================================
+   PORTAL KELAS — FLOATING TOAST NOTIFICATION (REQUIREMENT: TUGAS H-1)
+   ============================================================================== */
+.portal-toast-floating-wrapper {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 99999;
+  width: 400px;
+  max-width: calc(100vw - 2.5rem);
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .portal-toast-floating-wrapper {
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+}
+
+.portal-toast-card {
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  border-left: 4px solid var(--primary-600);
+  border-radius: var(--radius-lg, 16px);
+  padding: 1rem 1.15rem;
+  box-shadow: 0 16px 36px -6px rgba(220, 38, 38, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  animation: portalToastSlideIn 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+[data-theme="dark"] .portal-toast-card {
+  background-color: rgba(23, 23, 27, 0.94);
+  border-color: rgba(239, 68, 68, 0.32);
+  border-left-color: var(--primary-500);
+  box-shadow: 0 20px 45px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(239, 68, 68, 0.18);
+}
+
+.portal-toast-card.toast-exiting {
+  animation: portalToastSlideOut 200ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes portalToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes portalToastSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
   }
 }

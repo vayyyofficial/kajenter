@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, GraduationCap, Users } from 'lucide-react';
-import { Member } from '../types';
+import { Member, MemberStory } from '../types';
 import { dataCache } from '../services/dataCache';
+import { api } from '../services/api';
 import { BRANDING } from '../config/branding';
 import { MemberCard } from '../components/members/MemberCard';
 import { MemberDetailModal } from '../components/members/MemberDetailModal';
+import { StoryViewerModal } from '../components/members/StoryViewerModal';
 import { ScrollReveal } from '../components/common/ScrollReveal';
 import { Skeleton } from '../components/common/Skeleton';
 import { useRealtimeSync } from '../context/SyncContext';
@@ -21,7 +23,11 @@ export const AnggotaPage: React.FC = () => {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-  const fetchMembers = useCallback(async () => {
+  // Member Stories (Public Active Stories - Requirement #11 & #12)
+  const [storiesByMember, setStoriesByMember] = useState<Record<number, MemberStory[]>>({});
+  const [activeStoryMember, setActiveStoryMember] = useState<{ member: Member; stories: MemberStory[] } | null>(null);
+
+  const fetchMembers = useCallback(async (force = false) => {
     try {
       const cachedData = dataCache.getMembers();
       if (!cachedData) {
@@ -30,7 +36,7 @@ export const AnggotaPage: React.FC = () => {
         setGuruList(cachedData.guru);
         setSiswaList(cachedData.siswa);
       }
-      const data = await dataCache.getOrFetchMembers(true);
+      const data = await dataCache.getOrFetchMembers(force);
       if (data) {
         setGuruList(data.guru || []);
         setSiswaList(data.siswa || []);
@@ -42,13 +48,43 @@ export const AnggotaPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
+  const fetchPublicStories = useCallback(async (force = false) => {
+    try {
+      const cachedStories = dataCache.getPublicStories();
+      if (cachedStories) {
+        const map: Record<number, MemberStory[]> = {};
+        cachedStories.forEach((st) => {
+          if (!map[st.member_id]) map[st.member_id] = [];
+          map[st.member_id].push(st);
+        });
+        setStoriesByMember(map);
+      }
 
-  // Real-time synchronization for members across all devices
-  useRealtimeSync(['members'], () => {
-    fetchMembers();
+      const stories = await dataCache.getOrFetchPublicStories(force);
+      if (stories) {
+        const map: Record<number, MemberStory[]> = {};
+        stories.forEach((st) => {
+          if (!map[st.member_id]) map[st.member_id] = [];
+          map[st.member_id].push(st);
+        });
+        setStoriesByMember(map);
+      }
+    } catch (err) {
+      console.error('Failed to load public stories:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMembers(false);
+    fetchPublicStories(false);
+  }, [fetchMembers, fetchPublicStories]);
+
+  // Real-time synchronization for members and stories across all devices
+  useRealtimeSync(['members', 'stories'], () => {
+    dataCache.invalidate('members');
+    dataCache.invalidate('stories');
+    fetchMembers(true);
+    fetchPublicStories(true);
   });
 
   const handleMemberClick = (member: Member) => {
@@ -130,92 +166,98 @@ export const AnggotaPage: React.FC = () => {
       ) : (
         <>
           {/* Section 1: GURU (Requirement #22: Guru ditampilkan terlebih dahulu) */}
-          <ScrollReveal>
-            <section>
+          <section style={{ marginBottom: '2.5rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                borderBottom: '2px solid var(--primary-600)',
+                paddingBottom: '0.75rem',
+                marginBottom: '1.5rem',
+              }}
+            >
+              <GraduationCap size={22} color="var(--primary-600)" />
+              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                {t.members.teachersTitle}
+              </h2>
+              <span className="badge badge-primary" style={{ marginLeft: '0.5rem' }}>
+                {t.members.teachersCount(filteredGuru.length)}
+              </span>
+            </div>
+
+            {filteredGuru.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                {t.members.noTeachersFound}
+              </p>
+            ) : (
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.6rem',
-                  borderBottom: '2px solid var(--primary-600)',
-                  paddingBottom: '0.75rem',
-                  marginBottom: '1.5rem',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                  gap: '1.5rem',
                 }}
               >
-                <GraduationCap size={22} color="var(--primary-600)" />
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                  {t.members.teachersTitle}
-                </h2>
-                <span className="badge badge-primary" style={{ marginLeft: '0.5rem' }}>
-                  {t.members.teachersCount(filteredGuru.length)}
-                </span>
+                {filteredGuru.map((guru, idx) => (
+                  <ScrollReveal key={guru.id} delay={(idx % 4) * 40} once>
+                    <MemberCard
+                      member={guru}
+                      onClick={handleMemberClick}
+                      stories={storiesByMember[guru.id]}
+                      onOpenStory={(m, st) => setActiveStoryMember({ member: m, stories: st })}
+                    />
+                  </ScrollReveal>
+                ))}
               </div>
-
-              {filteredGuru.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  {t.members.noTeachersFound}
-                </p>
-              ) : (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                    gap: '1.5rem',
-                  }}
-                >
-                  {filteredGuru.map((guru, idx) => (
-                    <ScrollReveal key={guru.id} delay={(idx % 4) * 50}>
-                      <MemberCard member={guru} onClick={handleMemberClick} />
-                    </ScrollReveal>
-                  ))}
-                </div>
-              )}
-            </section>
-          </ScrollReveal>
+            )}
+          </section>
 
           {/* Section 2: SISWA (Requirement #23: Setelah bagian guru, terurut nomor absen) */}
-          <ScrollReveal delay={80}>
-            <section>
+          <section>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                borderBottom: '2px solid var(--border-color)',
+                paddingBottom: '0.75rem',
+                marginBottom: '1.5rem',
+              }}
+            >
+              <Users size={22} color="var(--primary-600)" />
+              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                {t.members.studentsTitle(BRANDING.name)}
+              </h2>
+              <span className="badge badge-neutral" style={{ marginLeft: '0.5rem' }}>
+                {t.members.studentsCount(filteredSiswa.length)}
+              </span>
+            </div>
+
+            {filteredSiswa.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                {t.members.noStudentsFound(search)}
+              </p>
+            ) : (
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.6rem',
-                  borderBottom: '2px solid var(--border-color)',
-                  paddingBottom: '0.75rem',
-                  marginBottom: '1.5rem',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                  gap: '1.5rem',
                 }}
               >
-                <Users size={22} color="var(--primary-600)" />
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                  {t.members.studentsTitle(BRANDING.name)}
-                </h2>
-                <span className="badge badge-neutral" style={{ marginLeft: '0.5rem' }}>
-                  {t.members.studentsCount(filteredSiswa.length)}
-                </span>
+                {filteredSiswa.map((siswa, idx) => (
+                  <ScrollReveal key={siswa.id} delay={(idx % 6) * 35} once>
+                    <MemberCard
+                      member={siswa}
+                      onClick={handleMemberClick}
+                      stories={storiesByMember[siswa.id]}
+                      onOpenStory={(m, st) => setActiveStoryMember({ member: m, stories: st })}
+                    />
+                  </ScrollReveal>
+                ))}
               </div>
-
-              {filteredSiswa.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  {t.members.noStudentsFound(search)}
-                </p>
-              ) : (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                    gap: '1.5rem',
-                  }}
-                >
-                  {filteredSiswa.map((siswa, idx) => (
-                    <ScrollReveal key={siswa.id} delay={(idx % 6) * 45}>
-                      <MemberCard member={siswa} onClick={handleMemberClick} />
-                    </ScrollReveal>
-                  ))}
-                </div>
-              )}
-            </section>
-          </ScrollReveal>
+            )}
+          </section>
         </>
       )}
 
@@ -225,6 +267,16 @@ export const AnggotaPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
+
+      {/* Story Viewer Modal (Requirement #12 & #13: Public Story Viewer) */}
+      {activeStoryMember && (
+        <StoryViewerModal
+          member={activeStoryMember.member}
+          stories={activeStoryMember.stories}
+          isOpen={Boolean(activeStoryMember)}
+          onClose={() => setActiveStoryMember(null)}
+        />
+      )}
     </div>
   );
 };

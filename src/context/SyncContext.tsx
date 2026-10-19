@@ -3,7 +3,7 @@ import { API_BASE } from '../services/api';
 import { dataCache } from '../services/dataCache';
 
 export interface SyncPayload {
-  type: 'gallery' | 'members' | 'social' | 'settings' | 'metrics';
+  type: 'gallery' | 'members' | 'social' | 'settings' | 'metrics' | 'stories' | 'logs';
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'SYNC';
   timestamp: string;
   data?: any;
@@ -75,7 +75,7 @@ export const useSync = () => useContext(SyncContext);
  * Uses cached data and eliminates aggressive window focus re-fetching.
  */
 export function useRealtimeSync(
-  types: ('gallery' | 'members' | 'social' | 'settings')[],
+  types: ('gallery' | 'members' | 'social' | 'settings' | 'stories' | 'logs')[],
   onUpdate: () => void
 ) {
   const callbackRef = useRef(onUpdate);
@@ -87,7 +87,7 @@ export function useRealtimeSync(
   const typesKey = types.join(',');
 
   useEffect(() => {
-    const activeTypes = typesKey.split(',') as ('gallery' | 'members' | 'social' | 'settings')[];
+    const activeTypes = typesKey.split(',') as ('gallery' | 'members' | 'social' | 'settings' | 'stories' | 'logs')[];
 
     const handleSync = (e: Event) => {
       const customEvent = e as CustomEvent<SyncPayload>;

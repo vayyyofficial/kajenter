@@ -1,7 +1,7 @@
 import { Response } from 'express';
 
 export interface SyncEvent {
-  type: 'gallery' | 'members' | 'social' | 'settings' | 'metrics';
+  type: 'gallery' | 'members' | 'social' | 'settings' | 'metrics' | 'stories' | 'logs';
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'SYNC';
   timestamp: string;
   data?: any;
