@@ -1,0 +1,31 @@
+@tailwind components;
+@tailwind utilities;
+
+/* Scoped base styles for seating components to ensure borders & text render identically */
+.seating-scope {
+  --tw-border-opacity: 1;
+}
+
+.seating-scope *,
+.seating-scope *::before,
+.seating-scope *::after {
+  box-sizing: border-box;
+  border-style: solid;
+  border-width: 0;
+}
+
+/* Custom scrollbars for clean seating UI */
+.seating-scope ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.seating-scope ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.seating-scope ::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 9999px;
+}
+.seating-scope ::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
