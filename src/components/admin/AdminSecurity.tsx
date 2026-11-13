@@ -78,7 +78,7 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
   const locale = language === 'en' ? 'en-US' : 'id-ID';
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '2rem' }}>
       {/* Left: Change Password Form (Requirement #13) */}
       <div className="card" style={{ padding: '1.75rem', backgroundColor: 'var(--bg-card)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>

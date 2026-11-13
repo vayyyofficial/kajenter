@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   Clock,
   LogOut,
-  ShieldAlert,
   ArrowLeft,
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
@@ -31,7 +30,7 @@ interface AdminPageProps {
 
 export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
   const { t, language } = useLanguage();
-  const { isAdmin, logout, openSecretModal } = useAdmin();
+  const { isAdmin, isSessionLoading, logout } = useAdmin();
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
 
@@ -50,64 +49,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
     }
   }, [isAdmin, activeTab]);
 
-  // If unauthenticated, deny access (Requirement #10: Server-side & Client-side protection)
-  if (!isAdmin) {
+  // Tanpa sesi admin yang valid, arahkan ke halaman login terpusat
+  useEffect(() => {
+    if (!isSessionLoading && !isAdmin) {
+      onNavigate('/admin/login');
+    }
+  }, [isSessionLoading, isAdmin, onNavigate]);
+
+  if (isSessionLoading || !isAdmin) {
     return (
       <div
-        className="card"
         style={{
-          maxWidth: '540px',
-          margin: '3rem auto',
-          padding: '2.5rem 2rem',
-          textAlign: 'center',
-          boxShadow: 'var(--shadow-lg)',
-          backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border-color)',
-          borderTop: '4px solid var(--primary-600)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '50vh',
+          color: 'var(--text-muted)',
+          fontSize: '0.9rem',
+          fontWeight: 600,
         }}
       >
-        <div
-          style={{
-            width: 60,
-            height: 60,
-            borderRadius: '50%',
-            backgroundColor: 'rgba(220, 38, 38, 0.12)',
-            color: 'var(--primary-500)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.25rem auto',
-          }}
-        >
-          <ShieldAlert size={32} />
-        </div>
-
-        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-          {t.admin.protectedTitle}
-        </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.75rem' }}>
-          {t.admin.protectedDesc}
-        </p>
-
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-          <button
-            onClick={() => onNavigate('beranda')}
-            className="btn btn-secondary"
-            style={{ fontWeight: 600 }}
-          >
-            <ArrowLeft size={16} />
-            <span>{t.admin.backToHome}</span>
-          </button>
-
-          <button
-            onClick={openSecretModal}
-            className="btn btn-primary"
-            style={{ fontWeight: 700 }}
-          >
-            <ShieldCheck size={16} />
-            <span>{t.admin.enterPassword}</span>
-          </button>
-        </div>
+        {isSessionLoading ? t.adminLogin.checkingSession : t.adminLogin.redirecting}
       </div>
     );
   }
@@ -141,7 +103,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
           borderBottom: '1px solid var(--border-color)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
           <img
             src={BRANDING.logoUrl}
             alt={BRANDING.name}
@@ -151,10 +113,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
               borderRadius: '50%',
               objectFit: 'cover',
               border: '2px solid var(--primary-600)',
+              flexShrink: 0,
             }}
           />
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, lineHeight: 1.2 }}>
                 {t.admin.panelTitle}
               </h1>
@@ -170,7 +133,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           <button
             onClick={() => onNavigate('beranda')}
             className="btn btn-secondary btn-sm"

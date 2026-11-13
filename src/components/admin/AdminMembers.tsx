@@ -201,7 +201,7 @@ export const AdminMembers: React.FC = () => {
               </h4>
             </div>
             <div className="table-container" style={{ border: 'none' }}>
-              <table className="table">
+              <table className="table table-sticky-actions">
                 <thead>
                   <tr>
                     <th style={{ width: '60px' }}>{t.admin.colPhoto}</th>
@@ -264,7 +264,7 @@ export const AdminMembers: React.FC = () => {
               </h4>
             </div>
             <div className="table-container" style={{ border: 'none' }}>
-              <table className="table">
+              <table className="table table-sticky-actions">
                 <thead>
                   <tr>
                     <th style={{ width: '60px', textAlign: 'center' }}>No</th>
@@ -428,7 +428,7 @@ export const AdminMembers: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">{t.admin.memberType}</label>
               <select
@@ -463,7 +463,7 @@ export const AdminMembers: React.FC = () => {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-responsive" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">{t.admin.fullNameLabel}</label>
               <input
@@ -521,7 +521,7 @@ export const AdminMembers: React.FC = () => {
             </select>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">{t.admin.birthPlaceLabel}</label>
               <input
@@ -543,7 +543,7 @@ export const AdminMembers: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">{t.admin.colEmail}</label>
               <input

@@ -135,7 +135,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
     { id: 'rolling-kelompok', path: '/rolling-kelompok', label: t.nav.rollingKelompok },
   ];
   const trailingLinks = [
-    { id: 'portal', path: '/portal', label: t.nav.portal },
     { id: 'contact', path: '/contact', label: t.nav.contact },
   ];
   const isRollingActive = rollingItems.some((item) => item.id === currentRoute);
@@ -498,7 +497,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
               }}
             >
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--gray-500)', textTransform: 'uppercase' }}>
-                Preferences
+                {t.nav.preferences}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <ThemeToggle />

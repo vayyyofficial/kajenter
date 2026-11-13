@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Mail, Globe, ExternalLink } from 'lucide-react';
 import { siInstagram, siTiktok, siDiscord } from 'simple-icons';
 import { BRANDING } from '../../config/branding';
-import { useAdmin } from '../../context/AdminContext';
 import { dataCache } from '../../services/dataCache';
 import { SocialMedia } from '../../types';
 
@@ -14,7 +13,6 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   const { t } = useLanguage();
-  const { openSecretModal } = useAdmin();
   const [socials, setSocials] = useState<SocialMedia[]>(() => {
     const cached = dataCache.getSocial();
     if (!cached) return [];
@@ -35,7 +33,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     { id: 'galeri', path: '/galeri', label: t.nav.gallery },
     { id: 'anggota', path: '/anggota', label: t.nav.members },
     { id: 'contact', path: '/contact', label: t.nav.contact },
-    { id: 'portal', path: '/portal', label: 'Portal Kelas' },
   ];
 
   const handleNavClick = (path: string) => {
@@ -295,7 +292,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         </div>
 
         {/* ========================================================= */}
-        {/* Footer Bottom Bar with Subtle Secret Admin Access         */}
+        {/* Footer Bottom Bar                                         */}
         {/* ========================================================= */}
         <div
           style={{
@@ -311,46 +308,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem' }}>
-            <span>© 2026 {BRANDING.name}. All rights reserved.</span>
-
-            {/* SECRET ACCESS TRIGGER (Subtle portal button with comfortable touch target) */}
-            <button
-              onClick={openSecretModal}
-              title={t.footer.secretPortalTooltip}
-              aria-label={t.footer.secretPortalTooltip}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '36px',
-                minHeight: '36px',
-                padding: '0 0.4rem',
-                margin: '0 0.2rem',
-                backgroundColor: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--gray-600)',
-                transition: 'color 0.2s ease, transform 0.2s ease',
-                borderRadius: 'var(--radius-sm)',
-                outline: 'none',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--primary-400)';
-                e.currentTarget.style.transform = 'scale(1.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--gray-600)';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.color = 'var(--primary-400)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.color = 'var(--gray-600)';
-              }}
-            >
-              <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>•</span>
-            </button>
+            <span>© 2026 {BRANDING.name}. {t.footer.rights}</span>
 
             <span>{t.footer.officialPortal}</span>
           </div>

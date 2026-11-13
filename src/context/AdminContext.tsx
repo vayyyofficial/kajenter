@@ -4,12 +4,10 @@ import { api, ApiError } from '../services/api';
 interface AdminContextType {
   isAdmin: boolean;
   adminToken: string | null;
-  secretModalOpen: boolean;
+  isSessionLoading: boolean;
   isLocked: boolean;
   lockoutRemainingMs: number;
   attemptsRemaining: number;
-  openSecretModal: () => void;
-  closeSecretModal: () => void;
   verifyPassword: (password: string) => Promise<{
     success: boolean;
     error?: string;
@@ -33,7 +31,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.getItem('x_icp_admin_token')
   );
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [secretModalOpen, setSecretModalOpen] = useState<boolean>(false);
+  // True while a stored session token is still being validated on first load
+  const [isSessionLoading, setIsSessionLoading] = useState<boolean>(() =>
+    Boolean(localStorage.getItem('x_icp_admin_token'))
+  );
 
   const [isLocked, setIsLocked] = useState<boolean>(false);
   const [lockoutRemainingMs, setLockoutRemainingMs] = useState<number>(0);
@@ -63,6 +64,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const token = localStorage.getItem('x_icp_admin_token');
       if (!token) {
         setIsAdmin(false);
+        setIsSessionLoading(false);
         return;
       }
       try {
@@ -78,21 +80,13 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         localStorage.removeItem('x_icp_admin_token');
         setAdminToken(null);
         setIsAdmin(false);
+      } finally {
+        setIsSessionLoading(false);
       }
     };
 
     checkSession();
   }, []);
-
-  const openSecretModal = () => {
-    setIsLocked(false);
-    setLockoutRemainingMs(0);
-    setSecretModalOpen(true);
-  };
-
-  const closeSecretModal = () => {
-    setSecretModalOpen(false);
-  };
 
   const verifyPassword = async (password: string) => {
     try {
@@ -103,7 +97,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsAdmin(true);
         setIsLocked(false);
         setLockoutRemainingMs(0);
-        setSecretModalOpen(false);
         return { success: true };
       }
       return { success: false, error: res.error || 'Password salah. Silakan coba lagi.' };
@@ -144,12 +137,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{
         isAdmin,
         adminToken,
-        secretModalOpen,
+        isSessionLoading,
         isLocked,
         lockoutRemainingMs,
         attemptsRemaining,
-        openSecretModal,
-        closeSecretModal,
         verifyPassword,
         changePassword,
         logout,

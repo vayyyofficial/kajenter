@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, GraduationCap, Users } from 'lucide-react';
-import { Member, MemberStory } from '../types';
+import { Member } from '../types';
 import { dataCache } from '../services/dataCache';
-import { api } from '../services/api';
 import { BRANDING } from '../config/branding';
 import { MemberCard } from '../components/members/MemberCard';
 import { MemberDetailModal } from '../components/members/MemberDetailModal';
-import { StoryViewerModal } from '../components/members/StoryViewerModal';
 import { ScrollReveal } from '../components/common/ScrollReveal';
 import { Skeleton } from '../components/common/Skeleton';
 import { useRealtimeSync } from '../context/SyncContext';
@@ -22,10 +20,6 @@ export const AnggotaPage: React.FC = () => {
 
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-
-  // Member Stories (Public Active Stories - Requirement #11 & #12)
-  const [storiesByMember, setStoriesByMember] = useState<Record<number, MemberStory[]>>({});
-  const [activeStoryMember, setActiveStoryMember] = useState<{ member: Member; stories: MemberStory[] } | null>(null);
 
   const fetchMembers = useCallback(async (force = false) => {
     try {
@@ -48,43 +42,14 @@ export const AnggotaPage: React.FC = () => {
     }
   }, []);
 
-  const fetchPublicStories = useCallback(async (force = false) => {
-    try {
-      const cachedStories = dataCache.getPublicStories();
-      if (cachedStories) {
-        const map: Record<number, MemberStory[]> = {};
-        cachedStories.forEach((st) => {
-          if (!map[st.member_id]) map[st.member_id] = [];
-          map[st.member_id].push(st);
-        });
-        setStoriesByMember(map);
-      }
-
-      const stories = await dataCache.getOrFetchPublicStories(force);
-      if (stories) {
-        const map: Record<number, MemberStory[]> = {};
-        stories.forEach((st) => {
-          if (!map[st.member_id]) map[st.member_id] = [];
-          map[st.member_id].push(st);
-        });
-        setStoriesByMember(map);
-      }
-    } catch (err) {
-      console.error('Failed to load public stories:', err);
-    }
-  }, []);
-
   useEffect(() => {
     fetchMembers(false);
-    fetchPublicStories(false);
-  }, [fetchMembers, fetchPublicStories]);
+  }, [fetchMembers]);
 
-  // Real-time synchronization for members and stories across all devices
-  useRealtimeSync(['members', 'stories'], () => {
+  // Real-time synchronization for members across all devices
+  useRealtimeSync(['members'], () => {
     dataCache.invalidate('members');
-    dataCache.invalidate('stories');
     fetchMembers(true);
-    fetchPublicStories(true);
   });
 
   const handleMemberClick = (member: Member) => {
@@ -203,8 +168,6 @@ export const AnggotaPage: React.FC = () => {
                     <MemberCard
                       member={guru}
                       onClick={handleMemberClick}
-                      stories={storiesByMember[guru.id]}
-                      onOpenStory={(m, st) => setActiveStoryMember({ member: m, stories: st })}
                     />
                   </ScrollReveal>
                 ))}
@@ -250,8 +213,6 @@ export const AnggotaPage: React.FC = () => {
                     <MemberCard
                       member={siswa}
                       onClick={handleMemberClick}
-                      stories={storiesByMember[siswa.id]}
-                      onOpenStory={(m, st) => setActiveStoryMember({ member: m, stories: st })}
                     />
                   </ScrollReveal>
                 ))}
@@ -267,16 +228,6 @@ export const AnggotaPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
-
-      {/* Story Viewer Modal (Requirement #12 & #13: Public Story Viewer) */}
-      {activeStoryMember && (
-        <StoryViewerModal
-          member={activeStoryMember.member}
-          stories={activeStoryMember.stories}
-          isOpen={Boolean(activeStoryMember)}
-          onClose={() => setActiveStoryMember(null)}
-        />
-      )}
     </div>
   );
 };

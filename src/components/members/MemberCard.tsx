@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
-import { Mail, MapPin, ShieldCheck, PlayCircle } from 'lucide-react';
-import { Member, MemberStory } from '../../types';
+import { Mail, MapPin, ShieldCheck } from 'lucide-react';
+import { Member } from '../../types';
 import { getMemberPhotoUrl, getDefaultAvatar } from '../../utils/avatar';
 import { useLanguage } from '../../context/LanguageContext';
 
 interface MemberCardProps {
   member: Member;
   onClick: (member: Member) => void;
-  stories?: MemberStory[];
-  onOpenStory?: (member: Member, stories: MemberStory[]) => void;
 }
 
-export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick, stories, onOpenStory }) => {
+export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick }) => {
   const { t } = useLanguage();
   const [imgError, setImgError] = useState(false);
 
@@ -125,38 +123,6 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, onClick, stories
           {member.role === 'Siswa' ? t.members.roleStudent : member.role}
         </span>
       </div>
-
-      {/* Story Button (Requirement #11: Only shown if member has active stories) */}
-      {stories && stories.length > 0 && (
-        <div style={{ margin: '0.2rem 0 0.75rem 0' }}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenStory && onOpenStory(member, stories);
-            }}
-            type="button"
-            title={`Lihat Story dari ${member.full_name}`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              padding: '0.3rem 0.85rem',
-              borderRadius: '9999px',
-              border: '1.5px solid var(--primary-600)',
-              backgroundColor: 'var(--primary-50)',
-              color: 'var(--primary-600)',
-              fontSize: '0.75rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          >
-            <PlayCircle size={14} strokeWidth={2.5} />
-            <span>Story ({stories.length})</span>
-          </button>
-        </div>
-      )}
 
       {/* Quick metadata */}
       <div

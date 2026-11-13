@@ -5,7 +5,6 @@ import { SyncProvider } from "./context/SyncContext";
 import { Navbar } from "./components/common/Navbar";
 import { Footer } from "./components/common/Footer";
 import { ToastContainer } from "./components/common/Toast";
-import { SecretAdminModal } from "./components/common/SecretAdminModal";
 
 import { BerandaPage } from "./pages/BerandaPage";
 const GaleriPage = React.lazy(() =>
@@ -20,8 +19,8 @@ const ContactPage = React.lazy(() =>
 const AdminPage = React.lazy(() =>
   import("./pages/AdminPage").then((m) => ({ default: m.AdminPage })),
 );
-const PortalPage = React.lazy(() =>
-  import("./pages/PortalPage").then((m) => ({ default: m.PortalPage })),
+const AdminLoginPage = React.lazy(() =>
+  import("./pages/AdminLoginPage").then((m) => ({ default: m.AdminLoginPage })),
 );
 const RollingSeatPage = React.lazy(() =>
   import("./pages/RollingSeatPage").then((m) => ({
@@ -41,19 +40,22 @@ const RollingAdminPage = React.lazy(() =>
 const NotFoundPage = React.lazy(() =>
   import("./pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })),
 );
-import { MemberAuthProvider } from "./context/MemberAuthContext";
 
 import "./styles/index.css";
 import "./styles/components.css";
 import "./styles/seating.css";
 
 export interface ResolvedRoute {
-  id: string; // 'beranda' | 'galeri' | 'anggota' | 'contact' | 'admin' | 'portal' | 'rolling-seat' | 'rolling-kelompok' | 'rolling-admin' | 'notfound'
+  id: string; // 'beranda' | 'galeri' | 'anggota' | 'contact' | 'admin' | 'admin-login' | 'rolling-seat' | 'rolling-kelompok' | 'rolling-admin' | 'notfound'
   path: string;
 }
 
 export function parsePath(pathname: string): ResolvedRoute {
-  const clean = pathname.replace(/^\/+|\/+$/g, "").toLowerCase();
+  // Abaikan query string / hash saat mencocokkan rute
+  const clean = pathname
+    .split(/[?#]/)[0]
+    .replace(/^\/+|\/+$/g, "")
+    .toLowerCase();
 
   if (clean === "" || clean === "beranda") {
     return { id: "beranda", path: "/beranda" };
@@ -67,11 +69,11 @@ export function parsePath(pathname: string): ResolvedRoute {
   if (clean === "contact") {
     return { id: "contact", path: "/contact" };
   }
+  if (clean === "admin/login") {
+    return { id: "admin-login", path: "/admin/login" };
+  }
   if (clean === "admin" || clean.startsWith("admin/")) {
     return { id: "admin", path: "/admin" };
-  }
-  if (clean === "portal" || clean.startsWith("portal/")) {
-    return { id: "portal", path: pathname };
   }
   if (
     clean === "rolling-seat" ||
@@ -105,7 +107,6 @@ function getInitialPath(): string {
         "anggota",
         "contact",
         "admin",
-        "portal",
         "rolling-seat",
         "rolling-kelompok",
         "rolling-admin",
@@ -148,34 +149,6 @@ export function AppContent() {
   }, []);
 
   const resolved = parsePath(currentPath);
-
-  // Standalone Portal Kelas App: No Website Navbar, No Website Footer on ANY device
-  if (resolved.id === "portal") {
-    return (
-      <div className="portal-app-standalone-container">
-        <React.Suspense
-          fallback={
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minHeight: "60vh",
-                color: "var(--text-muted)",
-                fontSize: "0.9rem",
-                fontWeight: 600,
-              }}
-            >
-              Memuat Portal Kelas...
-            </div>
-          }
-        >
-          <PortalPage onNavigate={navigateTo} />
-        </React.Suspense>
-        <ToastContainer />
-      </div>
-    );
-  }
 
   // Standalone Rolling Admin Dashboard: No Website Navbar/Footer
   if (resolved.id === "rolling-admin") {
@@ -236,6 +209,9 @@ export function AppContent() {
             {resolved.id === "contact" && (
               <ContactPage onNavigate={navigateTo} />
             )}
+            {resolved.id === "admin-login" && (
+              <AdminLoginPage onNavigate={navigateTo} />
+            )}
             {resolved.id === "admin" && <AdminPage onNavigate={navigateTo} />}
             {resolved.id === "rolling-seat" && (
               <RollingSeatPage onNavigate={navigateTo} />
@@ -252,7 +228,6 @@ export function AppContent() {
 
       <Footer onNavigate={navigateTo} />
       <ToastContainer />
-      <SecretAdminModal onSuccessNavigate={navigateTo} />
     </>
   );
 }
@@ -265,13 +240,11 @@ export function App() {
     <ThemeProvider>
       <LanguageProvider>
         <AdminProvider>
-          <MemberAuthProvider>
-            <NotificationProvider>
-              <SyncProvider>
-                <AppContent />
-              </SyncProvider>
-            </NotificationProvider>
-          </MemberAuthProvider>
+          <NotificationProvider>
+            <SyncProvider>
+              <AppContent />
+            </SyncProvider>
+          </NotificationProvider>
         </AdminProvider>
       </LanguageProvider>
     </ThemeProvider>

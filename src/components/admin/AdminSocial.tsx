@@ -130,7 +130,7 @@ export const AdminSocial: React.FC = () => {
 
       <div className="card" style={{ boxShadow: 'var(--shadow-md)', backgroundColor: 'var(--bg-card)' }}>
         <div className="table-container" style={{ border: 'none' }}>
-          <table className="table">
+          <table className="table table-sticky-actions">
             <thead>
               <tr>
                 <th>{t.admin.colSocialPlatform}</th>

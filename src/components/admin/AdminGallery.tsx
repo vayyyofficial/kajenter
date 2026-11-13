@@ -304,7 +304,7 @@ export const AdminGallery: React.FC = () => {
 
       <div className="card" style={{ boxShadow: 'var(--shadow-md)' }}>
         <div className="table-container" style={{ border: 'none' }}>
-          <table className="table">
+          <table className="table table-sticky-actions">
             <thead>
               <tr>
                 <th style={{ width: '90px' }}>{t.admin.colPhoto}</th>

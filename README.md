@@ -8,7 +8,7 @@ live inside the same site under a single **Rolling** navbar dropdown.
 
 | Path | Purpose |
 | --- | --- |
-| `src/pages` | Route pages (`BerandaPage`, `GaleriPage`, `AnggotaPage`, `ContactPage`, `PortalPage`, `AdminPage`, `RollingSeatPage`, `RollingKelompokPage`, `RollingAdminPage`) |
+| `src/pages` | Route pages (`BerandaPage`, `GaleriPage`, `AnggotaPage`, `ContactPage`, `AdminLoginPage`, `AdminPage`, `RollingSeatPage`, `RollingKelompokPage`, `RollingAdminPage`) |
 | `src/components` | UI components. Rolling UI: `classroom/`, `groups/`, `admin/Seating*` (plain JSX, typed via sibling `.d.ts` shims) |
 | `src/services` | `api.ts` for the main site; `seating*Service.ts` for Rolling (Supabase + local storage fallback) |
 | `src/utils`, `src/data` | Helpers; Rolling scheduling/randomizer/timezone/validation live in `seating*.ts` |
@@ -18,7 +18,7 @@ live inside the same site under a single **Rolling** navbar dropdown.
 
 ## Routes
 
-`/beranda`, `/galeri`, `/anggota`, `/contact`, `/portal`, `/admin`, `/rolling-seat`,
+`/beranda`, `/galeri`, `/anggota`, `/contact`, `/admin/login`, `/admin`, `/rolling-seat`,
 `/rolling-kelompok`, `/rolling-admin` (standalone panel, no site navbar/footer).
 
 ## Getting started

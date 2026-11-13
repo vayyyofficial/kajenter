@@ -23,7 +23,7 @@ export default function AdminHeader({
           <button
             onClick={onToggleMobileNav}
             className="p-2 rounded-lg text-content-secondary hover:text-content-primary hover:bg-gray-100 lg:hidden"
-            aria-label="Toggle Menu"
+            aria-label="Buka menu navigasi"
           >
             <Menu className="w-5 h-5" />
           </button>
