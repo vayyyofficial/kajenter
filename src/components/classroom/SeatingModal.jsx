@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export default function SeatingModal({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' }) {
@@ -22,8 +23,8 @@ export default function SeatingModal({ isOpen, onClose, title, children, maxWidt
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in"
@@ -51,6 +52,7 @@ export default function SeatingModal({ isOpen, onClose, title, children, maxWidt
         {/* Content */}
         <div className="p-6 max-h-[80vh] overflow-y-auto">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

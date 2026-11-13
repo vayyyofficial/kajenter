@@ -78,7 +78,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     <footer
       style={{
         backgroundColor: '#0f172a',
-        color: 'var(--gray-300)',
+        color: '#cbd5e1',
         paddingTop: '3.5rem',
         paddingBottom: '2.5rem',
         borderTop: '3px solid var(--primary-600)',
@@ -160,7 +160,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       handleNavClick(item.path);
                     }}
                     style={{
-                      color: 'var(--gray-300)',
+                      color: '#cbd5e1',
                       textDecoration: 'none',
                       cursor: 'pointer',
                       display: 'inline-flex',
@@ -170,7 +170,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       transition: 'color var(--transition-fast)',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-400)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gray-300)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#cbd5e1')}
                   >
                     <span style={{ color: 'var(--primary-500)', fontSize: '0.75rem' }}>▸</span>
                     <span>{item.label}</span>
@@ -207,14 +207,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.6rem',
-                      color: 'var(--gray-300)',
+                      color: '#cbd5e1',
                       fontSize: '0.875rem',
                       textDecoration: 'none',
                       transition: 'color var(--transition-fast)',
                       padding: '0.2rem 0',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-400)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gray-300)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#cbd5e1')}
                   >
                     <span style={{ color: 'var(--primary-400)', display: 'flex', alignItems: 'center' }}>
                       {renderSocialIcon(soc.platform)}
@@ -233,7 +233,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.6rem',
-                      color: 'var(--gray-300)',
+                      color: '#cbd5e1',
                       fontSize: '0.875rem',
                       textDecoration: 'none',
                     }}
@@ -253,7 +253,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.6rem',
-                      color: 'var(--gray-300)',
+                      color: '#cbd5e1',
                       fontSize: '0.875rem',
                       textDecoration: 'none',
                     }}
@@ -273,7 +273,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.6rem',
-                      color: 'var(--gray-300)',
+                      color: '#cbd5e1',
                       fontSize: '0.875rem',
                       textDecoration: 'none',
                     }}

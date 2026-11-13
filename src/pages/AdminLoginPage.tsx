@@ -78,8 +78,10 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
     <div
       style={{
         display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
-        padding: '2rem 0 3rem 0',
+        minHeight: 'max(520px, 68vh)',
+        padding: '2.5rem 0 3rem 0',
       }}
     >
       <div
