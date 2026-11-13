@@ -17,8 +17,8 @@ export default function AdminHeader({
   }, []);
 
   return (
-    <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-divider px-4 sm:px-8 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-divider px-4 sm:px-8 py-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         {onToggleMobileNav && (
           <button
             onClick={onToggleMobileNav}
@@ -28,13 +28,13 @@ export default function AdminHeader({
             <Menu className="w-5 h-5" />
           </button>
         )}
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-content-primary">{title}</h1>
+        <div className="min-w-0">
+          <h1 className="break-words text-base sm:text-xl font-bold text-content-primary">{title}</h1>
           {subtitle && <p className="text-xs text-content-secondary hidden sm:block">{subtitle}</p>}
         </div>
       </div>
 
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-4">
         {/* Live WIB Clock */}
         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-canvas border border-divider text-xs text-content-secondary font-mono">
           <Clock className="w-3.5 h-3.5 text-brand-600" />
