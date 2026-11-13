@@ -78,7 +78,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     <footer
       style={{
         backgroundColor: '#0f172a',
-        color: 'var(--gray-300)',
+        color: '#cbd5e1',
         paddingTop: '3.5rem',
         paddingBottom: '2.5rem',
         borderTop: '3px solid var(--primary-600)',
@@ -160,7 +160,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       handleNavClick(item.path);
                     }}
                     style={{
-                      color: 'var(--gray-300)',
+                      color: '#cbd5e1',
                       textDecoration: 'none',
                       cursor: 'pointer',
                       display: 'inline-flex',
@@ -207,7 +207,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.6rem',
-                      color: 'var(--gray-300)',
+                      color: '#cbd5e1',
                       fontSize: '0.875rem',
                       textDecoration: 'none',
                       transition: 'color var(--transition-fast)',
@@ -233,7 +233,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.6rem',
-                      color: 'var(--gray-300)',
+                      color: '#cbd5e1',
                       fontSize: '0.875rem',
                       textDecoration: 'none',
                     }}
@@ -253,7 +253,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.6rem',
-                      color: 'var(--gray-300)',
+                      color: '#cbd5e1',
                       fontSize: '0.875rem',
                       textDecoration: 'none',
                     }}
@@ -273,7 +273,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.6rem',
-                      color: 'var(--gray-300)',
+                      color: '#cbd5e1',
                       fontSize: '0.875rem',
                       textDecoration: 'none',
                     }}
