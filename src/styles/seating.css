@@ -29,3 +29,168 @@
 .seating-scope ::-webkit-scrollbar-thumb:hover {
   background: #9CA3AF;
 }
+
+
+/* ========================================================= */
+/* DARK MODE — ROLLING SEAT & GROUP RANDOMIZER                */
+/* Keep the existing layout and component styles; only map   */
+/* the light Tailwind utility colors to dark-friendly tones. */
+/* ========================================================= */
+[data-theme="dark"] .seating-scope {
+  color: #f1f5f9;
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .seating-scope .bg-white,
+[data-theme="dark"] .seating-scope .bg-surface {
+  background-color: #171717 !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-canvas,
+[data-theme="dark"] .seating-scope [class~="bg-canvas/60"] {
+  background-color: #202024 !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-gray-50,
+[data-theme="dark"] .seating-scope [class~="bg-gray-50/80"] {
+  background-color: #1d1d22 !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-gray-100 {
+  background-color: #292930 !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-gray-200 {
+  background-color: #363640 !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-brand-50,
+[data-theme="dark"] .seating-scope [class~="bg-brand-50/30"],
+[data-theme="dark"] .seating-scope [class~="bg-brand-50/40"],
+[data-theme="dark"] .seating-scope [class~="bg-brand-50/50"] {
+  background-color: rgba(220, 38, 38, 0.13) !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-brand-100 {
+  background-color: rgba(220, 38, 38, 0.2) !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-brand-200 {
+  background-color: rgba(220, 38, 38, 0.28) !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.13) !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-amber-50,
+[data-theme="dark"] .seating-scope [class~="bg-amber-50/40"],
+[data-theme="dark"] .seating-scope [class~="bg-amber-50/50"] {
+  background-color: rgba(245, 158, 11, 0.13) !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-rose-50 {
+  background-color: rgba(244, 63, 94, 0.13) !important;
+}
+
+[data-theme="dark"] .seating-scope .text-content-primary {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .seating-scope .text-content-secondary {
+  color: #b6beca !important;
+}
+
+[data-theme="dark"] .seating-scope .text-gray-300,
+[data-theme="dark"] .seating-scope .text-gray-400,
+[data-theme="dark"] .seating-scope .text-gray-500 {
+  color: #9ca3af !important;
+}
+
+[data-theme="dark"] .seating-scope .text-gray-600,
+[data-theme="dark"] .seating-scope .text-gray-700 {
+  color: #d1d5db !important;
+}
+
+[data-theme="dark"] .seating-scope .text-brand-700,
+[data-theme="dark"] .seating-scope .text-brand-800,
+[data-theme="dark"] .seating-scope .text-brand-900 {
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .seating-scope .text-emerald-700,
+[data-theme="dark"] .seating-scope .text-emerald-800 {
+  color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .seating-scope .text-amber-800,
+[data-theme="dark"] .seating-scope .text-amber-900 {
+  color: #fcd34d !important;
+}
+
+[data-theme="dark"] .seating-scope .text-rose-600 {
+  color: #fda4af !important;
+}
+
+[data-theme="dark"] .seating-scope .border-divider,
+[data-theme="dark"] .seating-scope .border-gray-100,
+[data-theme="dark"] .seating-scope .border-gray-200,
+[data-theme="dark"] .seating-scope .border-gray-300 {
+  border-color: #363640 !important;
+}
+
+[data-theme="dark"] .seating-scope .border-brand-100,
+[data-theme="dark"] .seating-scope .border-brand-200,
+[data-theme="dark"] .seating-scope .border-brand-300 {
+  border-color: rgba(248, 113, 113, 0.35) !important;
+}
+
+[data-theme="dark"] .seating-scope .border-emerald-200 {
+  border-color: rgba(52, 211, 153, 0.35) !important;
+}
+
+[data-theme="dark"] .seating-scope .border-amber-400 {
+  border-color: rgba(251, 191, 36, 0.55) !important;
+}
+
+[data-theme="dark"] .seating-scope .border-rose-200 {
+  border-color: rgba(251, 113, 133, 0.35) !important;
+}
+
+[data-theme="dark"] .seating-scope .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #303038 !important;
+}
+
+[data-theme="dark"] .seating-scope .hover\\:bg-canvas:hover,
+[data-theme="dark"] .seating-scope .hover\\:bg-gray-100:hover {
+  background-color: #292930 !important;
+}
+
+[data-theme="dark"] .seating-scope .hover\\:bg-brand-50:hover {
+  background-color: rgba(220, 38, 38, 0.18) !important;
+}
+
+[data-theme="dark"] .seating-scope input,
+[data-theme="dark"] .seating-scope select,
+[data-theme="dark"] .seating-scope textarea {
+  background-color: #202024;
+  color: #f1f5f9;
+  border-color: #3a3a45;
+}
+
+[data-theme="dark"] .seating-scope input::placeholder,
+[data-theme="dark"] .seating-scope textarea::placeholder {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .seating-scope .bg-white\/20 {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
