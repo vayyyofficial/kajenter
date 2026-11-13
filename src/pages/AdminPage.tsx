@@ -29,7 +29,7 @@ interface AdminPageProps {
 }
 
 export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { isAdmin, isSessionLoading, logout } = useAdmin();
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
@@ -126,9 +126,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
               </span>
             </div>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-              {language === 'en'
-                ? `Content Management & Security Center • ${BRANDING.name} — ${BRANDING.school}`
-                : `Pusat Pengelolaan Konten & Keamanan ${BRANDING.name} — ${BRANDING.school}`}
+              {`Pusat Pengelolaan Konten & Keamanan ${BRANDING.name} — ${BRANDING.school}`}
             </span>
           </div>
         </div>
@@ -140,7 +138,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
             style={{ fontWeight: 600 }}
           >
             <ArrowLeft size={15} />
-            <span>{language === 'en' ? 'View Website' : 'Lihat Website'}</span>
+            <span>Lihat Website</span>
           </button>
 
           <button
