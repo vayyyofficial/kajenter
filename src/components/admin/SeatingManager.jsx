@@ -84,8 +84,8 @@ export default function SeatingManager({
       {/* Top Banner and Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 bg-white rounded-2xl border border-divider shadow-subtle">
         <div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-content-primary">Pengacakan & Denah Duduk</h2>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+            <h2 className="text-base sm:text-lg font-bold text-content-primary">Pengacakan & Denah Duduk</h2>
             <Badge variant="primary" size="xs">
               {currentArrangement?.type || 'Manual'}
             </Badge>
@@ -95,7 +95,7 @@ export default function SeatingManager({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-start gap-2.5 sm:justify-end">
           {previousArrangement && (
             <div className="flex rounded-xl bg-canvas p-1 border border-divider text-xs">
               <button
@@ -124,7 +124,7 @@ export default function SeatingManager({
           <button
             onClick={() => setConfirmModalOpen(true)}
             disabled={isShuffling}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white shadow-subtle transition-all transform active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white shadow-subtle transition-all transform active:scale-95 disabled:opacity-50"
           >
             <Dices className={`w-4 h-4 ${isShuffling ? 'animate-spin' : ''}`} />
             {isShuffling ? 'Sedang Mengacak...' : 'Acak Ulang Tempat Duduk (Reroll)'}
