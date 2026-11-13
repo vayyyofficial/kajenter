@@ -31,7 +31,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
     if (isAdmin && !isSessionLoading) {
       onNavigate(redirectPath);
     }
-  }, [isAdmin, isSessionLoading, onNavigate]);
+  }, [isAdmin, isSessionLoading, onNavigate, redirectPath]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -48,7 +48,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
     setIsSubmitting(false);
 
     if (res.success) {
-      onNavigate('/admin');
+      onNavigate(redirectPath);
     } else {
       setErrorMsg(res.error || t.adminLogin.wrongPassword);
       setPassword('');
