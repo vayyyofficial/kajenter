@@ -170,7 +170,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       transition: 'color var(--transition-fast)',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-400)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gray-300)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#cbd5e1')}
                   >
                     <span style={{ color: 'var(--primary-500)', fontSize: '0.75rem' }}>▸</span>
                     <span>{item.label}</span>
@@ -214,7 +214,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                       padding: '0.2rem 0',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-400)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gray-300)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#cbd5e1')}
                   >
                     <span style={{ color: 'var(--primary-400)', display: 'flex', alignItems: 'center' }}>
                       {renderSocialIcon(soc.platform)}
