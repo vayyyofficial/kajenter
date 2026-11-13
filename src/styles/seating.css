@@ -169,12 +169,12 @@
   border-color: #303038 !important;
 }
 
-[data-theme="dark"] .seating-scope .hover\\:bg-canvas:hover,
-[data-theme="dark"] .seating-scope .hover\\:bg-gray-100:hover {
+[data-theme="dark"] .seating-scope [class~="hover:bg-canvas"]:hover,
+[data-theme="dark"] .seating-scope [class~="hover:bg-gray-100"]:hover {
   background-color: #292930 !important;
 }
 
-[data-theme="dark"] .seating-scope .hover\\:bg-brand-50:hover {
+[data-theme="dark"] .seating-scope [class~="hover:bg-brand-50"]:hover {
   background-color: rgba(220, 38, 38, 0.18) !important;
 }
 
