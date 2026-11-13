@@ -4,7 +4,6 @@ import { BRANDING } from '../../config/branding';
 import { lockScroll, unlockScroll } from '../../utils/scrollLock';
 
 import { useLanguage } from '../../context/LanguageContext';
-import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 
 interface NavbarProps {
@@ -389,7 +388,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
           {/* Desktop CTA & Controls Action Bar */}
           <div className="navbar-desktop-actions">
             <ThemeToggle />
-            <LanguageSwitcher />
             <a
               href="/contact"
               onClick={(e) => {
@@ -501,7 +499,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentRoute, onNavigate }) => {
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <ThemeToggle />
-                <LanguageSwitcher />
               </div>
             </div>
 
