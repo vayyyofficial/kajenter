@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAdmin } from '../context/AdminContext';
 import SeatingAdminSidebar from '../components/admin/SeatingAdminSidebar';
 import SeatingAdminHeader from '../components/admin/SeatingAdminHeader';
 import SeatingAdminOverview from '../components/admin/SeatingAdminOverview';
@@ -11,26 +12,20 @@ import SeatingToast from '../components/classroom/SeatingToast';
 import { seatingStudentService } from '../services/seatingStudentService';
 import { seatingLayoutService } from '../services/seatingLayoutService';
 import { seatingArrangementService, SeatingArrangement, SeatingHistoryItem } from '../services/seatingArrangementService';
-import { seatingAuthService, SeatingUser } from '../services/seatingAuthService';
+type SeatingUser = { name: string; role: string };
 import { ClassroomLayout } from '../data/seatingLayout';
 import { SeatingStudent } from '../data/seatingStudents';
-import {
-  Shield,
-  Lock,
-  Eye,
-  EyeOff,
-  ArrowLeft,
-  AlertCircle,
-} from 'lucide-react';
+
 
 interface RollingAdminPageProps {
   onNavigate: (route: string) => void;
 }
 
 export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ onNavigate }) => {
-  const [currentUser, setCurrentUser] = useState<SeatingUser | null>(() =>
-    seatingAuthService.isAuthenticated() ? seatingAuthService.getCurrentUser() : null
-  );
+  const { isAdmin, isSessionLoading, logout } = useAdmin();
+  const currentUser: SeatingUser | null = isAdmin
+    ? { name: 'Administrator', role: 'ADMIN' }
+    : null;
   const [activeTab, setActiveTab] = useState('overview');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -44,12 +39,6 @@ export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ onNavigate }
     seatingArrangementService.getPreviousArrangement()
   );
   const [history, setHistory] = useState<SeatingHistoryItem[]>(() => seatingArrangementService.getHistory());
-
-  // Login form state
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
   // Toast feedback state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' }>({
@@ -85,38 +74,16 @@ export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ onNavigate }
     };
   }, []);
 
-  // Login submit handler
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-
-    if (!password) {
-      setLoginError('Kata sandi administrator wajib diisi.');
-      return;
+  // Rolling Admin menggunakan sesi autentikasi admin utama.
+  useEffect(() => {
+    if (!isSessionLoading && !isAdmin) {
+      onNavigate('/admin/login?redirect=/rolling-admin');
     }
+  }, [isSessionLoading, isAdmin, onNavigate]);
 
-    setIsLoading(true);
-
-    try {
-      const result = await seatingAuthService.login(password);
-      setIsLoading(false);
-
-      if (result.success && result.user) {
-        setCurrentUser(result.user);
-        showNotification(`Selamat datang kembali, ${result.user.name}!`, 'success');
-      } else {
-        setLoginError(result.message || 'Kata sandi tidak valid.');
-      }
-    } catch (err: any) {
-      setIsLoading(false);
-      setLoginError(err.message || 'Terjadi kesalahan sistem saat memproses login.');
-    }
-  };
-
-  const handleLogout = async () => {
-    await seatingAuthService.logout();
-    setCurrentUser(null);
-    showNotification('Anda telah keluar dari sesi admin.', 'info');
+  const handleLogout = () => {
+    logout();
+    onNavigate('/admin/login?redirect=/rolling-admin');
   };
 
   // Student Actions
@@ -222,93 +189,16 @@ export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ onNavigate }
 
   const currentTabInfo = tabTitles[activeTab] || tabTitles.overview;
 
-  // VIEW: LOGIN FORM (If not logged in)
-  if (!currentUser) {
+  if (isSessionLoading || !isAdmin) {
     return (
-      <div className="seating-scope min-h-[70vh] flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
-        <SeatingToast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ message: '', type: 'success' })}
-        />
-
-        <div className="max-w-md w-full mx-auto mb-6">
-          <button
-            onClick={() => onNavigate('/rolling-seat')}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-content-secondary hover:text-brand-600 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Kembali ke Denah Tempat Duduk
-          </button>
-        </div>
-
-        <div className="max-w-md w-full mx-auto bg-white rounded-2xl border border-divider shadow-card p-6 sm:p-8">
-          <div className="flex flex-col items-center text-center space-y-3 mb-8">
-            <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600 shadow-subtle">
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-content-primary">Login Pengurus Denah</h2>
-              <p className="text-xs text-content-secondary mt-1">
-                Masukkan kata sandi pengurus kelas untuk mengakses panel kontrol denah dan rotasi tempat duduk.
-              </p>
-            </div>
-          </div>
-
-          {loginError && (
-            <div className="mb-6 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3 text-xs animate-in fade-in">
-              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-              <span>{loginError}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleLoginSubmit} className="space-y-5">
-            <div>
-              <label className="block text-xs font-semibold text-content-primary mb-1.5">
-                Kata Sandi Administrator
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Masukkan password admin..."
-                  className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-divider bg-canvas text-content-primary placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
-                  aria-label="Tampilkan atau sembunyikan password"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-subtle hover:shadow-card transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Memverifikasi...</span>
-                </>
-              ) : (
-                <span>Masuk ke Dashboard</span>
-              )}
-            </button>
-          </form>
-        </div>
+      <div className="seating-scope min-h-[70vh] flex items-center justify-center px-4">
+        <p className="text-sm font-semibold text-content-secondary">
+          {isSessionLoading ? 'Memeriksa sesi administrator...' : 'Mengalihkan ke halaman login...'}
+        </p>
       </div>
     );
   }
 
-  // VIEW: ADMIN DASHBOARD (When authenticated)
   return (
     <div className="seating-scope min-h-screen bg-canvas flex">
       <SeatingToast
