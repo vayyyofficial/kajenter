@@ -17,6 +17,8 @@ interface AdminLoginPageProps {
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) => {
   const { t } = useLanguage();
   const { isAdmin, isSessionLoading, verifyPassword } = useAdmin();
+  const requestedRedirect = new URLSearchParams(window.location.search).get('redirect');
+  const redirectPath = requestedRedirect === '/rolling-admin' ? '/rolling-admin' : '/admin';
 
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -27,7 +29,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
   // Sesi admin yang sudah valid langsung diarahkan ke panel admin
   useEffect(() => {
     if (isAdmin && !isSessionLoading) {
-      onNavigate('/admin');
+      onNavigate(redirectPath);
     }
   }, [isAdmin, isSessionLoading, onNavigate]);
 
