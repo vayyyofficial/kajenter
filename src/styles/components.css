@@ -1132,3 +1132,13 @@ button.nav-dropdown-trigger {
     grid-template-columns: 1fr !important;
   }
 }
+
+
+/* Featured gallery category badge: match the readable overlay used on the Gallery page. */
+[data-theme="dark"] .featured-gallery-category {
+  background-color: rgba(15, 23, 42, 0.75) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
