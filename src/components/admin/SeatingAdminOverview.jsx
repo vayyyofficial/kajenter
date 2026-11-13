@@ -46,7 +46,7 @@ export default function AdminOverview({
           >
             Dashboard Manajemen Kelas
           </Badge>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
             Selamat Datang di Panel Rolling Seat
           </h2>
           <p className="text-sm text-brand-100 mt-2 leading-relaxed">

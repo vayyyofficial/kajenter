@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import GroupRandomizerView from '../components/groups/GroupRandomizerView';
 import SeatingToast from '../components/classroom/SeatingToast';
 import { seatingStudentService } from '../services/seatingStudentService';
+import { useRealtimeSync } from '../context/SyncContext';
 import { SeatingStudent } from '../data/seatingStudents';
 import { Users2, ArrowLeft, Armchair } from 'lucide-react';
 
@@ -19,6 +20,13 @@ export const RollingKelompokPage: React.FC<RollingKelompokPageProps> = ({ onNavi
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
   };
+
+  // Members are the single source of student data: refresh when they change.
+  useRealtimeSync(['members'], () => {
+    seatingStudentService.fetchStudents().then((data) => {
+      if (data) setStudents(data);
+    });
+  });
 
   useEffect(() => {
     let isMounted = true;

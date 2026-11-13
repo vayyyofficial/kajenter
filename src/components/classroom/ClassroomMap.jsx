@@ -32,7 +32,7 @@ export default function ClassroomMap({
   return (
     <div className="w-full flex flex-col items-center">
       {/* Visual Classroom Frame */}
-      <div className="w-full bg-white rounded-2xl border border-divider p-4 sm:p-8 shadow-subtle overflow-x-auto">
+      <div className="w-full bg-white rounded-2xl border border-divider p-4 sm:p-8 shadow-subtle overflow-x-auto seating-map-scroll">
         <div className="min-w-[780px] max-w-5xl mx-auto flex flex-col items-center">
           
           {/* Front of Class & Teacher Desk */}

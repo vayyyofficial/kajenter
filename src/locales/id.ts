@@ -216,6 +216,9 @@ export const id: TranslationType = {
     tabWebsite: 'Pengaturan Website',
     tabSecurity: 'Keamanan & Password',
     tabAudit: 'Audit Log',
+    areaWebsite: 'Website',
+    areaRolling: 'Class Rolling',
+    manageRolling: 'Kelola Class Rolling',
 
     // Overview Tab
     overviewTag: 'Panel Pengelolaan Resmi',
@@ -332,7 +335,7 @@ export const id: TranslationType = {
     policyLabel: 'Kebijakan Keamanan Kredensial',
     policyVal: 'Audit Log Realtime & Proteksi Akses Server-Side',
     sessionLabel: 'Sesi Otentikasi Admin',
-    sessionVal: 'JWT Token Terenkripsi (Kedaluwarsa 8 Jam)',
+    sessionVal: 'JWT di memori tab (hilang saat refresh / tab ditutup)',
     lastUpdatedLabel: 'Terakhir Diperbarui',
     terminateSessionTitle: 'Tutup Sesi Admin',
     terminateSessionDesc: 'Keluar dari Secret Admin Panel dan hancurkan sesi token aktif. Password rahasia akan diminta kembali saat masuk.',

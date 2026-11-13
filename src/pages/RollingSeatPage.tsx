@@ -6,6 +6,7 @@ import Badge from "../components/classroom/Badge";
 import SeatingToast from "../components/classroom/SeatingToast";
 import { formatWIBShort } from "../utils/seatingTimezone";
 import { seatingStudentService } from "../services/seatingStudentService";
+import { useRealtimeSync } from "../context/SyncContext";
 import { seatingLayoutService } from "../services/seatingLayoutService";
 import {
   seatingArrangementService,
@@ -57,6 +58,13 @@ export const RollingSeatPage: React.FC<RollingSeatPageProps> = ({
   ) => {
     setToast({ message, type });
   };
+
+  // Members are the single source of student data: refresh when they change.
+  useRealtimeSync(['members'], () => {
+    seatingStudentService.fetchStudents().then((data) => {
+      if (data) setStudents(data);
+    });
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -224,13 +232,6 @@ export const RollingSeatPage: React.FC<RollingSeatPageProps> = ({
                   <Users2 className="w-3.5 h-3.5 text-brand-600" />
                   <span>Buka Acak Kelompok</span>
                 </button>
-                <button
-                  onClick={() => onNavigate("/rolling-admin")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-200 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-semibold shadow-subtle transition-colors"
-                >
-                  <Shield className="w-3.5 h-3.5 text-brand-600" />
-                  <span>Panel Pengurus</span>
-                </button>
               </div>
             </div>
 
@@ -313,20 +314,14 @@ export const RollingSeatPage: React.FC<RollingSeatPageProps> = ({
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-brand-50/50 border border-brand-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-brand-900">
+              <div className="p-4 rounded-xl bg-brand-50/50 border border-brand-100 flex flex-col sm:flex-row sm:items-center gap-3 text-xs text-brand-900">
                 <div className="flex items-center gap-2.5">
                   <Shield className="w-4 h-4 text-brand-600 flex-shrink-0" />
                   <span>
-                    Pengurus kelas ingin mengacak ulang khusus atau menyesuaikan
-                    tata letak meja?
+                    Pengacakan ulang khusus dan penyesuaian tata letak meja
+                    dikelola dari panel administrasi kelas.
                   </span>
                 </div>
-                <button
-                  onClick={() => onNavigate("/rolling-admin")}
-                  className="font-bold text-brand-700 hover:text-brand-800 hover:underline flex-shrink-0"
-                >
-                  Masuk ke Panel Pengurus &rarr;
-                </button>
               </div>
             </div>
           </div>

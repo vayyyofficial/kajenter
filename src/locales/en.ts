@@ -214,6 +214,9 @@ export const en = {
     tabWebsite: 'Website Settings',
     tabSecurity: 'Security & Password',
     tabAudit: 'Audit Logs',
+    areaWebsite: 'Website',
+    areaRolling: 'Class Rolling',
+    manageRolling: 'Manage Class Rolling',
 
     // Overview Tab
     overviewTag: 'Official Management Panel',
@@ -330,7 +333,7 @@ export const en = {
     policyLabel: 'Credential Security Policy',
     policyVal: 'Real-time Audit Log & Server-Side Access Protection',
     sessionLabel: 'Admin Authentication Session',
-    sessionVal: 'Encrypted JWT Token (Expires in 8 Hours)',
+    sessionVal: 'In-memory JWT for this tab (cleared on refresh / tab close)',
     lastUpdatedLabel: 'Last Updated',
     terminateSessionTitle: 'Terminate Admin Session',
     terminateSessionDesc: 'Exit the Secret Admin Panel and destroy active token session. The secret password will be required upon re-entry.',

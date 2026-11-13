@@ -8,6 +8,10 @@ export interface SeatingStudent {
   fullName: string;
   nickname: string;
   isActive: boolean;
+  /** Portal member (members table) this student is derived from. */
+  memberId?: number;
+  /** True when a Rolling `students` row (UUID) exists, so the student can be seated. */
+  rollingLinked?: boolean;
 }
 
 export const INITIAL_STUDENTS: SeatingStudent[] = [

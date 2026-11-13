@@ -1131,6 +1131,17 @@ button.nav-dropdown-trigger {
   .form-grid-responsive {
     grid-template-columns: 1fr !important;
   }
+
+  .admin-login-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+  }
 }
 
 

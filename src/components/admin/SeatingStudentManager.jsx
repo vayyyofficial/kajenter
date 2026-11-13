@@ -9,7 +9,6 @@ import {
   Trash2,
   CheckCircle2,
   XCircle,
-  RotateCcw,
 } from 'lucide-react';
 
 export default function StudentManager({
@@ -19,7 +18,6 @@ export default function StudentManager({
   onUpdateStudent,
   onDeleteStudent,
   onToggleActive,
-  onResetDefault,
   showNotification,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,7 +27,6 @@ export default function StudentManager({
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
   const [deleteStudent, setDeleteStudent] = useState(null);
-  const [resetModalOpen, setResetModalOpen] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({ fullName: '', nickname: '', isActive: true });
@@ -105,13 +102,6 @@ export default function StudentManager({
     setDeleteStudent(null);
   };
 
-  // Confirm reset
-  const handleConfirmReset = () => {
-    onResetDefault();
-    setResetModalOpen(false);
-    showNotification('Daftar siswa dikembalikan ke 26 data siswa awal.', 'info');
-  };
-
   // Find seat assigned for a student
   const getAssignedSeatCode = (studentId) => {
     const seatId = Object.keys(assignments).find((key) => assignments[key] === studentId);
@@ -130,18 +120,11 @@ export default function StudentManager({
             </Badge>
           </div>
           <p className="text-xs text-content-secondary mt-1">
-            Kelola data 26 siswa kelas, ubah nama panggilan, atau atur keikutsertaan dalam rotasi tempat duduk.
+            Daftar ini bersumber dari data Anggota (satu sumber data). Perubahan nama di sini atau di tab Anggota tampil di semua fitur; di sini Anda juga mengatur keikutsertaan dalam rotasi tempat duduk.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setResetModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-divider text-content-secondary hover:text-content-primary hover:bg-canvas transition-colors"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reset ke 26 Siswa Awal
-          </button>
           <button
             onClick={openAdd}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-subtle transition-all"
@@ -221,6 +204,9 @@ export default function StudentManager({
                             {s.nickname.slice(0, 2).toUpperCase()}
                           </div>
                           <span className="truncate max-w-xs">{s.fullName}</span>
+                          {s.rollingLinked === false && (
+                            <Badge variant="danger" size="xs">Belum terhubung</Badge>
+                          )}
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
@@ -447,33 +433,6 @@ export default function StudentManager({
         </div>
       </Modal>
 
-      {/* Reset Confirmation Modal */}
-      <Modal
-        isOpen={resetModalOpen}
-        onClose={() => setResetModalOpen(false)}
-        title="Reset ke 26 Siswa Awal?"
-        maxWidth="max-w-md"
-      >
-        <div className="space-y-4 text-xs text-content-secondary">
-          <p>
-            Tindakan ini akan memulihkan daftar siswa ke <strong>26 siswa terdaftar awal</strong> persis sesuai data bawaan kelas.
-          </p>
-          <div className="flex items-center justify-end gap-2.5 pt-3">
-            <button
-              onClick={() => setResetModalOpen(false)}
-              className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-content-primary font-medium"
-            >
-              Batal
-            </button>
-            <button
-              onClick={handleConfirmReset}
-              className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium shadow-subtle"
-            >
-              Ya, Reset
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

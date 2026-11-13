@@ -5,6 +5,7 @@ import {
   Globe,
   ArrowRight,
   ShieldCheck,
+  Armchair,
 } from 'lucide-react';
 import { AdminMetrics } from '../../types';
 import { BRANDING } from '../../config/branding';
@@ -70,7 +71,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ metrics, onTabChan
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
           gap: '1.25rem',
         }}
       >
@@ -149,7 +150,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ metrics, onTabChan
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
             gap: '1rem',
           }}
         >
@@ -197,6 +198,18 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ metrics, onTabChan
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <ShieldCheck size={18} color="var(--primary-500)" />
               <span style={{ fontWeight: 600 }}>{t.admin.manageSecurity}</span>
+            </div>
+            <ArrowRight size={16} color="var(--text-muted)" />
+          </button>
+
+          <button
+            onClick={() => onTabChange('rolling')}
+            className="btn btn-secondary"
+            style={{ justifyContent: 'space-between', padding: '0.85rem 1.15rem' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <Armchair size={18} color="var(--primary-500)" />
+              <span style={{ fontWeight: 600 }}>{t.admin.manageRolling}</span>
             </div>
             <ArrowRight size={16} color="var(--text-muted)" />
           </button>

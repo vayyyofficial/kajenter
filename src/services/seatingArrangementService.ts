@@ -11,7 +11,7 @@
 import { seatingStorageService } from './seatingStorageService';
 import { seatingLayoutService } from './seatingLayoutService';
 import { seatingStudentService } from './seatingStudentService';
-import { seatingAuthService } from './seatingAuthService';
+import { isAdminSessionActive } from './adminSession';
 import { generateSeatingArrangement } from '../utils/seatingRandomizer';
 import { getWeeklyCycleId } from '../utils/seatingScheduler';
 import { formatWIBDateTime } from '../utils/seatingTimezone';
@@ -59,7 +59,10 @@ export const seatingArrangementService = {
     const layout = seatingLayoutService.getLayout();
     const students = seatingStudentService.getStudents();
     const activeStudents = (students || []).filter((s) => s.isActive);
-    const { assignments, emptySeatIds, timestamp } = generateSeatingArrangement(layout, students);
+    const { assignments, emptySeatIds, timestamp } = generateSeatingArrangement(
+      layout,
+      (students || []).filter((s) => s.rollingLinked !== false),
+    );
     const currentCycleId = getWeeklyCycleId();
 
     const fallbackArrangement: SeatingArrangement = {
@@ -145,7 +148,10 @@ export const seatingArrangementService = {
     const layout = seatingLayoutService.getLayout();
     const students = seatingStudentService.getStudents();
     const activeStudents = (students || []).filter((s) => s.isActive);
-    const { assignments, emptySeatIds, timestamp } = generateSeatingArrangement(layout, students);
+    const { assignments, emptySeatIds, timestamp } = generateSeatingArrangement(
+      layout,
+      (students || []).filter((s) => s.rollingLinked !== false),
+    );
     const currentCycleId = getWeeklyCycleId();
 
     const previous = this.getCurrentArrangement();
@@ -184,7 +190,7 @@ export const seatingArrangementService = {
    * Execute seating reroll on the database or locally if offline.
    */
   async executeRerollAsync(type = 'Manual', description = ''): Promise<any> {
-    if (!seatingAuthService.isAuthenticated()) {
+    if (!isAdminSessionActive()) {
       return {
         error: 'Sesi administrator tidak aktif. Silakan masuk kembali.',
       };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { AdminProvider } from "./context/AdminContext";
+import { AdminProvider, useAdmin } from "./context/AdminContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { SyncProvider } from "./context/SyncContext";
 import { Navbar } from "./components/common/Navbar";
@@ -19,9 +19,6 @@ const ContactPage = React.lazy(() =>
 const AdminPage = React.lazy(() =>
   import("./pages/AdminPage").then((m) => ({ default: m.AdminPage })),
 );
-const AdminLoginPage = React.lazy(() =>
-  import("./pages/AdminLoginPage").then((m) => ({ default: m.AdminLoginPage })),
-);
 const RollingSeatPage = React.lazy(() =>
   import("./pages/RollingSeatPage").then((m) => ({
     default: m.RollingSeatPage,
@@ -30,11 +27,6 @@ const RollingSeatPage = React.lazy(() =>
 const RollingKelompokPage = React.lazy(() =>
   import("./pages/RollingKelompokPage").then((m) => ({
     default: m.RollingKelompokPage,
-  })),
-);
-const RollingAdminPage = React.lazy(() =>
-  import("./pages/RollingAdminPage").then((m) => ({
-    default: m.RollingAdminPage,
   })),
 );
 const NotFoundPage = React.lazy(() =>
@@ -46,12 +38,21 @@ import "./styles/components.css";
 import "./styles/seating.css";
 
 export interface ResolvedRoute {
-  id: string; // 'beranda' | 'galeri' | 'anggota' | 'contact' | 'admin' | 'admin-login' | 'rolling-seat' | 'rolling-kelompok' | 'rolling-admin' | 'notfound'
+  id: string;
   path: string;
+  adminSection?: "website" | "rolling";
+}
+
+function canonicalizeAdminPath(pathname: string): void {
+  if (typeof window === "undefined") return;
+  const clean = pathname.split(/[?#]/)[0].replace(/^\/+|\/+$/g, "").toLowerCase();
+  if (clean === "rolling-admin" || clean.startsWith("rolling-admin/")) {
+    const search = window.location.search || "";
+    window.history.replaceState(null, "", `/admin/rolling${search}`);
+  }
 }
 
 export function parsePath(pathname: string): ResolvedRoute {
-  // Abaikan query string / hash saat mencocokkan rute
   const clean = pathname
     .split(/[?#]/)[0]
     .replace(/^\/+|\/+$/g, "")
@@ -70,10 +71,18 @@ export function parsePath(pathname: string): ResolvedRoute {
     return { id: "contact", path: "/contact" };
   }
   if (clean === "admin/login") {
-    return { id: "admin-login", path: "/admin/login" };
+    return { id: "admin", path: "/admin", adminSection: "website" };
+  }
+  if (
+    clean === "admin/rolling" ||
+    clean.startsWith("admin/rolling/") ||
+    clean === "rolling-admin" ||
+    clean.startsWith("rolling-admin/")
+  ) {
+    return { id: "admin", path: "/admin/rolling", adminSection: "rolling" };
   }
   if (clean === "admin" || clean.startsWith("admin/")) {
-    return { id: "admin", path: "/admin" };
+    return { id: "admin", path: "/admin", adminSection: "website" };
   }
   if (
     clean === "rolling-seat" ||
@@ -89,9 +98,6 @@ export function parsePath(pathname: string): ResolvedRoute {
   ) {
     return { id: "rolling-kelompok", path: "/rolling-kelompok" };
   }
-  if (clean === "rolling-admin" || clean.startsWith("rolling-admin/")) {
-    return { id: "rolling-admin", path: "/rolling-admin" };
-  }
 
   return { id: "notfound", path: pathname };
 }
@@ -100,30 +106,33 @@ function getInitialPath(): string {
   if (typeof window === "undefined") return "/beranda";
   if (window.location.hash) {
     const hashClean = window.location.hash.replace(/^#\/?/, "").toLowerCase();
-    if (
-      [
-        "beranda",
-        "galeri",
-        "anggota",
-        "contact",
-        "admin",
-        "rolling-seat",
-        "rolling-kelompok",
-        "rolling-admin",
-      ].includes(hashClean)
-    ) {
-      const target = `/${hashClean}`;
+    const hashMap: Record<string, string> = {
+      beranda: "/beranda",
+      galeri: "/galeri",
+      anggota: "/anggota",
+      contact: "/contact",
+      admin: "/admin",
+      "rolling-seat": "/rolling-seat",
+      "rolling-kelompok": "/rolling-kelompok",
+      "rolling-admin": "/admin/rolling",
+    };
+    if (hashMap[hashClean]) {
+      const target = hashMap[hashClean];
       window.history.replaceState(null, "", target);
       return target;
     }
   }
-  return window.location.pathname || "/beranda";
+  const path = window.location.pathname || "/beranda";
+  canonicalizeAdminPath(path);
+  if (path.replace(/^\/+|\/+$/g, "").toLowerCase().startsWith("rolling-admin")) {
+    return "/admin/rolling";
+  }
+  return path;
 }
 
 export function AppContent() {
   const [currentPath, setCurrentPath] = useState<string>(getInitialPath);
 
-  // Listen to browser Back and Forward navigation events
   useEffect(() => {
     const handlePopState = () => {
       setCurrentPath(window.location.pathname);
@@ -140,6 +149,8 @@ export function AppContent() {
       : `/${targetPathOrRoute}`;
 
     if (cleanTarget === "/") cleanTarget = "/beranda";
+    if (cleanTarget.startsWith("/rolling-admin")) cleanTarget = "/admin/rolling";
+    if (cleanTarget === "/admin/login") cleanTarget = "/admin";
 
     if (window.location.pathname !== cleanTarget) {
       window.history.pushState(null, "", cleanTarget);
@@ -149,41 +160,24 @@ export function AppContent() {
   }, []);
 
   const resolved = parsePath(currentPath);
+  const { isAdmin, logout } = useAdmin();
 
-  // Standalone Rolling Admin Dashboard: No Website Navbar/Footer
-  if (resolved.id === "rolling-admin") {
-    return (
-      <div className="portal-app-standalone-container">
-        <React.Suspense
-          fallback={
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minHeight: "60vh",
-                color: "var(--text-muted)",
-                fontSize: "0.9rem",
-                fontWeight: 600,
-              }}
-            >
-              Memuat Panel Pengurus Denah...
-            </div>
-          }
-        >
-          <RollingAdminPage onNavigate={navigateTo} />
-        </React.Suspense>
-        <ToastContainer />
-      </div>
-    );
-  }
+  useEffect(() => {
+    canonicalizeAdminPath(currentPath);
+  }, [currentPath]);
+
+  // Leaving the admin area (any non-/admin route) ends the access session,
+  // so coming back to /admin always asks for the password again.
+  useEffect(() => {
+    if (resolved.id !== "admin" && isAdmin) logout();
+  }, [resolved.id, isAdmin, logout]);
 
   return (
     <>
       <Navbar currentRoute={resolved.id} onNavigate={navigateTo} />
 
       <main className="page-wrapper container">
-        <div key={resolved.id} className="page-enter">
+        <div key={resolved.id === "admin" ? `admin-${resolved.adminSection}` : resolved.id} className="page-enter">
           <React.Suspense
             fallback={
               <div
@@ -209,10 +203,12 @@ export function AppContent() {
             {resolved.id === "contact" && (
               <ContactPage onNavigate={navigateTo} />
             )}
-            {resolved.id === "admin-login" && (
-              <AdminLoginPage onNavigate={navigateTo} />
+            {resolved.id === "admin" && (
+              <AdminPage
+                onNavigate={navigateTo}
+                section={resolved.adminSection || "website"}
+              />
             )}
-            {resolved.id === "admin" && <AdminPage onNavigate={navigateTo} />}
             {resolved.id === "rolling-seat" && (
               <RollingSeatPage onNavigate={navigateTo} />
             )}

@@ -9,6 +9,11 @@ import {
   Clock,
   LogOut,
   ArrowLeft,
+  Armchair,
+  Grid3x3,
+  History as HistoryIcon,
+  CalendarClock,
+  UserCheck,
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -23,16 +28,20 @@ import { AdminSocial } from '../components/admin/AdminSocial';
 import { AdminWebsiteSettings } from '../components/admin/AdminWebsiteSettings';
 import { AdminSecurity } from '../components/admin/AdminSecurity';
 import { AdminAuditLogs } from '../components/admin/AdminAuditLogs';
+import { AdminLoginPage } from './AdminLoginPage';
+import { RollingAdminPage } from './RollingAdminPage';
 
 interface AdminPageProps {
   onNavigate: (route: string) => void;
+  section?: 'website' | 'rolling';
 }
 
-export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
+export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate, section = 'website' }) => {
   const { t } = useLanguage();
-  const { isAdmin, isSessionLoading, logout } = useAdmin();
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const { isAdmin, logout } = useAdmin();
+  const [activeTab, setActiveTab] = useState<string>(section === 'rolling' ? 'rolling-overview' : 'overview');
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
+  const isRollingTab = activeTab.startsWith('rolling-');
 
   const fetchMetrics = async () => {
     try {
@@ -44,33 +53,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
   };
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && !isRollingTab) {
       fetchMetrics();
     }
-  }, [isAdmin, activeTab]);
+  }, [isAdmin, activeTab, isRollingTab]);
 
-  // Tanpa sesi admin yang valid, arahkan ke halaman login terpusat
-  useEffect(() => {
-    if (!isSessionLoading && !isAdmin) {
-      onNavigate('/admin/login');
-    }
-  }, [isSessionLoading, isAdmin, onNavigate]);
-
-  if (isSessionLoading || !isAdmin) {
+  if (!isAdmin) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '50vh',
-          color: 'var(--text-muted)',
-          fontSize: '0.9rem',
-          fontWeight: 600,
-        }}
-      >
-        {isSessionLoading ? t.adminLogin.checkingSession : t.adminLogin.redirecting}
-      </div>
+      <AdminLoginPage
+        onNavigate={onNavigate}
+        successPath="/admin"
+      />
     );
   }
 
@@ -82,16 +75,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
     { id: 'website', label: t.admin.tabWebsite, icon: Settings },
     { id: 'security', label: t.admin.tabSecurity, icon: ShieldCheck },
     { id: 'audit', label: t.admin.tabAudit, icon: Clock },
+    { id: 'rolling-overview', label: 'Rolling: Ringkasan', icon: Armchair },
+    { id: 'rolling-layout', label: 'Rolling: Tata Letak', icon: Grid3x3 },
+    { id: 'rolling-students', label: 'Rolling: Siswa', icon: UserCheck },
+    { id: 'rolling-seating', label: 'Rolling: Denah & Reroll', icon: Armchair },
+    { id: 'rolling-history', label: 'Rolling: Riwayat', icon: HistoryIcon },
+    { id: 'rolling-schedule', label: 'Rolling: Jadwal', icon: CalendarClock },
   ];
 
   const handleLogout = () => {
     logout();
-    onNavigate('beranda');
+    onNavigate('/admin');
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Top Header Bar for Admin */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div
         style={{
           display: 'flex',
@@ -152,57 +150,66 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* Admin Horizontal Tabs Bar (Requirement #37: Dashboard, Content, Settings) */}
-      <div
-        style={{
-          display: 'flex',
-          overflowX: 'auto',
-          gap: '0.4rem',
-          paddingBottom: '0.5rem',
-          borderBottom: '2px solid var(--border-color)',
-        }}
-      >
-        {navTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className="btn btn-sm"
-              style={{
-                backgroundColor: isActive ? 'var(--primary-600)' : 'var(--bg-card)',
-                color: isActive ? '#ffffff' : 'var(--text-muted)',
-                fontWeight: isActive ? 700 : 500,
-                borderRadius: 'var(--radius-md)',
-                padding: '0.55rem 0.95rem',
-                border: isActive ? '1px solid var(--primary-600)' : '1px solid var(--border-color)',
-                flexShrink: 0,
-                transition: 'all var(--transition-fast)',
-              }}
-            >
-              <Icon size={16} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      <>
+          <div
+            style={{
+              display: 'flex',
+              overflowX: 'auto',
+              gap: '0.4rem',
+              paddingBottom: '0.5rem',
+              borderBottom: '2px solid var(--border-color)',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            {navTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="btn btn-sm"
+                  style={{
+                    backgroundColor: isActive ? 'var(--primary-600)' : 'var(--bg-card)',
+                    color: isActive ? '#ffffff' : 'var(--text-muted)',
+                    fontWeight: isActive ? 700 : 500,
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.55rem 0.95rem',
+                    border: isActive ? '1px solid var(--primary-600)' : '1px solid var(--border-color)',
+                    flexShrink: 0,
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <Icon size={16} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Tab Panels */}
-      <div>
-        {activeTab === 'overview' && (
-          <AdminOverview
-            metrics={metrics}
-            onTabChange={(tab) => setActiveTab(tab)}
-          />
-        )}
-        {activeTab === 'gallery' && <AdminGallery />}
-        {activeTab === 'members' && <AdminMembers />}
-        {activeTab === 'social' && <AdminSocial />}
-        {activeTab === 'website' && <AdminWebsiteSettings />}
-        {activeTab === 'security' && <AdminSecurity onLogout={() => onNavigate('beranda')} />}
-        {activeTab === 'audit' && <AdminAuditLogs />}
-      </div>
+          <div>
+            {activeTab === 'overview' && (
+              <AdminOverview
+                metrics={metrics}
+                onTabChange={(tab) => setActiveTab(tab === 'rolling' ? 'rolling-overview' : tab)}
+              />
+            )}
+            {activeTab === 'gallery' && <AdminGallery />}
+            {activeTab === 'members' && <AdminMembers />}
+            {activeTab === 'social' && <AdminSocial />}
+            {activeTab === 'website' && <AdminWebsiteSettings />}
+            {activeTab === 'security' && <AdminSecurity onLogout={handleLogout} />}
+            {activeTab === 'audit' && <AdminAuditLogs />}
+            {isRollingTab && (
+              <RollingAdminPage
+                onNavigate={onNavigate}
+                embedded
+                tab={activeTab.replace('rolling-', '')}
+                onTabChange={(tab: string) => setActiveTab(`rolling-${tab}`)}
+              />
+            )}
+          </div>
+      </>
     </div>
   );
 };

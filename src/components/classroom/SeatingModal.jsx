@@ -24,7 +24,7 @@ export default function SeatingModal({ isOpen, onClose, title, children, maxWidt
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div className="seating-scope fixed inset-0 z-[1100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in"

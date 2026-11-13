@@ -49,7 +49,7 @@ export const AdminAuditLogs: React.FC = () => {
 
       <div className="card" style={{ boxShadow: 'var(--shadow-md)', backgroundColor: 'var(--bg-card)' }}>
         <div className="table-container" style={{ border: 'none' }}>
-          <table className="table">
+          <table className="table table-sticky-actions">
             <thead>
               <tr>
                 <th style={{ width: '180px' }}>{t.admin.colAuditTime}</th>

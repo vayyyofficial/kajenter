@@ -1,3 +1,4 @@
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -89,12 +90,14 @@
 
 [data-theme="dark"] .seating-scope .bg-amber-50,
 [data-theme="dark"] .seating-scope [class~="bg-amber-50/40"],
-[data-theme="dark"] .seating-scope [class~="bg-amber-50/50"] {
-  background-color: rgba(245, 158, 11, 0.13) !important;
+[data-theme="dark"] .seating-scope [class~="bg-amber-50/50"],
+[data-theme="dark"] .seating-scope [class~="bg-amber-50\/40"],
+[data-theme="dark"] .seating-scope [class~="bg-amber-50\/50"] {
+  background-color: #252018 !important;
 }
 
 [data-theme="dark"] .seating-scope .bg-amber-100 {
-  background-color: rgba(245, 158, 11, 0.2) !important;
+  background-color: #322a1c !important;
 }
 
 [data-theme="dark"] .seating-scope .bg-rose-50 {
@@ -133,7 +136,7 @@
 
 [data-theme="dark"] .seating-scope .text-amber-800,
 [data-theme="dark"] .seating-scope .text-amber-900 {
-  color: #fcd34d !important;
+  color: #e8dcc0 !important;
 }
 
 [data-theme="dark"] .seating-scope .text-rose-600 {
@@ -157,8 +160,9 @@
   border-color: rgba(52, 211, 153, 0.35) !important;
 }
 
-[data-theme="dark"] .seating-scope .border-amber-400 {
-  border-color: rgba(251, 191, 36, 0.55) !important;
+[data-theme="dark"] .seating-scope .border-amber-400,
+[data-theme="dark"] .seating-scope .border-amber-500 {
+  border-color: rgba(201, 162, 80, 0.45) !important;
 }
 
 [data-theme="dark"] .seating-scope .border-rose-200 {
@@ -174,8 +178,24 @@
   background-color: #292930 !important;
 }
 
-[data-theme="dark"] .seating-scope [class~="hover:bg-brand-50"]:hover {
-  background-color: rgba(220, 38, 38, 0.18) !important;
+[data-theme="dark"] .seating-scope [class~="hover:bg-brand-50"]:hover,
+[data-theme="dark"] .seating-scope [class~="hover:bg-brand-50/30"]:hover,
+[data-theme="dark"] .seating-scope [class~="hover:bg-brand-50\/30"]:hover {
+  background-color: rgba(220, 38, 38, 0.16) !important;
+}
+
+[data-theme="dark"] .seating-scope [class~="hover:border-brand-200"]:hover,
+[data-theme="dark"] .seating-scope [class~="hover:border-brand-300"]:hover {
+  border-color: rgba(248, 113, 113, 0.4) !important;
+}
+
+[data-theme="dark"] .seating-scope .group:hover [class*="group-hover:bg-brand-50"],
+[data-theme="dark"] .seating-scope .group:hover [class*="group-hover:bg-brand-100"] {
+  background-color: rgba(220, 38, 38, 0.2) !important;
+}
+
+[data-theme="dark"] .seating-scope .group:hover [class*="group-hover:text-brand"] {
+  color: #fca5a5 !important;
 }
 
 [data-theme="dark"] .seating-scope input,
@@ -193,4 +213,232 @@
 
 [data-theme="dark"] .seating-scope .bg-white\/20 {
   background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* ========================================================= */
+/* PART II — ADDITIONAL DARK MODE OVERRIDES                  */
+/* ========================================================= */
+
+/* ---- A. SeatCard: Highlighted amber states ---- */
+
+/* Occupied seat card outer — highlighted border+ring */
+[data-theme="dark"] .seating-scope .border-amber-500 {
+  border-color: rgba(201, 162, 80, 0.45) !important;
+}
+
+[data-theme="dark"] .seating-scope [class~="ring-amber-400\/40"],
+[data-theme="dark"] .seating-scope [class~="ring-amber-400"],
+[data-theme="dark"] .seating-scope [class~="ring-amber-300\/60"],
+[data-theme="dark"] .seating-scope [class~="ring-brand-500"],
+[data-theme="dark"] .seating-scope [class~="ring-brand-600"],
+[data-theme="dark"] .seating-scope [class~="ring-brand-600\/20"] {
+  --tw-ring-color: rgba(201, 162, 80, 0.28) !important;
+}
+
+[data-theme="dark"] .seating-scope [class~="bg-amber-50\/40"] {
+  background-color: #252018 !important;
+}
+
+/* Seat code badge when highlighted: bg-amber-100 text-amber-800 */
+/* (Already covered above for bg-amber-100 and text-amber-800/900,
+    but adding explicit compound for the badge span context) */
+
+/* ---- A. StudentList: Highlighted amber states ---- */
+
+/* Row card when highlighted: border-amber-400 ring-2 ring-amber-300/60 bg-amber-50 */
+[data-theme="dark"] .seating-scope [class~="ring-amber-300\/60"] {
+  --tw-ring-color: rgba(201, 162, 80, 0.28) !important;
+}
+
+/* bg-amber-50 (without modifier) used on student list highlighted row */
+/* already overridden by the existing .bg-amber-50 rule above — no-op needed */
+
+/* ---- B. ClassroomMap: outer container bg-white + legend bg-white ---- */
+
+/* The outer container: "w-full bg-white rounded-2xl ..." */
+/* The .bg-white rule at line 44 handles it, but only within .seating-scope.
+   ClassroomMap wraps everything in .seating-scope already — covered.      */
+
+/* Legend item swatch: inline span with bg-white — target narrow */
+[data-theme="dark"] .seating-scope span.bg-white {
+  background-color: #252530 !important;
+}
+
+/* bg-canvas/60 blocks */
+[data-theme="dark"] .seating-scope [class~="bg-canvas\/60"] {
+  background-color: rgba(32, 32, 36, 0.85) !important;
+}
+
+/* ---- C. StudentList outer container + badges ---- */
+
+/* Outer container bg-white already handled; seat badge bg-brand-50 / text-brand-700
+   already handled by existing rules; empty badge bg-gray-100 / text-gray-400
+   already handled. hover:bg-brand-50/30 already handled.                   */
+
+/* ---- D. SeatingAdminSidebar ---- */
+
+/* Sidebar aside: bg-white → dark card */
+[data-theme="dark"] .seating-scope aside.bg-white,
+[data-theme="dark"] aside.bg-white {
+  background-color: #171717 !important;
+}
+
+/* bg-canvas/40 footer area */
+[data-theme="dark"] .seating-scope [class~="bg-canvas\/40"],
+[data-theme="dark"] [class~="bg-canvas\/40"] {
+  background-color: rgba(20, 20, 26, 0.7) !important;
+}
+
+/* hover:bg-gray-100/70 nav items */
+[data-theme="dark"] .seating-scope [class~="hover:bg-gray-100\/70"]:hover,
+[data-theme="dark"] [class~="hover:bg-gray-100\/70"]:hover {
+  background-color: #252530 !important;
+}
+
+/* hover:bg-white in sidebar footer link */
+[data-theme="dark"] .seating-scope [class~="hover:bg-white"]:hover,
+[data-theme="dark"] [class~="hover:bg-white"]:hover {
+  background-color: #252530 !important;
+}
+
+/* Scrollbar in dark seating scope */
+[data-theme="dark"] .seating-scope ::-webkit-scrollbar-thumb {
+  background: #3a3a45;
+}
+[data-theme="dark"] .seating-scope ::-webkit-scrollbar-thumb:hover {
+  background: #55555f;
+}
+
+/* ========================================================= */
+/* PART III — SELECTED / HOVER / FOCUS / MODAL (DARK)         */
+/* ========================================================= */
+
+[data-theme="dark"] .seating-scope [class~="bg-white/95"],
+[data-theme="dark"] .seating-scope [class~="bg-white\/95"] {
+  background-color: rgba(23, 23, 23, 0.95) !important;
+}
+
+[data-theme="dark"] .seating-scope .bg-rose-50,
+[data-theme="dark"] .seating-scope [class~="hover:bg-rose-50"]:hover,
+[data-theme="dark"] .seating-scope [class~="hover:bg-rose-100"]:hover {
+  background-color: rgba(244, 63, 94, 0.12) !important;
+}
+
+[data-theme="dark"] .seating-scope .text-rose-700 {
+  color: #fda4af !important;
+}
+
+[data-theme="dark"] .seating-scope .border-rose-200 {
+  border-color: rgba(251, 113, 133, 0.35) !important;
+}
+
+[data-theme="dark"] .seating-scope [class~="focus:ring-brand-500/20"]:focus,
+[data-theme="dark"] .seating-scope [class~="focus:ring-2"]:focus,
+[data-theme="dark"] .seating-scope [class~="focus-visible:ring-brand-400"]:focus-visible {
+  --tw-ring-color: rgba(248, 113, 113, 0.35) !important;
+  outline-color: rgba(248, 113, 113, 0.45);
+}
+
+[data-theme="dark"] .seating-scope [class~="focus:border-brand-500"]:focus {
+  border-color: rgba(248, 113, 113, 0.55) !important;
+}
+
+[data-theme="dark"] .seating-scope .shadow-floating,
+[data-theme="dark"] .seating-scope .shadow-card {
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45) !important;
+}
+
+.seating-map-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  max-width: 100%;
+}
+
+.admin-rolling-embed {
+  max-width: 100%;
+}
+
+.admin-rolling-embed > .flex-1 {
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .admin-login-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ========================================================= */
+/* PART IV — ADMIN (Rolling views) DARK MODE GAP FILL        */
+/* Colors only. Covers pale tints / dark text that had no    */
+/* dark override (toasts, schedule manager, tables, buttons).*/
+/* ========================================================= */
+
+[data-theme="dark"] .seating-scope .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.14) !important;
+}
+[data-theme="dark"] .seating-scope .border-blue-200 {
+  border-color: rgba(96, 165, 250, 0.35) !important;
+}
+[data-theme="dark"] .seating-scope .text-blue-600,
+[data-theme="dark"] .seating-scope .text-blue-900 {
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .seating-scope .text-emerald-600,
+[data-theme="dark"] .seating-scope .text-emerald-900 {
+  color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .seating-scope .text-rose-900 {
+  color: #fecdd3 !important;
+}
+[data-theme="dark"] .seating-scope .border-rose-400 {
+  border-color: rgba(251, 113, 133, 0.55) !important;
+}
+[data-theme="dark"] .seating-scope [class~="focus:ring-rose-200"]:focus {
+  --tw-ring-color: rgba(251, 113, 133, 0.35) !important;
+}
+
+[data-theme="dark"] .seating-scope [class~="bg-amber-50/70"] {
+  background-color: #252018 !important;
+}
+[data-theme="dark"] .seating-scope .border-amber-200,
+[data-theme="dark"] .seating-scope [class~="border-amber-200/80"] {
+  border-color: rgba(201, 162, 80, 0.4) !important;
+}
+[data-theme="dark"] .seating-scope .text-amber-600,
+[data-theme="dark"] .seating-scope .text-amber-700 {
+  color: #e6c27a !important;
+}
+[data-theme="dark"] .seating-scope .text-amber-950 {
+  color: #f3e8c8 !important;
+}
+
+/* Schedule card gradient: from-white to-brand-50/30 */
+[data-theme="dark"] .seating-scope [class~="from-white"] {
+  background-image: none !important;
+  background-color: #171717 !important;
+}
+
+[data-theme="dark"] .seating-scope [class~="bg-brand-50/70"],
+[data-theme="dark"] .seating-scope [class~="hover:bg-brand-50/20"]:hover {
+  background-color: rgba(229, 57, 53, 0.14) !important;
+}
+[data-theme="dark"] .seating-scope [class~="bg-canvas/70"],
+[data-theme="dark"] .seating-scope [class~="hover:bg-canvas/50"]:hover {
+  background-color: rgba(32, 32, 36, 0.85) !important;
+}
+[data-theme="dark"] .seating-scope [class~="hover:text-brand-600"]:hover {
+  color: #fca5a5 !important;
+}
+
+/* Admin tab bar: keep every tab reachable on small screens */
+@media (max-width: 560px) {
+  .admin-rolling-embed {
+    margin-inline: 0;
+  }
+  .admin-rolling-embed table {
+    min-width: 520px;
+  }
 }

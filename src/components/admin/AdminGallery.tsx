@@ -447,7 +447,7 @@ export const AdminGallery: React.FC = () => {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">{language === 'en' ? 'Event Identity / Location *' : 'Identitas Kegiatan / Lokasi *'}</label>
               <input

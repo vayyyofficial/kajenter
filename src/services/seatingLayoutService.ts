@@ -1,6 +1,6 @@
 import { DEFAULT_LAYOUT, ClassroomLayout } from '../data/seatingLayout';
 import { seatingStorageService } from './seatingStorageService';
-import { seatingAuthService } from './seatingAuthService';
+import { isAdminSessionActive } from './adminSession';
 import { seatingSupabase, isSupabaseConfigured } from './seatingSupabase';
 
 const STORAGE_KEY = 'layout';
@@ -87,7 +87,7 @@ export const seatingLayoutService = {
   },
 
   async saveLayout(layout: ClassroomLayout): Promise<{ success?: boolean; error?: string }> {
-    if (!seatingAuthService.isAuthenticated()) {
+    if (!isAdminSessionActive()) {
       return {
         error: 'Sesi administrator tidak aktif. Silakan masuk kembali.',
       };

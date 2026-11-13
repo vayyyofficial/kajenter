@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api, ApiError } from '../services/api';
+import {
+  clearAdminMemorySession,
+  setAdminApiToken,
+} from '../services/adminSession';
 
 interface AdminContextType {
   isAdmin: boolean;
@@ -27,20 +31,14 @@ interface AdminContextType {
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [adminToken, setAdminToken] = useState<string | null>(() =>
-    localStorage.getItem('x_icp_admin_token')
-  );
+  const [adminToken, setAdminToken] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  // True while a stored session token is still being validated on first load
-  const [isSessionLoading, setIsSessionLoading] = useState<boolean>(() =>
-    Boolean(localStorage.getItem('x_icp_admin_token'))
-  );
+  const [isSessionLoading] = useState<boolean>(false);
 
   const [isLocked, setIsLocked] = useState<boolean>(false);
   const [lockoutRemainingMs, setLockoutRemainingMs] = useState<number>(0);
   const [attemptsRemaining, setAttemptsRemaining] = useState<number>(3);
 
-  // Check lockout status from server
   const refreshLockoutStatus = useCallback(async () => {
     try {
       const res = await api.auth.checkAdminStatus();
@@ -58,41 +56,16 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  // Validate existing session on mount
   useEffect(() => {
-    const checkSession = async () => {
-      const token = localStorage.getItem('x_icp_admin_token');
-      if (!token) {
-        setIsAdmin(false);
-        setIsSessionLoading(false);
-        return;
-      }
-      try {
-        const res = await api.auth.checkAdminSession();
-        if (res.success && res.valid) {
-          setIsAdmin(true);
-        } else {
-          localStorage.removeItem('x_icp_admin_token');
-          setAdminToken(null);
-          setIsAdmin(false);
-        }
-      } catch {
-        localStorage.removeItem('x_icp_admin_token');
-        setAdminToken(null);
-        setIsAdmin(false);
-      } finally {
-        setIsSessionLoading(false);
-      }
-    };
-
-    checkSession();
+    clearAdminMemorySession();
+    setAdminApiToken(null);
   }, []);
 
   const verifyPassword = async (password: string) => {
     try {
       const res = await api.auth.verifyAdminPassword(password);
       if (res.success && res.token) {
-        localStorage.setItem('x_icp_admin_token', res.token);
+        setAdminApiToken(res.token);
         setAdminToken(res.token);
         setIsAdmin(true);
         setIsLocked(false);
@@ -126,11 +99,12 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('x_icp_admin_token');
+  const logout = useCallback(() => {
+    clearAdminMemorySession();
+    setAdminApiToken(null);
     setAdminToken(null);
     setIsAdmin(false);
-  };
+  }, []);
 
   return (
     <AdminContext.Provider

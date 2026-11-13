@@ -29,7 +29,7 @@ export default function AdminSidebar({
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-divider flex flex-col justify-between h-screen sticky top-0 z-30">
+    <aside className="w-64 bg-white border-r border-divider flex flex-col justify-between h-full min-h-[70vh] lg:min-h-[calc(100vh-12rem)] sticky top-0 z-30">
       {/* Brand & Admin Badge */}
       <div>
         <div className="p-6 border-b border-divider">

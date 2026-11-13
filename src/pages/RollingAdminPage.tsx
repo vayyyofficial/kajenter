@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../context/AdminContext';
-import SeatingAdminSidebar from '../components/admin/SeatingAdminSidebar';
-import SeatingAdminHeader from '../components/admin/SeatingAdminHeader';
+import { useRealtimeSync } from '../context/SyncContext';
 import SeatingAdminOverview from '../components/admin/SeatingAdminOverview';
 import SeatingLayoutEditor from '../components/admin/SeatingLayoutEditor';
 import SeatingStudentManager from '../components/admin/SeatingStudentManager';
@@ -12,22 +11,22 @@ import SeatingToast from '../components/classroom/SeatingToast';
 import { seatingStudentService } from '../services/seatingStudentService';
 import { seatingLayoutService } from '../services/seatingLayoutService';
 import { seatingArrangementService, SeatingArrangement, SeatingHistoryItem } from '../services/seatingArrangementService';
-type SeatingUser = { name: string; role: string };
 import { ClassroomLayout } from '../data/seatingLayout';
 import { SeatingStudent } from '../data/seatingStudents';
 
 
 interface RollingAdminPageProps {
-  onNavigate: (route: string) => void;
+  onNavigate?: (route: string) => void;
+  embedded?: boolean;
+  /** Sub-view selected in the unified admin tab bar. */
+  tab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
-export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ onNavigate }) => {
-  const { isAdmin, isSessionLoading, logout } = useAdmin();
-  const currentUser: SeatingUser | null = isAdmin
-    ? { name: 'Administrator', role: 'ADMIN' }
-    : null;
-  const [activeTab, setActiveTab] = useState('overview');
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ tab, onTabChange }) => {
+  const { isAdmin } = useAdmin();
+  const activeTab = tab ?? 'overview';
+  const setActiveTab = (next: string) => onTabChange?.(next);
 
   // Data state
   const [students, setStudents] = useState<SeatingStudent[]>(() => seatingStudentService.getStudents());
@@ -74,17 +73,12 @@ export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ onNavigate }
     };
   }, []);
 
-  // Rolling Admin menggunakan sesi autentikasi admin utama.
-  useEffect(() => {
-    if (!isSessionLoading && !isAdmin) {
-      onNavigate('/admin/login?redirect=/rolling-admin');
-    }
-  }, [isSessionLoading, isAdmin, onNavigate]);
-
-  const handleLogout = () => {
-    logout();
-    onNavigate('/admin/login?redirect=/rolling-admin');
-  };
+  // Members are the single source of student data: refresh when they change.
+  useRealtimeSync(['members'], () => {
+    seatingStudentService.fetchStudents().then((data) => {
+      if (data) setStudents(data);
+    });
+  });
 
   // Student Actions
   const handleAddStudent = async (studentData: { fullName: string; nickname: string; isActive?: boolean }) => {
@@ -94,7 +88,11 @@ export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ onNavigate }
       return result;
     }
     setStudents(seatingStudentService.getStudents());
-    showNotification(`Siswa "${studentData.nickname}" berhasil ditambahkan.`, 'success');
+    if (result?.warning) {
+      showNotification(result.warning, 'info');
+    } else {
+      showNotification(`Siswa "${studentData.nickname}" berhasil ditambahkan.`, 'success');
+    }
     return result;
   };
 
@@ -128,12 +126,6 @@ export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ onNavigate }
     }
     setStudents(seatingStudentService.getStudents());
     return result;
-  };
-
-  const handleResetStudents = () => {
-    const fresh = seatingStudentService.resetToDefault();
-    setStudents(fresh);
-    showNotification('Daftar siswa dikembalikan ke konfigurasi standar.', 'info');
   };
 
   // Layout Actions
@@ -178,140 +170,81 @@ export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ onNavigate }
     showNotification('Riwayat pengacakan telah dibersihkan.', 'info');
   };
 
-  const tabTitles: Record<string, { title: string; subtitle: string }> = {
-    overview: { title: 'Ringkasan Dashboard', subtitle: 'Ikhtisar kapasitas kelas, siswa aktif, dan jadwal rotasi' },
-    layout: { title: 'Editor Tata Letak Denah', subtitle: 'Atur blok meja, tambah/hapus baris & kolom secara visual' },
-    students: { title: 'Manajemen Data Siswa', subtitle: 'Daftar 26 siswa kelas, ubah nama panggilan, atau nonaktifkan' },
-    seating: { title: 'Kelola Denah & Reroll', subtitle: 'Pratinjau visual susunan aktif dan lakukan pengacakan ulang manual' },
-    history: { title: 'Riwayat Aktivitas Rotasi', subtitle: 'Log riwayat seluruh pengacakan otomatis dan manual' },
-    schedule: { title: 'Pengaturan Jadwal Mingguan', subtitle: 'Parameter waktu Minggu 06:00 WIB dan simulasi siklus' },
-  };
+  const renderTabContent = () => (
+    <>
+      {activeTab === 'overview' && (
+        <SeatingAdminOverview
+          students={students}
+          layout={layout}
+          currentArrangement={currentArrangement}
+          history={history}
+          onNavigateTab={setActiveTab}
+          onTriggerReroll={handleExecuteReroll}
+        />
+      )}
 
-  const currentTabInfo = tabTitles[activeTab] || tabTitles.overview;
+      {activeTab === 'layout' && (
+        <SeatingLayoutEditor
+          currentLayout={layout}
+          activeStudentCount={students.filter((s) => s.isActive).length}
+          onSave={handleSaveLayout}
+          onResetDefault={handleResetLayout}
+          showNotification={showNotification}
+        />
+      )}
 
-  if (isSessionLoading || !isAdmin) {
-    return (
-      <div className="seating-scope min-h-[70vh] flex items-center justify-center px-4">
-        <p className="text-sm font-semibold text-content-secondary">
-          {isSessionLoading ? 'Memeriksa sesi administrator...' : 'Mengalihkan ke halaman login...'}
-        </p>
-      </div>
-    );
+      {activeTab === 'students' && (
+        <SeatingStudentManager
+          students={students}
+          assignments={currentArrangement?.assignments || {}}
+          onAddStudent={handleAddStudent}
+          onUpdateStudent={handleUpdateStudent}
+          onDeleteStudent={handleDeleteStudent}
+          onToggleActive={handleToggleStudentActive}
+          showNotification={showNotification}
+        />
+      )}
+
+      {activeTab === 'seating' && (
+        <SeatingManager
+          layout={layout}
+          students={students}
+          currentArrangement={currentArrangement}
+          previousArrangement={previousArrangement}
+          onExecuteReroll={handleExecuteReroll}
+          showNotification={showNotification}
+        />
+      )}
+
+      {activeTab === 'history' && (
+        <SeatingHistoryTable
+          history={history}
+          onClearHistory={handleClearHistory}
+          showNotification={showNotification}
+        />
+      )}
+
+      {activeTab === 'schedule' && (
+        <SeatingScheduleManager
+          onSimulateAutoReroll={handleSimulateAutoReroll}
+          showNotification={showNotification}
+        />
+      )}
+    </>
+  );
+
+  if (!isAdmin) {
+    return null;
   }
 
   return (
-    <div className="seating-scope min-h-screen bg-canvas flex">
+    <div className="seating-scope admin-rolling-embed">
       <SeatingToast
         message={toast.message}
         type={toast.type}
         onClose={() => setToast({ message: '', type: 'success' })}
       />
-
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
-        <SeatingAdminSidebar
-          activeTab={activeTab}
-          onSelectTab={setActiveTab}
-          onLogout={handleLogout}
-          onGoToPublic={() => onNavigate('/rolling-seat')}
-          currentUser={currentUser}
-        />
-      </div>
-
-      {/* Mobile Sidebar Drawer */}
-      {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-          <div className="relative z-10 w-64 bg-white h-full shadow-card flex flex-col justify-between">
-            <SeatingAdminSidebar
-              activeTab={activeTab}
-              onSelectTab={(tab: string) => {
-                setActiveTab(tab);
-                setMobileSidebarOpen(false);
-              }}
-              onLogout={handleLogout}
-              onGoToPublic={() => onNavigate('/rolling-seat')}
-              currentUser={currentUser}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <SeatingAdminHeader
-          title={currentTabInfo.title}
-          subtitle={currentTabInfo.subtitle}
-          onToggleMobileNav={() => setMobileSidebarOpen(true)}
-          onGoToPublic={() => onNavigate('/rolling-seat')}
-          onLogout={handleLogout}
-        />
-
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          {activeTab === 'overview' && (
-            <SeatingAdminOverview
-              students={students}
-              layout={layout}
-              currentArrangement={currentArrangement}
-              history={history}
-              onNavigateTab={setActiveTab}
-              onTriggerReroll={handleExecuteReroll}
-            />
-          )}
-
-          {activeTab === 'layout' && (
-            <SeatingLayoutEditor
-              currentLayout={layout}
-              activeStudentCount={students.filter((s) => s.isActive).length}
-              onSave={handleSaveLayout}
-              onResetDefault={handleResetLayout}
-              showNotification={showNotification}
-            />
-          )}
-
-          {activeTab === 'students' && (
-            <SeatingStudentManager
-              students={students}
-              assignments={currentArrangement?.assignments || {}}
-              onAddStudent={handleAddStudent}
-              onUpdateStudent={handleUpdateStudent}
-              onDeleteStudent={handleDeleteStudent}
-              onToggleActive={handleToggleStudentActive}
-              onResetDefault={handleResetStudents}
-              showNotification={showNotification}
-            />
-          )}
-
-          {activeTab === 'seating' && (
-            <SeatingManager
-              layout={layout}
-              students={students}
-              currentArrangement={currentArrangement}
-              previousArrangement={previousArrangement}
-              onExecuteReroll={handleExecuteReroll}
-              showNotification={showNotification}
-            />
-          )}
-
-          {activeTab === 'history' && (
-            <SeatingHistoryTable
-              history={history}
-              onClearHistory={handleClearHistory}
-              showNotification={showNotification}
-            />
-          )}
-
-          {activeTab === 'schedule' && (
-            <SeatingScheduleManager
-              onSimulateAutoReroll={handleSimulateAutoReroll}
-              showNotification={showNotification}
-            />
-          )}
-        </main>
-      </div>
+      {renderTabContent()}
     </div>
   );
 };

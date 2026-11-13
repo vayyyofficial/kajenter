@@ -5,20 +5,37 @@ import { useLanguage } from '../context/LanguageContext';
 
 interface AdminLoginPageProps {
   onNavigate: (route: string) => void;
+  successPath?: string;
+}
+
+function resolveSuccessPath(explicit?: string): string {
+  if (explicit) return explicit;
+  if (typeof window === 'undefined') return '/admin';
+  const requestedRedirect = new URLSearchParams(window.location.search).get('redirect');
+  const path = window.location.pathname.toLowerCase();
+  if (
+    requestedRedirect === '/rolling-admin' ||
+    requestedRedirect === '/admin/rolling' ||
+    path.includes('rolling')
+  ) {
+    return '/admin/rolling';
+  }
+  return '/admin';
 }
 
 /**
- * Halaman login admin terpusat (/admin/login).
+ * Enter Password gate for `/admin`.
  *
- * Catatan: halaman ini hanya antarmuka. Verifikasi tetap memakai
- * `verifyPassword` dari AdminContext (endpoint yang sudah ada). Sistem
- * autentikasi baru akan diimplementasikan terpisah oleh developer backend.
+ * Verification uses the backend endpoint through AdminContext.
+ * The resulting token lives in memory only for this tab session.
  */
-export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) => {
+export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
+  onNavigate,
+  successPath,
+}) => {
   const { t } = useLanguage();
-  const { isAdmin, isSessionLoading, verifyPassword } = useAdmin();
-  const requestedRedirect = new URLSearchParams(window.location.search).get('redirect');
-  const redirectPath = requestedRedirect === '/rolling-admin' ? '/rolling-admin' : '/admin';
+  const { isAdmin, verifyPassword } = useAdmin();
+  const redirectPath = resolveSuccessPath(successPath);
 
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,12 +43,11 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sesi admin yang sudah valid langsung diarahkan ke panel admin
   useEffect(() => {
-    if (isAdmin && !isSessionLoading) {
+    if (isAdmin) {
       onNavigate(redirectPath);
     }
-  }, [isAdmin, isSessionLoading, onNavigate, redirectPath]);
+  }, [isAdmin, onNavigate, redirectPath]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -56,24 +72,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
     }
   };
 
-  if (isSessionLoading) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '50vh',
-          color: 'var(--text-muted)',
-          fontSize: '0.9rem',
-          fontWeight: 600,
-        }}
-      >
-        {t.adminLogin.checkingSession}
-      </div>
-    );
-  }
-
   return (
     <div
       style={{
@@ -97,7 +95,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
           padding: '2rem 1.75rem',
         }}
       >
-        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <div
             style={{
@@ -199,7 +196,10 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div
+            className="admin-login-actions"
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}
+          >
             <button
               type="button"
               onClick={() => onNavigate('/beranda')}
