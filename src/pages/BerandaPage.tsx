@@ -500,7 +500,7 @@ export const BerandaPage: React.FC<BerandaPageProps> = ({ onNavigate }) => {
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                     <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem' }}>
-                      <span className="badge badge-primary">{item.category}</span>
+                      <span className="badge badge-primary featured-gallery-category">{item.category}</span>
                     </div>
                   </div>
 
