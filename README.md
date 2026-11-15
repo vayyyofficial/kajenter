@@ -29,11 +29,14 @@ Database index: `database/README.md`. Full schema notes: `docs/DATABASE.md`. Lat
 
 ```bash
 npm install
-cp .env.example .env   # fill in your values
+cp .env.example .env
+# Set ADMIN_INITIAL_PASSWORD and JWT_SECRET in .env before the first local run.
 npm run dev            # Express API on :5000 + Vite on :5173
-npm run build          # type-check (tsc -b) + production build
+npm run build          # server + frontend type checks and production build
 npm run lint
 ```
+
+Production has no default admin password or JWT secret. Set the secrets in the hosting provider, use `ADMIN_INITIAL_PASSWORD` only for first-time database bootstrap, then remove it after changing the admin password.
 
 ## Rolling (Seat + Groups)
 
@@ -48,6 +51,6 @@ npm run lint
 
 ## Deployment
 
-Vercel: `vercel.json` rewrites `/api/*` to the serverless function and every other path to `index.html`.
-For a standalone Node server run `npm run build && npm start` (the Express server serves `dist/` and
-falls back to `index.html` for client-side routes).
+Netlify is configured in `netlify.toml`: `/api/*` is routed to the Express function and browser routes fall back to the Vite SPA. Set the required server secrets and public Supabase build variables in Netlify; follow [`docs/DEPLOY-GUIDE.md`](docs/DEPLOY-GUIDE.md) for the database merge and preview checks.
+
+For a standalone Node server run `npm run build && npm start` (Express serves `dist/` and falls back to `index.html` for client-side routes).

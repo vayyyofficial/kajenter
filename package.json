@@ -8,9 +8,10 @@
     "client:dev": "vite",
     "server:dev": "tsx watch server/index.ts",
     "start": "tsx server/index.ts",
-    "build": "tsc -b && vite build",
+    "build": "npm run typecheck:server && tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck:server": "tsc -p tsconfig.server.json --noEmit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
@@ -24,6 +25,7 @@
     "multer": "^2.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "serverless-http": "^3.2.0",
     "simple-icons": "^16.35.0"
   },
   "devDependencies": {

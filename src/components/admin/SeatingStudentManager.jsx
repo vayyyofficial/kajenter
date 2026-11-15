@@ -18,7 +18,6 @@ export default function StudentManager({
   onUpdateStudent,
   onDeleteStudent,
   onToggleActive,
-  showNotification,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterActive, setFilterActive] = useState('all'); // 'all' | 'active' | 'inactive'

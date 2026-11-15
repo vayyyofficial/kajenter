@@ -9,8 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-  ZoomIn,
-  ZoomOut,
   Plus,
   Minus,
 } from 'lucide-react';

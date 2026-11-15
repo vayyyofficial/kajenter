@@ -201,7 +201,6 @@ export const RollingAdminPage: React.FC<RollingAdminPageProps> = ({ tab, onTabCh
           onUpdateStudent={handleUpdateStudent}
           onDeleteStudent={handleDeleteStudent}
           onToggleActive={handleToggleStudentActive}
-          showNotification={showNotification}
         />
       )}
 
