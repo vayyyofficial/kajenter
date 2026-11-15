@@ -96,7 +96,7 @@ router.put('/:id', requireAdmin, async (req, res): Promise<void> => {
       cleanPhotos = images.map((p: any) => String(p || '').trim()).filter(Boolean);
     }
 
-    const updated = await dbService.gallery.update(req.params.id, {
+    const updated = await dbService.gallery.update(String(req.params.id), {
       title,
       eventIdentity,
       category,
@@ -127,7 +127,7 @@ router.put('/:id', requireAdmin, async (req, res): Promise<void> => {
 // 5. DELETE /api/gallery/:id (Admin only)
 router.delete('/:id', requireAdmin, async (req, res): Promise<void> => {
   try {
-    const deleted = await dbService.gallery.delete(req.params.id);
+    const deleted = await dbService.gallery.delete(String(req.params.id));
 
     recordAuditLog(
       'Admin',

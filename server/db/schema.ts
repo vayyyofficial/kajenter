@@ -239,23 +239,6 @@ export function initializeDatabase() {
     // ignore
   }
 
-  // 2. Ensure fairuzziachmad@gmail.com is registered in members table (Attendance 02, Role Developer)
-  // Strictly additive: Never deletes, resets, or overwrites existing data
-  try {
-    const existingDev = query.get('SELECT id FROM members WHERE LOWER(TRIM(email)) = ?', 'fairuzziachmad@gmail.com');
-    if (!existingDev) {
-      const now = new Date().toISOString();
-      query.run(
-        `INSERT INTO members (attendance_number, full_name, nickname, birth_place, birth_date, email, role, member_type, photo_number, phone, created_at, updated_at)
-         VALUES (2, 'Fairuzzi Achmad', 'Fairuz', 'Surabaya', '2008-01-14', 'fairuzziachmad@gmail.com', 'Developer', 'siswa', '02', '+628123456702', ?, ?)`,
-        now,
-        now
-      );
-    }
-  } catch {
-    // ignore
-  }
-
   // 3. Ensure initial Kas weeks exist if class_kas_weeks is empty
   try {
     const existingWeekCount = query.get<any>('SELECT COUNT(*) as count FROM class_kas_weeks');

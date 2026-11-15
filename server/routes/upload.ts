@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { CONFIG } from '../config.js';
-import { requireAdminOrDeveloper, requireMemberOrAdmin, recordAuditLog } from '../middleware/auth.js';
+import { requireAdmin, recordAuditLog } from '../middleware/auth.js';
 import { uploadToSupabaseStorage } from '../db/supabase.js';
 
 const router = Router();
@@ -110,8 +110,8 @@ async function persistImage(
   return `/uploads/${filename}`;
 }
 
-// POST /api/upload (Admin or Authenticated Member for profile/images)
-router.post('/', requireMemberOrAdmin, upload.single('image'), async (req, res): Promise<void> => {
+// POST /api/upload (Admin only)
+router.post('/', requireAdmin, upload.single('image'), async (req, res): Promise<void> => {
   try {
     if (!req.file) {
       res.status(400).json({ success: false, error: 'Tidak ada file gambar yang dipilih.' });
@@ -154,8 +154,8 @@ router.post('/', requireMemberOrAdmin, upload.single('image'), async (req, res):
   }
 });
 
-// POST /api/upload/multiple (Admin or Developer only, up to 20 images)
-router.post('/multiple', requireAdminOrDeveloper, upload.array('images', 20), async (req, res): Promise<void> => {
+// POST /api/upload/multiple (Admin only, up to 20 images)
+router.post('/multiple', requireAdmin, upload.array('images', 20), async (req, res): Promise<void> => {
   try {
     const files = req.files as Express.Multer.File[] | undefined;
     if (!files || files.length === 0) {

@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import { CONFIG } from '../config.js';
 import { formatGalleryItem } from './supabase.js';
 
-const require = createRequire(import.meta.url);
+const require = createRequire(path.join(process.cwd(), 'package.json'));
 let dbInstance: any = null;
 
 function getSqliteDb(): any {
@@ -30,7 +30,7 @@ function getSqliteDb(): any {
       }
     } catch (err: any) {
       console.error('Failed to load local SQLite engine:', err.message);
-      throw new Error(`SQLite engine unavailable: ${err.message}. On Vercel, configure SUPABASE_URL and SUPABASE_ANON_KEY.`);
+      throw new Error(`SQLite engine unavailable: ${err.message}. In production, configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.`);
     }
   }
   return dbInstance;
@@ -432,7 +432,9 @@ export const sqliteDb = {
     async getAuthState() {
       let state = rawQuery.get<any>('SELECT * FROM admin_auth_state WHERE id = 1');
       if (!state) {
-        const initialHash = await bcrypt.hash('icptkj35', 10);
+        const initialPassword = CONFIG.ADMIN_INITIAL_PASSWORD;
+        if (!initialPassword) throw new Error('ADMIN_INITIAL_PASSWORD must be set before initializing local admin authentication.');
+        const initialHash = await bcrypt.hash(initialPassword, 10);
         const now = new Date().toISOString();
         rawQuery.run(
           `INSERT INTO admin_auth_state (id, password_hash, failed_attempts, locked_until, last_failed_at, last_password_change, updated_at)

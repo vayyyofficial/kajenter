@@ -324,7 +324,7 @@ export const en = {
     saveNewPasswordBtn: 'Save New Password',
     passwordChangedSuccess: 'Admin password updated securely.',
     passwordMismatch: 'New password and confirmation do not match.',
-    passwordMinLength: 'New password must be at least 6 characters.',
+    passwordMinLength: 'New password must be at least 10 characters.',
     passwordRequired: 'All password fields are required.',
     securityStatusTitle: 'System Security Status',
     securityStatusSubtitle: 'Active server-side protection architecture',

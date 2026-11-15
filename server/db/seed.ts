@@ -1,13 +1,16 @@
 import bcrypt from 'bcryptjs';
+import { CONFIG } from '../config.js';
 import { query } from './index.js';
 
 export async function seedDatabase() {
   const now = new Date().toISOString();
 
-  // 1. Seed or Verify Admin Auth State (Default password: icptkj35 per Requirement #7)
+  // Seed the initial admin hash from an environment-only bootstrap password.
   const existingAdmin = query.get('SELECT * FROM admin_auth_state WHERE id = 1');
   if (!existingAdmin) {
-    const initialHash = await bcrypt.hash('icptkj35', 10);
+    const initialPassword = CONFIG.ADMIN_INITIAL_PASSWORD;
+    if (!initialPassword) throw new Error('ADMIN_INITIAL_PASSWORD must be set to initialize the admin account.');
+    const initialHash = await bcrypt.hash(initialPassword, 10);
     query.run(
       `INSERT INTO admin_auth_state (id, password_hash, failed_attempts, locked_until, last_failed_at, last_password_change, updated_at)
        VALUES (1, ?, 0, NULL, NULL, ?, ?)`,
@@ -16,44 +19,6 @@ export async function seedDatabase() {
       now
     );
     console.log('🔒 Secret Admin initial password seeded securely (hashed).');
-  }
-
-  // 1b. Seed Roles & Permissions (Requirement #17 & #28)
-  const roleCount = query.get<any>('SELECT COUNT(*) as count FROM roles_permissions')?.count || 0;
-  if (roleCount === 0) {
-    const roles = [
-      { name: 'Admin', gallery: 1, members: 1, social: 1, settings: 1 },
-      { name: 'Ketua Kelas', gallery: 1, members: 1, social: 1, settings: 0 },
-      { name: 'Wakil Ketua', gallery: 1, members: 1, social: 1, settings: 0 },
-      { name: 'Bendahara', gallery: 1, members: 1, social: 0, settings: 0 },
-      { name: 'Sekretaris', gallery: 1, members: 1, social: 0, settings: 0 },
-      { name: 'User', gallery: 0, members: 0, social: 0, settings: 0 },
-    ];
-    for (const r of roles) {
-      query.run(
-        `INSERT INTO roles_permissions (role_name, can_manage_gallery, can_manage_members, can_manage_social, can_manage_settings, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        r.name,
-        r.gallery,
-        r.members,
-        r.social,
-        r.settings,
-        now
-      );
-    }
-  }
-
-  // 1c. Seed Initial Admin User
-  const userCount = query.get<any>('SELECT COUNT(*) as count FROM users')?.count || 0;
-  if (userCount === 0) {
-    const defaultAdminHash = await bcrypt.hash('icptkj35', 10);
-    query.run(
-      `INSERT INTO users (username, password_hash, role, full_name, email, created_at, updated_at)
-       VALUES ('admin', ?, 'Admin', 'Administrator X ICP TKJ', 'admin@smktelkom-mlg.sch.id', ?, ?)`,
-      defaultAdminHash,
-      now,
-      now
-    );
   }
 
   // 2. Seed Website Settings
@@ -81,7 +46,7 @@ export async function seedDatabase() {
     );
     query.run(
       `INSERT OR REPLACE INTO website_settings (key, value, description, updated_at)
-       VALUES ('class_description', 'Portal digital resmi kelas X ICP TKJ — SMK Telkom Malang. Menampilkan galeri kegiatan kejuruan, direktori tenaga pendidik dan seluruh siswa terpadu.', ?)`,
+       VALUES ('class_description', 'Portal digital resmi kelas X ICP TKJ — SMK Telkom Malang. Menampilkan galeri kegiatan kejuruan, direktori tenaga pendidik dan seluruh siswa terpadu.', 'Deskripsi kelas', ?)`,
       now
     );
   }

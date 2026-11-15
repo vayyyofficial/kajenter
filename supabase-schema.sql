@@ -308,26 +308,9 @@ WITH CHECK (bucket_id = 'uploads');
 -- 5. Seed Data
 -- ==============================================================================
 
--- Secret Admin Auth State (Default password: icptkj35)
-INSERT INTO admin_auth_state (id, password_hash, failed_attempts, locked_until, last_failed_at, last_password_change, updated_at)
-VALUES (1, '$2b$10$V5bfzU6c6vcYdOaOAx2.PeSutOwbisNFsL5NZrcOYMtxsZ.pnuF3S', 0, NULL, NULL, NOW(), NOW())
-ON CONFLICT (id) DO NOTHING;
+-- The server bootstraps admin_auth_state from ADMIN_INITIAL_PASSWORD on first start.
 
--- Roles & Permissions
-INSERT INTO roles_permissions (role_name, can_manage_gallery, can_manage_members, can_manage_social, can_manage_settings, updated_at)
-VALUES
-  ('Admin', 1, 1, 1, 1, NOW()),
-  ('Ketua Kelas', 1, 1, 1, 0, NOW()),
-  ('Wakil Ketua', 1, 1, 1, 0, NOW()),
-  ('Bendahara', 1, 1, 0, 0, NOW()),
-  ('Sekretaris', 1, 1, 0, 0, NOW()),
-  ('User', 0, 0, 0, 0, NOW())
-ON CONFLICT (role_name) DO NOTHING;
-
--- Default Admin User
-INSERT INTO users (username, password_hash, role, full_name, email, created_at, updated_at)
-VALUES ('admin', '$2b$10$V5bfzU6c6vcYdOaOAx2.PeSutOwbisNFsL5NZrcOYMtxsZ.pnuF3S', 'Admin', 'Administrator X ICP TKJ', 'admin@smktelkom-mlg.sch.id', NOW(), NOW())
-ON CONFLICT (username) DO NOTHING;
+-- Retired user and role rows are intentionally not seeded.
 
 -- Website Settings
 INSERT INTO website_settings (key, value, description, updated_at)

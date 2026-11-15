@@ -326,7 +326,7 @@ export const id: TranslationType = {
     saveNewPasswordBtn: 'Simpan Password Baru',
     passwordChangedSuccess: 'Password admin berhasil diubah dengan aman.',
     passwordMismatch: 'Password baru dan konfirmasi password tidak cocok.',
-    passwordMinLength: 'Password baru minimal 6 karakter.',
+    passwordMinLength: 'Password baru minimal 10 karakter.',
     passwordRequired: 'Semua kolom password wajib diisi.',
     securityStatusTitle: 'Status Keamanan Sistem',
     securityStatusSubtitle: 'Arsitektur proteksi server-side aktif',

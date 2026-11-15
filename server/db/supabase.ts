@@ -553,8 +553,10 @@ export const supabaseDb = {
       }
 
       if (!data) {
-        // Initialize default row with icptkj35
-        const initialHash = await bcrypt.hash('icptkj35', 10);
+        // Bootstrap only from an explicit environment-provided password.
+        const initialPassword = CONFIG.ADMIN_INITIAL_PASSWORD;
+        if (!initialPassword) throw new Error('ADMIN_INITIAL_PASSWORD must be set before initializing admin authentication.');
+        const initialHash = await bcrypt.hash(initialPassword, 10);
         const now = new Date().toISOString();
         const { data: inserted, error: insertError } = await client
           .from('admin_auth_state')
@@ -573,15 +575,8 @@ export const supabaseDb = {
         if (insertError) {
           console.error('Failed to initialize admin_auth_state in Supabase:', insertError);
         }
-        return inserted || {
-          id: 1,
-          password_hash: initialHash,
-          failed_attempts: 0,
-          locked_until: null,
-          last_failed_at: null,
-          last_password_change: now,
-          updated_at: now,
-        };
+        if (!inserted) throw new Error('Could not initialize admin_auth_state. Check database permissions and ADMIN_INITIAL_PASSWORD.');
+        return inserted;
       }
 
       return data;
@@ -668,35 +663,6 @@ export const supabaseDb = {
         }
       } catch (err: any) {
         console.warn('findMemberByEmail allMembers fallback warning:', err.message);
-      }
-
-      // 3. Safe Additive Ensure for Fairuzzi Achmad (Absen 02, Developer) if missing in remote Supabase
-      if (cleanEmail === 'fairuzziachmad@gmail.com') {
-        try {
-          const now = new Date().toISOString();
-          const { data: inserted, error: insErr } = await client
-            .from('members')
-            .insert({
-              attendance_number: 2,
-              full_name: 'Fairuzzi Achmad',
-              nickname: 'Fairuz',
-              email: 'fairuzziachmad@gmail.com',
-              role: 'Developer',
-              member_type: 'siswa',
-              bio: 'Fullstack Developer & Student of X ICP TKJ',
-              created_at: now,
-              updated_at: now,
-            })
-            .select()
-            .single();
-
-          if (!insErr && inserted) {
-            console.log('Auto-ensured Fairuzzi Achmad member record in Supabase.');
-            return inserted;
-          }
-        } catch {
-          // Safe ignore if fails
-        }
       }
 
       return null;

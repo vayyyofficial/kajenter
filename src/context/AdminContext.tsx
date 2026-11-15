@@ -37,7 +37,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [isLocked, setIsLocked] = useState<boolean>(false);
   const [lockoutRemainingMs, setLockoutRemainingMs] = useState<number>(0);
-  const [attemptsRemaining, setAttemptsRemaining] = useState<number>(3);
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number>(5);
 
   const refreshLockoutStatus = useCallback(async () => {
     try {
@@ -59,7 +59,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     clearAdminMemorySession();
     setAdminApiToken(null);
-  }, []);
+    void refreshLockoutStatus();
+  }, [refreshLockoutStatus]);
 
   const verifyPassword = async (password: string) => {
     try {
@@ -70,15 +71,22 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsAdmin(true);
         setIsLocked(false);
         setLockoutRemainingMs(0);
+        setAttemptsRemaining(5);
         return { success: true };
       }
-      return { success: false, error: res.error || 'Password salah. Silakan coba lagi.' };
+      const attemptsLeft = res.attemptsRemaining ?? Math.max(0, attemptsRemaining - 1);
+      setAttemptsRemaining(attemptsLeft);
+      setIsLocked(Boolean(res.locked));
+      setLockoutRemainingMs(res.remainingMs ?? 0);
+      return { success: false, error: res.error || 'Password salah. Silakan coba lagi.', locked: Boolean(res.locked), remainingMs: res.remainingMs, attemptsLeft };
     } catch (err: any) {
-      const errorMsg =
-        (err instanceof ApiError && err.data?.error) ||
-        err.message ||
-        'Password salah. Silakan periksa kembali password Anda.';
-      return { success: false, error: errorMsg };
+      const data = err instanceof ApiError ? err.data : {};
+      const errorMsg = data?.error || err.message || 'Password salah. Silakan periksa kembali password Anda.';
+      const attemptsLeft = Number.isFinite(data?.attemptsRemaining) ? Number(data.attemptsRemaining) : Math.max(0, attemptsRemaining - 1);
+      setAttemptsRemaining(attemptsLeft);
+      setIsLocked(Boolean(data?.locked));
+      setLockoutRemainingMs(Number(data?.remainingMs || 0));
+      return { success: false, error: errorMsg, locked: Boolean(data?.locked), remainingMs: Number(data?.remainingMs || 0), attemptsLeft };
     }
   };
 

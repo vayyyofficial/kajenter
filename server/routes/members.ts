@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
 import { dbService } from '../db/index.js';
-import { requireAdminOrDeveloper, recordAuditLog } from '../middleware/auth.js';
+import { requireAdmin, recordAuditLog } from '../middleware/auth.js';
 import { broadcastSync } from '../sync.js';
 
 const router = Router();
@@ -37,7 +36,7 @@ router.get('/:id', async (req, res): Promise<void> => {
 });
 
 // 3. POST /api/members (Admin or Developer)
-router.post('/', requireAdminOrDeveloper, async (req: any, res): Promise<void> => {
+router.post('/', requireAdmin, async (req: any, res): Promise<void> => {
   try {
     const {
       fullName,
@@ -83,7 +82,7 @@ router.post('/', requireAdminOrDeveloper, async (req: any, res): Promise<void> =
     }
 
     const finalBirthPlace = birthPlace?.trim() || 'Malang';
-    const finalEmail = email?.trim() || (attNum ? `absen${String(attNum).padStart(2, '0')}@icptkj35.local` : `guru_${Date.now()}@icptkj35.local`);
+    const finalEmail = email?.trim() || '';
 
     const created = await dbService.members.create({
       attendanceNumber: attNum,
@@ -97,19 +96,6 @@ router.post('/', requireAdminOrDeveloper, async (req: any, res): Promise<void> =
       photoNumber,
       phone: phone?.trim() || null,
     });
-
-    // Auto-create member_accounts row with default password format: icptkj35_<absen>
-    const defaultPassword = attNum ? `icptkj35_${String(attNum).padStart(2, '0')}` : 'icptkj35_guru';
-    const passwordHash = await bcrypt.hash(defaultPassword, 10);
-    try {
-      await dbService.portalAuth.createAccount(
-        (created as any).id,
-        finalEmail,
-        passwordHash
-      );
-    } catch (accErr) {
-      console.warn('Auto create member_account warning:', accErr);
-    }
 
     const actor = req.admin ? 'Admin' : (req.memberUser?.email || 'Developer');
     recordAuditLog(
@@ -128,7 +114,6 @@ router.post('/', requireAdminOrDeveloper, async (req: any, res): Promise<void> =
       data: {
         id: (created as any).id,
         photoNumber,
-        defaultPassword,
         mappedPhotoPath: photoNumber
           ? (photoNumber.startsWith('http') || photoNumber.startsWith('/')
             ? photoNumber
@@ -143,7 +128,7 @@ router.post('/', requireAdminOrDeveloper, async (req: any, res): Promise<void> =
 });
 
 // 4. PUT /api/members/:id (Admin or Developer)
-router.put('/:id', requireAdminOrDeveloper, async (req: any, res): Promise<void> => {
+router.put('/:id', requireAdmin, async (req: any, res): Promise<void> => {
   try {
     const memberId = req.params.id;
     const existing = await dbService.members.getById(memberId);
@@ -223,7 +208,7 @@ router.put('/:id', requireAdminOrDeveloper, async (req: any, res): Promise<void>
 });
 
 // 5. DELETE /api/members/:id (Admin or Developer)
-router.delete('/:id', requireAdminOrDeveloper, async (req: any, res): Promise<void> => {
+router.delete('/:id', requireAdmin, async (req: any, res): Promise<void> => {
   try {
     const deleted = await dbService.members.delete(req.params.id);
 

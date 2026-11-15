@@ -42,7 +42,7 @@ export const AdminSecurity: React.FC<{ onLogout?: () => void }> = ({ onLogout })
       return;
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 10) {
       setErrorMsg(t.admin.passwordMinLength);
       return;
     }

@@ -1,12 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Production fallback values ensure the website functions reliably
-// even if environment variables were not manually set in hosting dashboards.
-const DEFAULT_SUPABASE_URL = 'https://mhsxrfuyizcmdcfhmruu.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'sb_publishable_VsdBt4QmNKtPteLAhjXTlQ_YT7hov_z';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_KEY;
+// The publishable key is intentionally configured per deployment; never ship a
+// project URL or key from a source-code fallback.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&

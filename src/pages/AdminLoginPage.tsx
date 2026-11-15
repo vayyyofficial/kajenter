@@ -34,13 +34,14 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   successPath,
 }) => {
   const { t } = useLanguage();
-  const { isAdmin, verifyPassword } = useAdmin();
+  const { isAdmin, verifyPassword, isLocked, lockoutRemainingMs, refreshLockoutStatus } = useAdmin();
   const redirectPath = resolveSuccessPath(successPath);
 
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -51,11 +52,22 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+    void refreshLockoutStatus();
+  }, [refreshLockoutStatus]);
+
+  useEffect(() => {
+    setLockoutSeconds(Math.ceil(lockoutRemainingMs / 1000));
+  }, [lockoutRemainingMs]);
+
+  useEffect(() => {
+    if (!isLocked || lockoutSeconds <= 0) return;
+    const timer = window.setInterval(() => setLockoutSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [isLocked, lockoutSeconds]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting || !password.trim()) return;
+    if (isSubmitting || isLocked || !password.trim()) return;
 
     setIsSubmitting(true);
     setErrorMsg(null);
@@ -66,7 +78,8 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
     if (res.success) {
       onNavigate(redirectPath);
     } else {
-      setErrorMsg(res.error || t.adminLogin.wrongPassword);
+      const suffix = !res.locked && res.attemptsLeft !== undefined ? ` Sisa percobaan: ${res.attemptsLeft}.` : '';
+      setErrorMsg((res.error || t.adminLogin.wrongPassword) + suffix);
       setPassword('');
       setTimeout(() => inputRef.current?.focus(), 100);
     }
@@ -151,6 +164,12 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
           </div>
         )}
 
+        {isLocked && (
+          <p role="status" style={{ color: 'var(--danger-text)', fontSize: '0.85rem', margin: '0 0 1rem', textAlign: 'center' }}>
+            Login dikunci. Coba lagi dalam {Math.floor(lockoutSeconds / 60)}:{String(lockoutSeconds % 60).padStart(2, '0')}.
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ position: 'relative' }}>
             <input
@@ -160,7 +179,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
               aria-label={t.adminLogin.passwordLabel}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLocked}
               className="form-input"
               style={{
                 height: '46px',
@@ -175,7 +194,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLocked}
               aria-label={showPassword ? t.adminLogin.hidePassword : t.adminLogin.showPassword}
               style={{
                 position: 'absolute',
@@ -203,7 +222,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('/beranda')}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLocked}
               className="btn btn-secondary"
               style={{ height: '44px', fontWeight: 600, justifyContent: 'center', minWidth: 0 }}
             >
@@ -213,7 +232,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
 
             <button
               type="submit"
-              disabled={isSubmitting || !password.trim()}
+              disabled={isSubmitting || isLocked || !password.trim()}
               className="btn btn-primary"
               style={{
                 height: '44px',

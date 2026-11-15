@@ -71,7 +71,7 @@ export const api = {
     checkAdminStatus: () =>
       request<AdminStatusResponse>('/auth/admin-status'),
     verifyAdminPassword: (password: string) =>
-      request<{ success: boolean; token?: string; message?: string; error?: string }>('/auth/admin-verify', {
+      request<{ success: boolean; token?: string; message?: string; error?: string; locked?: boolean; remainingMs?: number; attemptsRemaining?: number }>('/auth/admin-verify', {
         method: 'POST',
         body: JSON.stringify({ password }),
       }),
