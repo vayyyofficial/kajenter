@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { CONFIG } from './config.js';
 
 import authRouter from './routes/auth.js';
@@ -12,11 +11,7 @@ import socialRouter from './routes/social.js';
 import adminRouter from './routes/admin.js';
 import syncRouter from './routes/sync.js';
 import uploadRouter from './routes/upload.js';
-import portalRouter from './routes/portal.js';
-import storiesRouter from './routes/stories.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -40,7 +35,7 @@ try {
 // Global Middlewares
 app.use(
   cors({
-    origin: true,
+    origin: CONFIG.CORS_ORIGINS.length ? CONFIG.CORS_ORIGINS : false,
     credentials: true,
   })
 );
@@ -74,18 +69,21 @@ apiRouter.use('/social', socialRouter);
 apiRouter.use('/admin', adminRouter);
 apiRouter.use('/sync', syncRouter);
 apiRouter.use('/upload', uploadRouter);
-apiRouter.use('/portal', portalRouter);
-apiRouter.use('/stories', storiesRouter);
+apiRouter.use('/portal', (_req, res) => res.status(410).json({ success: false, error: 'Class Portal sudah tidak tersedia.' }));
+apiRouter.use('/stories', (_req, res) => res.status(410).json({ success: false, error: 'Fitur Story sudah tidak tersedia.' }));
 
 // Built frontend (SPA) location for standalone production server mode
-const distPath = path.join(__dirname, '..', 'dist');
+const distPath = path.join(process.cwd(), 'dist');
 const hasBuiltFrontend = fs.existsSync(distPath);
 
-// Browser page loads (Accept: text/html) for client-side routes such as /admin or /portal
+// Browser page loads (Accept: text/html) for client-side routes such as /admin
 // must receive the SPA shell. They would otherwise be captured by the API router that is
 // also mounted at the root path below (e.g. GET /admin -> 401 JSON on refresh / deep link).
 if (hasBuiltFrontend) {
   app.use((req, res, next) => {
+    if ((req.path.startsWith('/api/portal') || req.path.startsWith('/api/stories') || req.path.startsWith('/portal') || req.path.startsWith('/stories')) && req.method !== 'OPTIONS') {
+      return res.status(410).json({ success: false, error: 'Class Portal dan Story sudah tidak tersedia.' });
+    }
     if (
       req.method === 'GET' &&
       !req.path.startsWith('/api') &&
