@@ -128,6 +128,23 @@ export const api = {
       }),
   },
 
+  rollingStudents: {
+    getAll: () =>
+      request<{ success: boolean; data: Array<{ id: string; number: number; full_name: string; nickname: string; is_active: boolean; member_id: number | null }> }>('/rolling/students'),
+    create: (payload: { memberId: number; number: number; fullName: string; nickname: string; isActive: boolean }) =>
+      request<{ success: boolean; data: { id: string; number: number; full_name: string; nickname: string; is_active: boolean; member_id: number | null } }>('/rolling/students', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    remove: (id: string) =>
+      request<{ success: boolean }>(`/rolling/students/${id}`, { method: 'DELETE' }),
+    update: (id: string, payload: { fullName?: string; nickname?: string; isActive?: boolean }) =>
+      request<{ success: boolean; data: { id: string; number: number; full_name: string; nickname: string; is_active: boolean; member_id: number | null } }>(`/rolling/students/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+  },
+
   gallery: {
     getAll: (category?: string) => {
       const q = category && category !== 'Semua' ? `?category=${encodeURIComponent(category)}` : '';

@@ -10,7 +10,7 @@ live inside the same site under a single **Rolling** navbar dropdown.
 | --- | --- |
 | `src/pages` | Route pages (`BerandaPage`, `GaleriPage`, `AnggotaPage`, `ContactPage`, `AdminPage` + password gate, `RollingSeatPage`, `RollingKelompokPage`) |
 | `src/components` | UI components. Rolling UI: `classroom/`, `groups/`, `admin/Seating*` (plain JSX, typed via sibling `.d.ts` shims) |
-| `src/services` | `api.ts` for the main site; `seating*Service.ts` for Rolling (Supabase + local storage fallback) |
+| `src/services` | `api.ts` for the main site and authenticated Rolling roster updates; other `seating*Service.ts` modules handle Rolling layout/history reads and local cache |
 | `src/utils`, `src/data` | Helpers; Rolling scheduling/randomizer/timezone/validation live in `seating*.ts` |
 | `src/styles` | `index.css`, `components.css`, `variables.css`, and `seating.css` (scoped Rolling base styles) |
 | `server`, `api` | Express API (SQLite locally, Supabase in production) and the Vercel serverless entry |

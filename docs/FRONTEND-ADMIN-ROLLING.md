@@ -9,13 +9,13 @@
 
 ## Canonical students and Rolling UUID compatibility
 
-`members` is the canonical source for a student's name, nickname, and attendance number. Rolling `students` rows retain their UUID because `seating_assignments` and `saved_class_groups` reference those UUIDs. Migration 003 adds a `member_id` link for exact matches. The client prefers this link when composing the Rolling roster, then falls back to attendance number/name for older rows.
+`members` is the sole source for a student's name, nickname, and attendance number. Migration 005 replaces the duplicate `students` table with a read-only view and keeps only `id`, `member_id`, and the Rolling-specific `is_active` flag in `rolling_student_links`. The stable UUID is necessary because existing seating assignments and groups reference it. Old Rolling identity columns are snapshotted in `archive` before removal.
 
-Do not delete the compatibility rows or their IDs until every reference and RPC has been migrated in a separately reviewed change. The `students.is_active` flag remains Rolling-specific.
+The frontend reads the view through the API. Member create/update/delete actions maintain the UUID bridge; Rolling edits use an admin-authenticated API endpoint. Do not manually delete bridge UUIDs while seating history references them.
 
 ## Known security boundary
 
-The standard website tables have public read policies and no direct public write policies; Express writes through `SUPABASE_SERVICE_ROLE_KEY`. Rolling still accesses Supabase directly from the browser and its existing SQL grants public writes to several Rolling tables. An admin password check in the UI does not secure Supabase itself. A follow-up must route Rolling mutations through authenticated backend endpoints before those write policies can be removed.
+The standard website tables have public read policies and no direct public write policies; Express writes through `SUPABASE_SERVICE_ROLE_KEY`. The student identity/participation bridge now writes through the authenticated API. Layout, seat, reroll, schedule, and group changes still access Supabase from the browser and retain permissive legacy policies. An admin password check in the UI does not secure those tables; move those mutations behind authenticated endpoints before removing their policies.
 
 The public members directory intentionally exposes the email and phone fields at the owner's request. The database policy currently allows reads of the whole members row; reassess that policy if fields such as full birth date should no longer be public.
 

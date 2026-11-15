@@ -4,6 +4,111 @@ import { CONFIG } from '../config.js';
 
 let supabaseInstance: SupabaseClient | null = null;
 
+
+function isMissingSchemaObject(error: any): boolean {
+  return ['42P01', '42703', 'PGRST204', 'PGRST205'].includes(error?.code)
+    || /relation .* does not exist|column .* does not exist|could not find the .* in the schema cache/i.test(error?.message || '');
+}
+
+function normalizeStudentName(value: string | null | undefined): string {
+  return (value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+async function findLegacyStudentForMember(client: SupabaseClient, member: any, previous?: any): Promise<any | null> {
+  const memberLink = await client.from('students').select('*').eq('member_id', member.id).maybeSingle();
+  if (!memberLink.error && memberLink.data) return memberLink.data;
+  if (memberLink.error && !isMissingSchemaObject(memberLink.error)) throw new Error(memberLink.error.message);
+
+  const source = previous || member;
+  if (source.member_type !== 'siswa' || source.attendance_number == null) return null;
+  const sameNumber = await client.from('students').select('*').eq('number', source.attendance_number).maybeSingle();
+  if (sameNumber.error) throw new Error(sameNumber.error.message);
+  if (!sameNumber.data) return null;
+  if (normalizeStudentName(sameNumber.data.full_name) !== normalizeStudentName(source.full_name)) {
+    throw new Error(`Siswa dengan nomor absen ${source.attendance_number} memiliki nama berbeda di Rolling. Tinjau tautannya sebelum menghapus atau mengubah data.`);
+  }
+  return sameNumber.data;
+}
+
+async function ensureRollingStudentForMember(client: SupabaseClient, member: any): Promise<void> {
+  if (member.member_type !== 'siswa' || member.attendance_number == null) return;
+
+  const bridge = await client.from('rolling_student_links').select('id')
+    .eq('member_id', member.id).maybeSingle();
+  if (!bridge.error) {
+    if (bridge.data) return;
+    const { error } = await client.from('rolling_student_links')
+      .insert({ member_id: member.id, is_active: true });
+    if (error) throw new Error(error.message);
+    return;
+  }
+  if (!isMissingSchemaObject(bridge.error)) throw new Error(bridge.error.message);
+
+  const byNumber = await client.from('students').select('*')
+    .eq('number', member.attendance_number).maybeSingle();
+  if (byNumber.error && !isMissingSchemaObject(byNumber.error)) throw new Error(byNumber.error.message);
+  if (!byNumber.error && byNumber.data) {
+    if (normalizeStudentName(byNumber.data.full_name) !== normalizeStudentName(member.full_name)) {
+      throw new Error(`Nomor absen ${member.attendance_number} sudah dipakai siswa lain di data Rolling; tinjau datanya sebelum menambah.`);
+    }
+    if (byNumber.data.member_id && String(byNumber.data.member_id) !== String(member.id)) {
+      throw new Error('Tautan siswa Rolling dengan data anggota berbeda. Tinjau sebelum mengubah roster.');
+    }
+    if (byNumber.data.member_id == null) {
+      const { error } = await client.from('students').update({ member_id: member.id }).eq('id', byNumber.data.id);
+      if (error && !isMissingSchemaObject(error)) throw new Error(error.message);
+    }
+    return;
+  }
+
+  const values = {
+    number: member.attendance_number,
+    full_name: member.full_name,
+    nickname: member.nickname || member.full_name,
+    is_active: true,
+    member_id: member.id,
+  };
+  let inserted = await client.from('students').insert(values);
+  if (inserted.error && isMissingSchemaObject(inserted.error)) {
+    const { member_id: _memberId, ...legacyValues } = values;
+    inserted = await client.from('students').insert(legacyValues);
+  }
+  if (inserted.error) throw new Error(inserted.error.message);
+}
+
+async function syncLegacyStudentForMember(client: SupabaseClient, previous: any, current: any): Promise<void> {
+  const bridge = await client.from('rolling_student_links').select('id')
+    .eq('member_id', current.id).maybeSingle();
+  if (!bridge.error) {
+    if (current.member_type === 'siswa' && current.attendance_number != null) {
+      if (!bridge.data) await ensureRollingStudentForMember(client, current);
+    } else {
+      const { error } = await client.from('rolling_student_links')
+        .update({ is_active: false, updated_at: new Date().toISOString() }).eq('member_id', current.id);
+      if (error) throw new Error(error.message);
+    }
+    return;
+  }
+  if (!isMissingSchemaObject(bridge.error)) throw new Error(bridge.error.message);
+
+  const oldRow = await findLegacyStudentForMember(client, current, previous);
+  if (oldRow) {
+    const eligible = current.member_type === 'siswa' && current.attendance_number != null;
+    const values: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (eligible) {
+      values.number = current.attendance_number;
+      values.full_name = current.full_name;
+      values.nickname = current.nickname || current.full_name;
+    } else {
+      values.is_active = false;
+    }
+    const { error } = await client.from('students').update(values).eq('id', oldRow.id);
+    if (error) throw new Error(error.message);
+  } else if (current.member_type === 'siswa' && current.attendance_number != null) {
+    await ensureRollingStudentForMember(client, current);
+  }
+}
+
 export function getSupabaseClient(): SupabaseClient | null {
   if (!CONFIG.IS_SUPABASE_CONFIGURED) {
     return null;
@@ -288,6 +393,12 @@ export const supabaseDb = {
         .single();
 
       if (error) throw new Error(error.message);
+      try {
+        await ensureRollingStudentForMember(client, data);
+      } catch (rollingError) {
+        await client.from('members').delete().eq('id', data.id);
+        throw rollingError;
+      }
       return data;
     },
 
@@ -326,6 +437,12 @@ export const supabaseDb = {
       if (item.photoNumber !== undefined) updatePayload.photo_number = item.photoNumber;
       if (item.phone !== undefined) updatePayload.phone = item.phone;
 
+      const bridgeProbe = await client.from('rolling_student_links').select('id').limit(1);
+      if (bridgeProbe.error && !isMissingSchemaObject(bridgeProbe.error)) throw new Error(bridgeProbe.error.message);
+      if (bridgeProbe.error && existing.member_type === 'siswa') {
+        await findLegacyStudentForMember(client, existing);
+      }
+
       const { data, error } = await client
         .from('members')
         .update(updatePayload)
@@ -334,6 +451,7 @@ export const supabaseDb = {
         .single();
 
       if (error) throw new Error(error.message);
+      await syncLegacyStudentForMember(client, existing, data);
       return data;
     },
 
@@ -342,9 +460,167 @@ export const supabaseDb = {
       const existing = await this.getById(id);
       if (!existing) throw new Error('Anggota tidak ditemukan.');
 
+      const legacyRow = await findLegacyStudentForMember(client, existing);
       const { error } = await client.from('members').delete().eq('id', id);
       if (error) throw new Error(error.message);
+      const bridge = await client.from('rolling_student_links').select('id').eq('member_id', id).maybeSingle();
+      if (bridge.error && !isMissingSchemaObject(bridge.error)) throw new Error(bridge.error.message);
+      if (bridge.error && legacyRow) {
+        const { error: deactivateError } = await client.from('students')
+          .update({ is_active: false, updated_at: new Date().toISOString() }).eq('id', legacyRow.id);
+        if (deactivateError) throw new Error(deactivateError.message);
+      }
       return existing;
+    },
+  },
+
+  // ==========================================
+  // ROLLING STUDENT BRIDGE
+  // ==========================================
+  rollingStudents: {
+    async getAll() {
+      const client = getSupabaseClient()!;
+      const { data, error } = await client.from('students').select('*').order('number', { ascending: true });
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
+
+    async getById(id: string) {
+      const client = getSupabaseClient()!;
+      const { data, error } = await client.from('students').select('*').eq('id', id).maybeSingle();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async add(student: { memberId: number; number: number; fullName: string; nickname: string; isActive: boolean }) {
+      const client = getSupabaseClient()!;
+      const { data: existingLink, error: linkError } = await client
+        .from('rolling_student_links').select('id').eq('member_id', student.memberId).maybeSingle();
+      if (!linkError) {
+        if (existingLink) return this.getById(existingLink.id);
+        const { data, error } = await client.from('rolling_student_links')
+          .insert({ member_id: student.memberId, is_active: student.isActive }).select('id').single();
+        if (error) throw new Error(error.message);
+        const row = await this.getById(data.id);
+        if (!row) throw new Error('Data Rolling belum tersedia setelah membuat tautan siswa.');
+        return row;
+      }
+      if (!isMissingSchemaObject(linkError)) throw new Error(linkError.message);
+
+      const { data: linkedRow, error: lookupError } = await client
+        .from('students').select('*').eq('member_id', student.memberId).maybeSingle();
+      if (!lookupError && linkedRow) return linkedRow;
+      if (lookupError && !isMissingSchemaObject(lookupError)) throw new Error(lookupError.message);
+
+      const { data: sameNumber, error: numberError } = await client.from('students').select('*')
+        .eq('number', student.number).maybeSingle();
+      if (numberError) throw new Error(numberError.message);
+      if (sameNumber) {
+        if (normalizeStudentName(sameNumber.full_name) !== normalizeStudentName(student.fullName)) {
+          throw new Error(`Nomor absen ${student.number} sudah digunakan data Rolling lain.`);
+        }
+        if (sameNumber.member_id && String(sameNumber.member_id) !== String(student.memberId)) {
+          throw new Error('Nomor absen ini sudah tertaut ke anggota lain.');
+        }
+        if (sameNumber.member_id == null) {
+          const { data: linked, error } = await client.from('students').update({ member_id: student.memberId })
+            .eq('id', sameNumber.id).select('*').maybeSingle();
+          if (!error && linked) return linked;
+          if (error && !isMissingSchemaObject(error)) throw new Error(error.message);
+        }
+        return sameNumber;
+      }
+
+      const values = {
+        number: student.number, full_name: student.fullName.trim(), nickname: student.nickname.trim(),
+        is_active: student.isActive, member_id: student.memberId,
+      };
+      let inserted = await client.from('students').insert(values).select('*').single();
+      if (inserted.error && isMissingSchemaObject(inserted.error)) {
+        const { member_id: _memberId, ...legacyValues } = values;
+        inserted = await client.from('students').insert(legacyValues).select('*').single();
+      }
+      if (inserted.error) throw new Error(inserted.error.message);
+      return inserted.data;
+    },
+
+    async update(id: string, updates: { fullName?: string; nickname?: string; isActive?: boolean }) {
+      const client = getSupabaseClient()!;
+      const { data: link, error: linkError } = await client.from('rolling_student_links')
+        .select('id, member_id').eq('id', id).maybeSingle();
+
+      if (!linkError) {
+        if (!link?.member_id) throw new Error('Siswa tidak terhubung ke data anggota. Periksa tautan data.');
+        const memberUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (updates.fullName !== undefined) memberUpdate.full_name = updates.fullName.trim();
+        if (updates.nickname !== undefined) memberUpdate.nickname = updates.nickname.trim() || null;
+        if (Object.keys(memberUpdate).length > 1) {
+          const { error } = await client.from('members').update(memberUpdate).eq('id', link.member_id).eq('member_type', 'siswa');
+          if (error) throw new Error(error.message);
+        }
+        if (updates.isActive !== undefined) {
+          const { error } = await client.from('rolling_student_links')
+            .update({ is_active: updates.isActive, updated_at: new Date().toISOString() }).eq('id', id);
+          if (error) throw new Error(error.message);
+        }
+        const updated = await this.getById(id);
+        if (!updated) throw new Error('Data Rolling tidak ditemukan setelah diperbarui.');
+        return updated;
+      }
+      if (!isMissingSchemaObject(linkError)) throw new Error(linkError.message);
+
+      const legacyRow = await this.getById(id);
+      if (!legacyRow) return null;
+      let memberId = legacyRow.member_id ?? null;
+      const hasIdentityChange = updates.fullName !== undefined || updates.nickname !== undefined;
+      if (hasIdentityChange && !memberId) {
+        const { data: candidates, error } = await client.from('members').select('id, full_name')
+          .eq('member_type', 'siswa').eq('attendance_number', legacyRow.number);
+        if (error) throw new Error(error.message);
+        const exact = (candidates || []).filter((candidate) => normalizeStudentName(candidate.full_name) === normalizeStudentName(legacyRow.full_name));
+        if (exact.length !== 1) throw new Error('Nama siswa belum dapat dicocokkan dengan aman. Tautkan data yang sudah diverifikasi sebelum mengubah identitas.');
+        memberId = exact[0].id;
+      }
+      if (hasIdentityChange && memberId) {
+        const memberUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (updates.fullName !== undefined) memberUpdate.full_name = updates.fullName.trim();
+        if (updates.nickname !== undefined) memberUpdate.nickname = updates.nickname.trim() || null;
+        const { error } = await client.from('members').update(memberUpdate).eq('id', memberId).eq('member_type', 'siswa');
+        if (error) throw new Error(error.message);
+      }
+      const legacyUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (updates.fullName !== undefined) legacyUpdate.full_name = updates.fullName.trim();
+      if (updates.nickname !== undefined) legacyUpdate.nickname = updates.nickname.trim();
+      if (updates.isActive !== undefined) legacyUpdate.is_active = updates.isActive;
+      const { error } = await client.from('students').update(legacyUpdate).eq('id', id);
+      if (error) throw new Error(error.message);
+      return this.getById(id);
+    },
+
+    async remove(id: string) {
+      const client = getSupabaseClient()!;
+      const { data: link, error: linkError } = await client.from('rolling_student_links')
+        .select('id, member_id').eq('id', id).maybeSingle();
+      if (!linkError) {
+        if (!link?.member_id) throw new Error('Siswa Rolling tidak tertaut ke data Anggota.');
+        await supabaseDb.members.delete(link.member_id);
+        return true;
+      }
+      if (!isMissingSchemaObject(linkError)) throw new Error(linkError.message);
+
+      const row = await this.getById(id);
+      if (!row) throw new Error('Siswa Rolling tidak ditemukan.');
+      let memberId = row.member_id ?? null;
+      if (!memberId) {
+        const { data: candidates, error } = await client.from('members').select('id, full_name')
+          .eq('member_type', 'siswa').eq('attendance_number', row.number);
+        if (error) throw new Error(error.message);
+        const exact = (candidates || []).filter((candidate) => normalizeStudentName(candidate.full_name) === normalizeStudentName(row.full_name));
+        if (exact.length !== 1) throw new Error('Identitas belum dapat dicocokkan dengan aman; periksa data anggota sebelum menghapus.');
+        memberId = exact[0].id;
+      }
+      await supabaseDb.members.delete(memberId);
+      return true;
     },
   },
 

@@ -1,6 +1,12 @@
 # Deployment and Supabase Consolidation Guide
 
-This guide prepares the current code for Netlify and combines the Rolling data with the website's existing Supabase project. It does not run any operation against a live account. Take a fresh backup of both Supabase projects before starting, and keep the old Rolling project intact until verification is complete.
+This guide covers the current Netlify/Supabase deployment and a later coordinated hosting-and-database move. No live account operation has been run from this repository.
+
+## Interim plan: keep the current Netlify and Supabase projects
+
+Per the client's direction, keep the existing Netlify site and existing Supabase project(s) for now. Deploy this code to the current Netlify site after testing a preview. Do **not** copy data to a different Supabase project, switch project URLs/keys, change cron schedules, or apply the consolidation migrations 001–005 during this interim release. The backend supports the existing physical `public.students` schema as well as the future normalized schema, so the app can run before the later coordinated migration. The old and current Supabase projects should remain untouched until the hosting and database move are scheduled together.
+
+The function entry is `netlify/functions/api.ts`; it wraps Express with `serverless-http`. Netlify builds with `npm run build`, publishes `dist`, and routes `/api/*` to that function. Preserve the currently working Netlify environment variables; verify the existing values in Netlify rather than replacing them from this guide.
 
 ## 1. What this change does
 
@@ -8,8 +14,12 @@ This guide prepares the current code for Netlify and combines the Rolling data w
 - The existing admin API rejects the old hard-coded password fallbacks, uses persistent five-attempt / ten-minute lockout state, and invalidates old admin tokens after a password change.
 - The website's core tables are public-read only through the Supabase API. The Express API uses the service-role key for its CRUD operations.
 - Retired Class Portal tables are moved to the `archive` schema without dropping their data.
-- Rolling `students` rows are retained as stable UUIDs because seating assignments reference them. Migration 003 links matching rows to canonical `members` records; it never deletes unmatched data.
-- The Rolling tables still have public write policies in the legacy SQL. This is a known, separate security task: fully removing those writes requires routing all Rolling mutations through authenticated server endpoints first.
+- The Rolling roster API supports both the existing physical `public.students` table and the future normalized, read-only view/UUID bridge. On legacy schemas, identity updates synchronize to `members` only when an exact safe match exists; ambiguous data is rejected for manual review.
+- In the later coordinated consolidation, `members` becomes the sole student identity source and migration 005 converts `public.students` to a read-only view over a minimal UUID/active-state bridge. This migration is not needed for the interim deployment.
+
+## Future coordinated hosting-and-database move (not part of the interim deploy)
+
+The remaining steps in sections 2–5 are for the later move. Do not run them for the current Netlify release unless the owner schedules the joint migration and approves the database backup/reconciliation window.
 
 ## 2. Back up first
 
@@ -34,6 +44,8 @@ ORDER BY table_name;
 
 If any are missing, review `supabase-migration-rolling.sql` and create only the missing schema objects before copying. Do not blindly rerun the legacy file: it also contains seed rows, policies, functions, and cron configuration. If all seven tables already exist, do not run it again.
 
+Before changing student data, run `database/checks/student-dedupe-preflight.sql`. Resolve duplicate attendance numbers and Rolling rows with no member at the same attendance number. Review every name mismatch against a trusted roster; only manually verified identities should be explicitly linked. The migration will not infer identity from an attendance-number match alone.
+
 ## 4. Preview the Rolling copy
 
 Set these variables in a **local shell only**, using service-role keys from the two project settings pages:
@@ -56,22 +68,23 @@ node scripts/migrate-rolling-data.mjs --apply
 
 The script does not move Storage files or change cron jobs. Do not turn off the old project's schedule yet.
 
-## 5. Apply the numbered migrations
+## 5. Apply the numbered migrations (future migration only)
 
-In the destination SQL Editor, run these files **one at a time and in order**:
+Only during the later coordinated migration, after backups and a successful preflight, run these files in the destination SQL Editor **one at a time and in order**:
 
 1. `database/migrations/001-archive-retired-portal.sql`
 2. `database/migrations/002-restrict-public-api.sql`
 3. `database/migrations/003-link-rolling-students.sql`
 4. `database/migrations/004-fix-active-seating-rpc.sql`
+5. `database/migrations/005-normalize-rolling-students.sql`
 
-The first two are transactional and retain archived rows. The third keeps Rolling UUIDs intact and links only records with an exact attendance-number and normalized-name match. Review the returned unmatched rows from the query at the end of migration 003. Resolve those by hand in `members`/`students`; do not infer identity from a mismatched number or name.
+Migrations 001–002 archive retired tables and restrict website-table writes. Migration 003 auto-links only unique attendance-number plus normalized full-name matches. Manually reviewed mismatches must be explicitly linked before migration 005, which stops if any row is unresolved. Migration 005 snapshots the old identity data to `archive`, renames the old physical table to the minimal UUID bridge, and creates a read-only `students` view over canonical members. It does not delete seating-history UUIDs. If a migration stops, resolve the reported issue and rerun only the migration that did not commit.
 
-Run `database/checks/verify.sql` afterwards. Also compare source and destination row counts and test a seat assignment, layout save, and reroll before changing any cron schedule.
+Run `database/checks/verify.sql` afterwards. Compare source/destination counts and test a member add/edit/delete, a Rolling participation toggle, a seat assignment, layout save, and reroll before changing any cron schedule.
 
 ## 6. Configure Netlify
 
-Connect the repository and set these variables in Netlify's environment settings:
+For the interim release, keep the currently configured Netlify project and Supabase values. This table is a checklist for confirming required names, not an instruction to change project credentials. Reuse the existing website Supabase project URL/keys until the coordinated move.
 
 | Variable | Purpose |
 | --- | --- |
