@@ -1,15 +1,15 @@
 # Database Documentation — X ICP TKJ Class Portal
 
-> **Project**: Website Resmi Kelas X ICP TKJ — SMK Telkom Malang  
-> **Database**: Supabase (PostgreSQL)  
-> **Last Audited**: 2026-11-13  
-> **File index**: [`database/README.md`](../database/README.md) (SQL files stay at repo root; names unchanged)
+> **Project**: Website Resmi Kelas X ICP TKJ — SMK Telkom Malang
+> **Database**: Supabase (PostgreSQL)
+> **Last Audited**: 2026-11-15
+> **File index**: [`database/README.md`](../database/README.md) (legacy root SQL stays unchanged; new reviewed changes are numbered under `database/migrations/`)
 
 ---
 
 ## 1. Overview
 
-The database serves a **class portal website** for X ICP TKJ — SMK Telkom Malang. It is hosted on Supabase (PostgreSQL) and accessed via two layers:
+The database serves the X ICP TKJ website on Supabase (PostgreSQL). Class Portal routes have been retired; legacy tables are retained in `archive` by migration 001. The active application uses the Express API for website data and direct public Supabase reads/RPC for parts of Rolling:
 
 | Layer | Purpose |
 |---|---|
@@ -97,7 +97,7 @@ Singleton row (id = 1) storing the master admin password hash and lockout state.
 | `last_password_change` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Default seeded password**: `icptkj35` (bcrypt hash).
+**Production bootstrap**: set `ADMIN_INITIAL_PASSWORD` temporarily before first admin initialization. There is no production hard-coded password; remove the bootstrap variable after changing the password in Admin.
 
 **RLS**: Enabled — service role full access only.
 
@@ -424,7 +424,7 @@ The 26 students in the rolling seating system (separate from `members`).
 **RLS**: Policy `"Public students access"` — FOR ALL USING (true).
 
 > [!WARNING]
-> `students` is a **different table** from `members`. It is used only by the Rolling seating feature. The two are not linked by foreign key.
+> `students` retains stable UUIDs referenced by seating assignments. Migration 003 adds a `member_id` foreign key for exact matches; `members` is the canonical source of student identity. Do not delete these UUID rows without migrating their references.
 
 ---
 
@@ -646,7 +646,7 @@ No explicit `CREATE TRIGGER` statements were found in any SQL file. The `updated
 | `saved_class_groups` | ✅ SELECT | ✅ INSERT/DELETE | ✅ Full |
 
 > [!CAUTION]
-> Portal tables (`member_accounts`, `class_kas_*`, `verification_codes`, etc.) use `USING (true) WITH CHECK (true)` — meaning any anonymous client with the anon key can read and write them. The only protection is the Supabase anon key itself. The Express API server should be the sole writer; direct PostgREST access should be reviewed.
+> Historical root SQL includes permissive policies for retired portal tables and Rolling writes. Migration 001 archives retired tables; migration 002 restricts public website tables. Rolling write policies remain permissive until Rolling mutations are moved behind authenticated backend endpoints.
 
 ---
 
@@ -747,7 +747,7 @@ For the frontend (`/.env`):
 ```
 VITE_API_URL=http://localhost:3001
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon-key>
+VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 ```
 
 **Step 6 — Verify**
@@ -767,7 +767,7 @@ SELECT cycle_id, status FROM seating_periods WHERE status = 'active';
 ## 9. Maintenance Notes
 
 ### ⚠️ Bug: `get_active_seating()` undefined variable
-In `supabase-migration-rolling.sql` line ~383, the function references `v_cycle_id` which is not declared. It should be `v_period.cycle_id`. **Fix this before the function is called in production**:
+The legacy `get_active_seating()` body references an undeclared `v_cycle_id`. Migration 004 replaces it with `v_period.cycle_id` without changing the original applied file:
 
 ```sql
 CREATE OR REPLACE FUNCTION public.get_active_seating()
@@ -777,10 +777,10 @@ RETURNS JSONB ...
 ```
 
 ### ⚠️ Dual student tables
-`students` (Rolling) and `members` (portal) are unlinked. If a student is added to `members` they must also be manually added to `students` for the Rolling feature. Consider a sync mechanism or merging these in a future migration.
+`students` (Rolling UUID compatibility) now has an optional `member_id` link to `members`. Migration 003 matches only exact attendance-number/name pairs. Unmatched rows must be reconciled manually before deployment.
 
-### ⚠️ Overly permissive portal RLS
-Portal tables use `USING (true) WITH CHECK (true)` which grants any anonymous user with the anon key full read/write. For a production school portal, consider adding proper user-based RLS conditions using Supabase Auth JWT claims.
+### ⚠️ Legacy and Rolling RLS
+Legacy portal policies are removed from the active schema by migration 001. Rolling tables still have public writes; this remains a known risk until all mutations use authenticated server endpoints.
 
 ### ⚠️ No `updated_at` triggers
 `updated_at` timestamps must be maintained by the application code. Consider adding a `moddatetime` trigger extension:

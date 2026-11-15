@@ -36,6 +36,7 @@ interface StudentRow {
   full_name: string;
   nickname: string;
   is_active: boolean;
+  member_id?: number | string | null;
 }
 
 const normalizeName = (name: string): string =>
@@ -61,9 +62,11 @@ export function mergeRoster(members: Member[] | null, rows: StudentRow[] | null)
   }
 
   const used = new Set<string>();
+  const byMemberId = new Map<string, StudentRow>();
   const byNumber = new Map<number, StudentRow>();
   const byName = new Map<string, StudentRow>();
   rowList.forEach((r) => {
+    if (r.member_id != null) byMemberId.set(String(r.member_id), r);
     byNumber.set(r.number, r);
     byName.set(normalizeName(r.full_name), r);
   });
@@ -73,8 +76,8 @@ export function mergeRoster(members: Member[] | null, rows: StudentRow[] | null)
   [...members]
     .sort((a, b) => (a.attendance_number ?? 9999) - (b.attendance_number ?? 9999))
     .forEach((m) => {
-      let row: StudentRow | undefined =
-        m.attendance_number != null ? byNumber.get(m.attendance_number) : undefined;
+      let row: StudentRow | undefined = byMemberId.get(String(m.id));
+      if (!row && m.attendance_number != null) row = byNumber.get(m.attendance_number);
       if (row && used.has(row.id)) row = undefined;
       if (!row) {
         const byFullName = byName.get(normalizeName(m.full_name));
@@ -228,6 +231,7 @@ export const seatingStudentService = {
             full_name: cleanFullName,
             nickname: cleanNickname,
             is_active: Boolean(isActive),
+            member_id: memberId,
           })
           .select()
           .single();
