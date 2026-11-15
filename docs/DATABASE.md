@@ -404,28 +404,18 @@ Student/teacher stories (Instagram-style, added in migration 002).
 
 All Rolling tables use **UUID** primary keys (via `gen_random_uuid()`).
 
-#### `students`
-The 26 students in the rolling seating system (separate from `members`).
+#### `students` (read-only compatibility view after migration 005)
 
-| Column | Type | Constraints |
-|---|---|---|
-| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() |
-| `number` | INT | UNIQUE NOT NULL, CHECK > 0 |
-| `full_name` | TEXT | NOT NULL |
-| `nickname` | TEXT | NOT NULL |
-| `is_active` | BOOLEAN | NOT NULL, DEFAULT true |
-| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
-| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+Student identity is stored only in `members`. The `students` view joins canonical member names/numbers with a small UUID bridge, so existing Rolling RPCs and assignment foreign keys keep working without a second editable identity record.
 
-**Indexes**: `idx_students_active`.
+| View column | Source |
+|---|---|
+| `id` | Stable UUID from `rolling_student_links`; referenced by assignments/history. |
+| `number`, `full_name`, `nickname`, `member_id` | Canonical `members` row. |
+| `is_active` | Rolling-specific participation flag in `rolling_student_links`. |
+| `created_at`, `updated_at` | UUID bridge timestamps. |
 
-**Grants**: SELECT, INSERT, UPDATE, DELETE to anon, authenticated, postgres, service_role.
-
-**RLS**: Policy `"Public students access"` — FOR ALL USING (true).
-
-> [!WARNING]
-> `students` retains stable UUIDs referenced by seating assignments. Migration 003 adds a `member_id` foreign key for exact matches; `members` is the canonical source of student identity. Do not delete these UUID rows without migrating their references.
-
+The old duplicate name/number/nickname values are copied to `archive.rolling_student_identity_backup` before those columns are dropped. Deleted members' names are preserved in `archive.rolling_student_deleted_members` for history. Public callers can read the view; only the backend can write to the bridge.
 ---
 
 #### `classroom_layouts`
@@ -776,11 +766,11 @@ RETURNS JSONB ...
 -- To:      'cycle_id', v_period.cycle_id,
 ```
 
-### ⚠️ Dual student tables
-`students` (Rolling UUID compatibility) now has an optional `member_id` link to `members`. Migration 003 matches only exact attendance-number/name pairs. Unmatched rows must be reconciled manually before deployment.
+### Student identity normalization
+`members` is canonical. Migration 005 turns the old `students` table into a read-only compatibility view and keeps only stable UUIDs plus the Rolling active flag in `rolling_student_links`. Migration 003 auto-links only unique attendance-number and normalized full-name matches. Name differences are ambiguous: preflight reports them, and migration 005 stops until each is manually verified and explicitly linked. Unmatched attendance numbers also stop migration 005.
 
 ### ⚠️ Legacy and Rolling RLS
-Legacy portal policies are removed from the active schema by migration 001. Rolling tables still have public writes; this remains a known risk until all mutations use authenticated server endpoints.
+Legacy portal policies are removed from the active schema by migration 001. Migration 005 removes public writes to the Rolling student bridge; layout, seat, reroll, schedule, and group tables still retain legacy public write policies until their mutations move behind authenticated endpoints.
 
 ### ⚠️ No `updated_at` triggers
 `updated_at` timestamps must be maintained by the application code. Consider adding a `moddatetime` trigger extension:

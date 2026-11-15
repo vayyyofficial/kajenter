@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import { CONFIG } from '../config.js';
 import { formatGalleryItem } from './supabase.js';
 
@@ -288,6 +289,92 @@ export const sqliteDb = {
       if (!existing) throw new Error('Anggota tidak ditemukan.');
       rawQuery.run('DELETE FROM members WHERE id = ?', id);
       return existing;
+    },
+  },
+
+  // ==========================================
+  // ROLLING STUDENT BRIDGE (LOCAL SQLITE)
+  // ==========================================
+  rollingStudents: {
+    async getAll() {
+      const now = new Date().toISOString();
+      const members = rawQuery.all<any>(
+        "SELECT id FROM members WHERE member_type = 'siswa' AND attendance_number IS NOT NULL"
+      );
+      for (const member of members) {
+        rawQuery.run(
+          `INSERT OR IGNORE INTO rolling_student_links (id, member_id, is_active, created_at, updated_at)
+           VALUES (?, ?, 1, ?, ?)`,
+          randomUUID(), member.id, now, now
+        );
+      }
+      return rawQuery.all<any>(
+        `SELECT l.id, m.attendance_number AS number, m.full_name,
+                COALESCE(m.nickname, m.full_name) AS nickname,
+                l.is_active, m.id AS member_id, l.created_at, l.updated_at
+         FROM rolling_student_links l
+         JOIN members m ON m.id = l.member_id
+         WHERE m.member_type = 'siswa'
+         ORDER BY m.attendance_number ASC, m.full_name ASC`
+      );
+    },
+
+    async getById(id: string) {
+      const row = rawQuery.get<any>(
+        `SELECT l.id, m.attendance_number AS number, m.full_name,
+                COALESCE(m.nickname, m.full_name) AS nickname,
+                l.is_active, m.id AS member_id, l.created_at, l.updated_at
+         FROM rolling_student_links l
+         JOIN members m ON m.id = l.member_id
+         WHERE l.id = ? AND m.member_type = 'siswa'`,
+        id
+      );
+      return row || null;
+    },
+
+    async add(student: { memberId: number; number: number; fullName: string; nickname: string; isActive: boolean }) {
+      const existing = rawQuery.get<any>('SELECT id FROM rolling_student_links WHERE member_id = ?', student.memberId);
+      if (existing) return this.getById(existing.id);
+      const now = new Date().toISOString();
+      rawQuery.run(
+        `INSERT INTO rolling_student_links (id, member_id, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        randomUUID(), student.memberId, student.isActive ? 1 : 0, now, now
+      );
+      const created = rawQuery.get<any>('SELECT id FROM rolling_student_links WHERE member_id = ?', student.memberId);
+      return created ? this.getById(created.id) : null;
+    },
+
+    async update(id: string, updates: { fullName?: string; nickname?: string; isActive?: boolean }) {
+      const link = rawQuery.get<any>('SELECT * FROM rolling_student_links WHERE id = ?', id);
+      if (!link?.member_id) throw new Error('Siswa tidak terhubung ke data anggota.');
+      const member = rawQuery.get<any>("SELECT * FROM members WHERE id = ? AND member_type = 'siswa'", link.member_id);
+      if (!member) throw new Error('Data anggota siswa tidak ditemukan.');
+
+      const now = new Date().toISOString();
+      if (updates.fullName !== undefined || updates.nickname !== undefined) {
+        rawQuery.run(
+          `UPDATE members SET full_name = ?, nickname = ?, updated_at = ? WHERE id = ?`,
+          updates.fullName !== undefined ? updates.fullName.trim() : member.full_name,
+          updates.nickname !== undefined ? (updates.nickname.trim() || null) : member.nickname,
+          now, link.member_id
+        );
+      }
+      if (updates.isActive !== undefined) {
+        rawQuery.run(
+          'UPDATE rolling_student_links SET is_active = ?, updated_at = ? WHERE id = ?',
+          updates.isActive ? 1 : 0, now, id
+        );
+      }
+      return this.getById(id);
+    },
+
+    async remove(id: string) {
+      const link = rawQuery.get<any>('SELECT * FROM rolling_student_links WHERE id = ?', id);
+      if (!link?.member_id) throw new Error('Siswa Rolling tidak tertaut ke data Anggota.');
+      rawQuery.run('UPDATE rolling_student_links SET is_active = 0, updated_at = ? WHERE id = ?', new Date().toISOString(), id);
+      rawQuery.run('DELETE FROM members WHERE id = ?', link.member_id);
+      return true;
     },
   },
 

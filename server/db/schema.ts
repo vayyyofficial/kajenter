@@ -41,6 +41,14 @@ export function initializeDatabase() {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS rolling_student_links (
+      id TEXT PRIMARY KEY,
+      member_id INTEGER UNIQUE REFERENCES members(id) ON DELETE SET NULL,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS gallery (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,

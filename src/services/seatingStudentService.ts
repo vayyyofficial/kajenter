@@ -3,32 +3,25 @@
  *
  * SINGLE SOURCE OF TRUTH
  * ----------------------
- * Student identity (name, nickname, absen number) lives in the portal
- * `members` data (member_type = 'siswa'), managed in Admin → Anggota.
+ * Student identity (name, nickname, attendance number) lives in the
+ * canonical `members` data (member_type = 'siswa'), managed in Admin → Anggota.
  * This service DERIVES the Rolling roster from those members, so a name
  * changed in either admin area is shown everywhere.
  *
- * The Supabase `students` table is kept only as the technical link that the
- * existing seating RPC / assignments (`student_id` UUID) depend on. Rows are
- * matched to members by absen number, then by normalised full name.
- * Identity edits made from Rolling are written to the member first and then
- * mirrored to the linked `students` row (write-through) — never the reverse.
- *
- * Student data is publicly viewable. Mutations require the main admin session.
- * See docs/FRONTEND-ADMIN-ROLLING.md for the backend work that would make this
- * a true single record (e.g. students.member_id FK or a view over members).
+ * The public `students` view is a read-only compatibility layer over `members`
+ * and a small UUID/participation bridge. The bridge UUID remains stable because
+ * seating assignments reference it; student identity is never copied there.
+ * All Rolling changes go through the authenticated main API.
  */
 
 import { INITIAL_STUDENTS, SeatingStudent } from '../data/seatingStudents';
 import { seatingStorageService } from './seatingStorageService';
 import { isAdminSessionActive } from './adminSession';
-import { seatingSupabase, isSupabaseConfigured } from './seatingSupabase';
 import { api } from './api';
 import type { Member } from '../types';
 
 const STORAGE_KEY = 'students';
 const NO_SESSION = 'Sesi administrator tidak aktif. Silakan login kembali.';
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface StudentRow {
   id: string;
@@ -41,8 +34,6 @@ interface StudentRow {
 
 const normalizeName = (name: string): string =>
   (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
-
-const isRowId = (id: string): boolean => UUID_RE.test(id);
 
 /**
  * Pure merge: members (identity) + students rows (Rolling link / active flag).
@@ -124,31 +115,27 @@ async function fetchSiswaMembers(): Promise<Member[] | null> {
 }
 
 async function fetchStudentRows(): Promise<StudentRow[] | null> {
-  if (!isSupabaseConfigured) return null;
   try {
-    const { data, error } = await seatingSupabase
-      .from('students')
-      .select('*')
-      .order('number', { ascending: true });
-    if (!error && Array.isArray(data)) return data as StudentRow[];
+    const response = await api.rollingStudents.getAll();
+    if (response?.success && Array.isArray(response.data)) {
+      return response.data.map((row) => ({ ...row, is_active: Boolean(row.is_active) }));
+    }
   } catch (err) {
-    console.warn('[seatingStudentService] students fetch failed:', err);
+    console.warn('[seatingStudentService] Rolling roster fetch failed:', err);
   }
   return null;
 }
 
-async function mirrorToRow(id: string, payload: Record<string, any>): Promise<boolean> {
-  if (!isSupabaseConfigured || !isRowId(id)) return false;
-  try {
-    const { error } = await seatingSupabase
-      .from('students')
-      .update({ ...payload, updated_at: new Date().toISOString() })
-      .eq('id', id);
-    return !error;
-  } catch (err) {
-    console.warn('[seatingStudentService] mirror update failed:', err);
-    return false;
-  }
+function fromStudentRow(row: StudentRow): SeatingStudent {
+  return {
+    id: row.id,
+    number: row.number,
+    fullName: row.full_name,
+    nickname: row.nickname,
+    isActive: Boolean(row.is_active),
+    memberId: row.member_id != null ? Number(row.member_id) : undefined,
+    rollingLinked: true,
+  };
 }
 
 export const seatingStudentService = {
@@ -159,9 +146,7 @@ export const seatingStudentService = {
    */
   getStudents(): SeatingStudent[] {
     const saved = seatingStorageService.get<SeatingStudent[]>(STORAGE_KEY, null);
-    if (!saved || !Array.isArray(saved) || saved.length === 0) {
-      return [...INITIAL_STUDENTS];
-    }
+    if (!Array.isArray(saved)) return [...INITIAL_STUDENTS];
     return saved;
   },
 
@@ -172,10 +157,8 @@ export const seatingStudentService = {
     const [members, rows] = await Promise.all([fetchSiswaMembers(), fetchStudentRows()]);
     if (members || rows) {
       const merged = mergeRoster(members, rows);
-      if (merged.length > 0) {
-        seatingStorageService.set(STORAGE_KEY, merged);
-        return merged;
-      }
+      seatingStorageService.set(STORAGE_KEY, merged);
+      return merged;
     }
     return this.getStudents();
   },
@@ -193,8 +176,8 @@ export const seatingStudentService = {
   },
 
   /**
-   * Add student — creates the MEMBER (single entry point), then the linked
-   * Rolling row so the student can be seated. Requires admin session.
+   * Add the canonical member. The database creates its Rolling UUID link
+   * automatically; no duplicate student identity row is inserted here.
    */
   async addStudent({ fullName, nickname, isActive = true }: { fullName: string; nickname: string; isActive?: boolean }): Promise<any> {
     if (!isAdminSessionActive()) return { error: NO_SESSION };
@@ -205,125 +188,73 @@ export const seatingStudentService = {
     if (!cleanNickname) return { error: 'Nama panggilan wajib diisi.' };
 
     const students = this.getStudents();
-    const nextNumber = students.length > 0 ? Math.max(...students.map((s) => s.number || 0)) + 1 : 1;
-
+    const nextNumber = students.length > 0 ? Math.max(...students.map((student) => student.number || 0)) + 1 : 1;
     let memberId: number | undefined;
+    let rollingLinkCreated = false;
     try {
-      const res = await api.members.create({
+      const created = await api.members.create({
         fullName: cleanFullName,
         nickname: cleanNickname,
         role: 'Siswa',
         memberType: 'siswa',
         attendanceNumber: String(nextNumber),
       });
-      memberId = res?.data?.id;
+      memberId = created.data.id;
+      const response = await api.rollingStudents.create({
+        memberId,
+        number: nextNumber,
+        fullName: cleanFullName,
+        nickname: cleanNickname,
+        isActive,
+      });
+      rollingLinkCreated = true;
+      const student = fromStudentRow(response.data);
+      this.saveStudents([...students, student]);
+      return student;
     } catch (err: any) {
+      if (memberId && !rollingLinkCreated) {
+        try { await api.members.delete(memberId); } catch { /* Preserve the original API error. */ }
+      }
       return { error: err?.message || 'Gagal menambahkan siswa ke data anggota.' };
     }
-
-    let rowId: string | null = null;
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await seatingSupabase
-          .from('students')
-          .insert({
-            number: nextNumber,
-            full_name: cleanFullName,
-            nickname: cleanNickname,
-            is_active: Boolean(isActive),
-            member_id: memberId,
-          })
-          .select()
-          .single();
-        if (!error && data) rowId = data.id;
-      } catch (err) {
-        console.warn('[seatingStudentService] Rolling row insert failed:', err);
-      }
-    }
-
-    const student: SeatingStudent = {
-      id: rowId || `member-${memberId}`,
-      number: nextNumber,
-      fullName: cleanFullName,
-      nickname: cleanNickname,
-      isActive: Boolean(isActive),
-      memberId,
-      rollingLinked: Boolean(rowId),
-    };
-    this.saveStudents([...students, student]);
-
-    return rowId
-      ? student
-      : { ...student, warning: 'Siswa tersimpan di data anggota, tetapi belum terhubung ke tabel Rolling.' };
   },
 
   /**
-   * Update student identity — written to the MEMBER first, then mirrored
-   * to the linked Rolling row. Requires admin session.
+   * Update canonical identity and the Rolling-only participation flag through
+   * the authenticated API. No direct browser writes to Supabase are made.
    */
   async updateStudent(id: string, updates: Partial<SeatingStudent>): Promise<any> {
     if (!isAdminSessionActive()) return { error: NO_SESSION };
-
-    const students = this.getStudents();
-    const index = students.findIndex((s) => s.id === id);
-    if (index === -1) return { error: 'Siswa tidak ditemukan.' };
-    const current = students[index];
-
-    const fullName = updates.fullName !== undefined ? updates.fullName.trim() : undefined;
-    const nickname = updates.nickname !== undefined ? updates.nickname.trim() : undefined;
-
-    if ((fullName !== undefined || nickname !== undefined) && current.memberId != null) {
-      try {
-        await api.members.update(current.memberId, {
-          ...(fullName !== undefined ? { fullName } : {}),
-          ...(nickname !== undefined ? { nickname } : {}),
-        });
-      } catch (err: any) {
-        return { error: err?.message || 'Gagal memperbarui data anggota.' };
-      }
+    const current = this.getStudentById(id);
+    if (!current) return { error: 'Siswa tidak ditemukan.' };
+    if (!current.rollingLinked) {
+      return { error: 'Data siswa belum terhubung ke daftar Anggota. Periksa migrasi database.' };
     }
 
-    const mirror: Record<string, any> = {};
-    if (fullName !== undefined) mirror.full_name = fullName;
-    if (nickname !== undefined) mirror.nickname = nickname;
-    if (updates.isActive !== undefined) mirror.is_active = Boolean(updates.isActive);
-    if (Object.keys(mirror).length > 0) await mirrorToRow(id, mirror);
-
-    students[index] = {
-      ...current,
-      ...updates,
-      fullName: fullName !== undefined ? fullName : current.fullName,
-      nickname: nickname !== undefined ? nickname : current.nickname,
-    };
-    this.saveStudents(students);
-    return students[index];
+    try {
+      const response = await api.rollingStudents.update(id, {
+        ...(updates.fullName !== undefined ? { fullName: updates.fullName.trim() } : {}),
+        ...(updates.nickname !== undefined ? { nickname: updates.nickname.trim() } : {}),
+        ...(updates.isActive !== undefined ? { isActive: Boolean(updates.isActive) } : {}),
+      });
+      const updated = fromStudentRow(response.data);
+      this.saveStudents(this.getStudents().map((student) => student.id === id ? updated : student));
+      return updated;
+    } catch (err: any) {
+      return { error: err?.message || 'Gagal memperbarui data siswa.' };
+    }
   },
 
-  /**
-   * Toggle Rolling participation (`students.is_active`). This flag is
-   * Rolling-specific, so it is not part of the member record.
-   */
+  /** Toggle only the Rolling-specific participation flag. */
   async toggleActive(id: string): Promise<any> {
-    if (!isAdminSessionActive()) return { error: NO_SESSION };
-
-    const students = this.getStudents();
-    const student = students.find((s) => s.id === id);
+    const student = this.getStudentById(id);
     if (!student) return { error: 'Siswa tidak ditemukan.' };
-    if (!isRowId(id)) {
-      return { error: 'Siswa ini belum terhubung ke tabel Rolling. Hubungi developer backend.' };
-    }
-
-    const newStatus = !student.isActive;
-    await mirrorToRow(id, { is_active: newStatus });
-
-    student.isActive = newStatus;
-    this.saveStudents(students);
-    return student;
+    return this.updateStudent(id, { isActive: !student.isActive });
   },
 
   /**
-   * Delete student — removes the MEMBER and DEACTIVATES the Rolling row
-   * (rows are never hard-deleted from here: seat assignments reference them).
+   * Delete the canonical member. The database archives the identity and
+   * deactivates the UUID bridge so existing seating history remains intact.
    */
   async deleteStudent(id: string): Promise<any> {
     if (!isAdminSessionActive()) return { error: NO_SESSION };
@@ -332,14 +263,14 @@ export const seatingStudentService = {
     const student = students.find((s) => s.id === id);
     if (!student) return { error: 'Siswa tidak ditemukan.' };
 
-    if (student.memberId != null) {
-      try {
-        await api.members.delete(student.memberId);
-      } catch (err: any) {
-        return { error: err?.message || 'Gagal menghapus data anggota.' };
-      }
+    if (!student.rollingLinked) {
+      return { error: 'Data siswa belum terhubung ke daftar Anggota. Periksa migrasi database.' };
     }
-    await mirrorToRow(id, { is_active: false });
+    try {
+      await api.rollingStudents.remove(id);
+    } catch (err: any) {
+      return { error: err?.message || 'Gagal menghapus data anggota.' };
+    }
 
     this.saveStudents(students.filter((s) => s.id !== id));
     return true;

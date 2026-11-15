@@ -11,6 +11,7 @@ import socialRouter from './routes/social.js';
 import adminRouter from './routes/admin.js';
 import syncRouter from './routes/sync.js';
 import uploadRouter from './routes/upload.js';
+import rollingRouter from './routes/rolling.js';
 
 
 const app = express();
@@ -69,6 +70,7 @@ apiRouter.use('/social', socialRouter);
 apiRouter.use('/admin', adminRouter);
 apiRouter.use('/sync', syncRouter);
 apiRouter.use('/upload', uploadRouter);
+apiRouter.use('/rolling', rollingRouter);
 apiRouter.use('/portal', (_req, res) => res.status(410).json({ success: false, error: 'Class Portal sudah tidak tersedia.' }));
 apiRouter.use('/stories', (_req, res) => res.status(410).json({ success: false, error: 'Fitur Story sudah tidak tersedia.' }));
 

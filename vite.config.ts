@@ -5,6 +5,8 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '0.0.0.0',
+    allowedHosts: ['.e2b.app'],
     port: 5173,
     proxy: {
       '/api': {
